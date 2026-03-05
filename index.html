@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USDA FAS Export Sales Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;600&display=swap');
+:root{--bg:#080b0f;--s1:#0e1218;--s2:#141923;--border:#1e2530;--gold:#e8c547;--gold2:#f5d76e;--blue:#4fc3f7;--green:#6fcf97;--red:#eb5757;--purple:#bb86fc;--orange:#ffb347;--text:#dde4f0;--muted:#5a6882;--muted2:#3d4a60}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+header{background:var(--s1);border-bottom:1px solid var(--border);padding:20px 32px;display:flex;justify-content:space-between;align-items:flex-end;position:sticky;top:0;z-index:100}
+.logo-block h1{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:4px;background:linear-gradient(120deg,var(--gold),var(--gold2) 40%,var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+.eyebrow{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.live-badge{display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:.63rem;color:var(--muted);padding-bottom:4px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--muted2);transition:background .3s}
+.live-dot.on{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.controls{background:var(--s2);border-bottom:1px solid var(--border);padding:12px 32px;display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl label{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+select,select[multiple]{background:var(--s1);border:1px solid var(--border);color:var(--text);padding:7px 26px 7px 10px;font-family:'DM Mono',monospace;font-size:.74rem;border-radius:3px;cursor:pointer;outline:none;transition:border-color .15s;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a6882'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+select[multiple]{padding:5px 10px;background-image:none;min-height:68px;min-width:160px}
+select[multiple] option{padding:3px 6px;background:var(--s1);color:var(--text)}
+select[multiple] option:checked{background:rgba(232,197,71,.18);color:var(--gold)}
+select:hover,select:focus{border-color:var(--gold)}
+.ctrl-wide select{min-width:260px}
+.btn{background:var(--gold);color:#000;border:none;padding:9px 22px;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;border-radius:3px;cursor:pointer;transition:background .15s,transform .1s;white-space:nowrap}
+.btn:hover{background:var(--gold2);transform:translateY(-1px)}
+.btn:disabled{background:var(--muted2);color:var(--muted);cursor:not-allowed;transform:none}
+.status{padding:6px 32px;font-family:'DM Mono',monospace;font-size:.65rem;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);min-height:30px;color:var(--muted)}
+.status.loading{color:var(--gold)}.status.ok{color:var(--green)}.status.err{color:var(--red)}
+.debug-box{margin:10px 32px;background:#0a0e14;border:1px solid #1e2a3a;border-radius:4px;padding:10px 14px;font-family:'DM Mono',monospace;font-size:.64rem;color:#7a90b0;line-height:1.7;display:none;max-height:220px;overflow-y:auto}
+.debug-box.show{display:block}
+.section{padding:22px 32px}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:20px}
+.card-head{padding:14px 18px 0;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px}
+.card-sub{font-family:'DM Mono',monospace;font-size:.59rem;color:var(--muted);margin-top:3px}
+.chip{font-family:'DM Mono',monospace;font-size:.56rem;padding:3px 8px;border-radius:2px;border:1px solid var(--border);color:var(--muted);background:var(--s2)}
+.chart-wrap{padding:12px 16px 16px;height:400px;position:relative}
+.metric-tabs{display:flex;gap:7px;flex-wrap:wrap;padding:10px 18px 0;border-top:1px solid var(--border);margin-top:12px}
+.mtab{font-family:'DM Mono',monospace;font-size:.6rem;padding:4px 11px;border-radius:3px;border:1px solid var(--border);cursor:pointer;background:var(--s2);color:var(--muted);transition:all .15s;letter-spacing:.3px;white-space:nowrap}
+.mtab:hover{border-color:var(--muted);color:var(--text)}
+.mtab.active{color:#000;font-weight:500;border-color:transparent}
+.tbl-outer{overflow-x:auto;overflow-y:auto;max-height:640px}
+table{width:100%;border-collapse:collapse;white-space:nowrap}
+thead{position:sticky;top:0;z-index:10}
+thead tr.grp-row th{background:var(--bg);font-family:'DM Mono',monospace;font-size:.54rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);text-align:center;padding:5px 10px;border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
+thead tr.grp-row th:first-child{text-align:left}
+thead tr.hd-row th{background:var(--s2);padding:7px 10px;font-family:'DM Mono',monospace;font-size:.56rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border);text-align:right;border-right:1px solid rgba(30,37,48,.4)}
+thead tr.hd-row th:first-child{text-align:left;min-width:130px}
+td{padding:7px 10px;border-bottom:1px solid rgba(30,37,48,.5);font-family:'DM Mono',monospace;font-size:.7rem;text-align:right;color:var(--text);border-right:1px solid rgba(30,37,48,.2)}
+td:first-child{text-align:left;font-size:.72rem}
+tr:hover td{background:rgba(20,25,35,.5)}
+tr.total-row td{background:rgba(232,197,71,.07);border-top:1px solid rgba(232,197,71,.3);color:var(--gold)}
+tr.others-row td{background:rgba(90,104,130,.07);border-top:1px solid rgba(90,104,130,.25);color:var(--muted)}
+td.sep{border-right:2px solid var(--border)}th.sep{border-right:2px solid var(--border)}
+.pos{color:var(--green)}.neg{color:var(--red)}.zero{color:var(--muted)}
+.bar-cell{display:flex;align-items:center;gap:5px;justify-content:flex-end}
+.mini-bar{height:3px;background:var(--gold);border-radius:2px;min-width:1px;opacity:.7}
+.empty{text-align:center;padding:40px 20px;font-family:'DM Mono',monospace;font-size:.73rem;color:var(--muted)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:var(--border);border-top:1px solid var(--border)}
+.kpi-cell{background:var(--s1);padding:14px 16px}
+.kpi-label{font-family:'DM Mono',monospace;font-size:.53rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.kpi-val{font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:2px;line-height:1.1;color:var(--text)}
+.kpi-changes{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.kpi-badge{font-family:'DM Mono',monospace;font-size:.52rem;padding:2px 6px;border-radius:2px;white-space:nowrap}
+.kpi-badge.pos{background:rgba(111,207,151,.1);color:var(--green);border:1px solid rgba(111,207,151,.25)}
+.kpi-badge.neg{background:rgba(235,87,87,.1);color:var(--red);border:1px solid rgba(235,87,87,.25)}
+.kpi-badge.neu{background:var(--s2);color:var(--muted);border:1px solid var(--border)}
+.intel-body{padding:14px 18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.intel-panel{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:12px}
+.intel-panel-title{font-family:'DM Mono',monospace;font-size:.53rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.intel-row{display:flex;align-items:center;padding:4px 0;border-bottom:1px solid rgba(30,37,48,.4);gap:6px}
+.intel-row:last-child{border-bottom:none}
+.intel-rank{font-family:'DM Mono',monospace;font-size:.52rem;color:var(--muted2);width:14px;flex-shrink:0;text-align:right}
+.intel-country{font-family:'DM Mono',monospace;font-size:.63rem;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.intel-bar-bg{width:40px;height:3px;background:var(--border);border-radius:2px;flex-shrink:0}
+.intel-bar-fill{height:3px;background:var(--gold);border-radius:2px;opacity:.75}
+.intel-val{font-family:'DM Mono',monospace;font-size:.63rem;color:var(--gold);text-align:right;flex-shrink:0;min-width:44px}
+.intel-chg{font-family:'DM Mono',monospace;font-size:.52rem;text-align:right;flex-shrink:0;min-width:36px}
+.signal-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid rgba(30,37,48,.4)}
+.signal-row:last-child{border-bottom:none}
+.sig-dot{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.sig-txt{font-family:'DM Mono',monospace;font-size:.61rem;color:var(--text);line-height:1.55}
+.proj-body{padding:14px 18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.proj-panel{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:12px}
+.proj-panel-title{font-family:'DM Mono',monospace;font-size:.53rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.proj-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(30,37,48,.3);gap:8px}
+.proj-row:last-child{border-bottom:none}
+.proj-row-name{font-family:'DM Mono',monospace;font-size:.61rem;color:var(--muted);flex:1}
+.proj-row-desc{font-family:'DM Mono',monospace;font-size:.51rem;color:var(--muted2);margin-top:1px}
+.proj-row-val{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:1px;text-align:right}
+.proj-row.consensus .proj-row-name{color:var(--gold)}
+.proj-row.consensus .proj-row-val{color:var(--gold);font-size:1.3rem}
+.proj-row.consensus{background:rgba(232,197,71,.04);margin:0 -12px;padding:8px 12px;border-radius:2px}
+.proj-tbl{width:100%;border-collapse:collapse}
+.proj-tbl td,.proj-tbl th{font-family:'DM Mono',monospace;font-size:.6rem;padding:5px 4px;border-bottom:1px solid rgba(30,37,48,.3)}
+.proj-tbl th{font-size:.51rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);padding-bottom:6px;border-bottom:1px solid var(--border);text-align:right}
+.proj-tbl th:first-child,.proj-tbl td:first-child{text-align:left;color:var(--text)}
+.proj-tbl td:not(:first-child){text-align:right;color:var(--muted)}
+.proj-tbl td.hl{color:var(--gold)}
+.prog-wrap{margin:0 18px 14px;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;gap:12px}
+.prog-label{font-family:'DM Mono',monospace;font-size:.56rem;color:var(--muted);white-space:nowrap}
+.prog-track{flex:1;height:5px;background:var(--border);border-radius:3px}
+.prog-fill{height:5px;border-radius:3px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.prog-pct{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--gold);white-space:nowrap;letter-spacing:1px}
+footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:.59rem;color:var(--muted);display:flex;justify-content:space-between;background:var(--s1);margin-top:24px}
+
+/* ── Email Scheduler Panel ── */
+.email-panel{background:var(--s1);border:1px solid var(--border);margin:0 32px 0;border-radius:4px;overflow:hidden;transition:all .2s}
+.email-panel-head{padding:11px 18px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:12px}
+.email-panel-head:hover{background:var(--s2)}
+.email-panel-title{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:var(--gold)}
+.email-panel-body{padding:14px 18px 16px;border-top:1px solid var(--border);display:none}
+.email-panel-body.open{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:860px){.email-panel-body.open{grid-template-columns:1fr}}
+.email-input-group{display:flex;flex-direction:column;gap:5px}
+.email-input-group label{font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.email-input-group input,.email-input-group textarea{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:'DM Mono',monospace;font-size:.72rem;border-radius:3px;outline:none;transition:border-color .15s;width:100%}
+.email-input-group input:focus,.email-input-group textarea:focus{border-color:var(--gold)}
+.email-input-group textarea{resize:vertical;min-height:68px;line-height:1.5}
+.email-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;min-height:28px}
+.email-tag{background:rgba(232,197,71,.12);border:1px solid rgba(232,197,71,.3);color:var(--gold);font-family:'DM Mono',monospace;font-size:.6rem;padding:2px 8px 2px 10px;border-radius:2px;display:flex;align-items:center;gap:5px}
+.email-tag-x{cursor:pointer;color:var(--muted);font-size:.75rem;line-height:1}
+.email-tag-x:hover{color:var(--red)}
+.sched-display{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:10px 12px}
+.sched-label{font-family:'DM Mono',monospace;font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.sched-next{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:var(--green)}
+.sched-sub{font-family:'DM Mono',monospace;font-size:.57rem;color:var(--muted);margin-top:3px}
+.sched-last{font-family:'DM Mono',monospace;font-size:.57rem;color:var(--muted2);margin-top:6px}
+.email-status-bar{font-family:'DM Mono',monospace;font-size:.6rem;padding:5px 0 0;min-height:18px}
+.email-status-bar.ok{color:var(--green)}.email-status-bar.err{color:var(--red)}.email-status-bar.sending{color:var(--gold)}
+.ejs-setup{background:rgba(79,195,247,.06);border:1px solid rgba(79,195,247,.2);border-radius:3px;padding:10px 12px}
+.ejs-setup-title{font-family:'DM Mono',monospace;font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);margin-bottom:7px}
+.ejs-setup-row{display:flex;flex-direction:column;gap:4px;margin-bottom:7px}
+.ejs-setup-row:last-child{margin-bottom:0}
+.ejs-setup-row label{font-family:'DM Mono',monospace;font-size:.52rem;color:var(--muted)}
+.auto-send-toggle{display:flex;align-items:center;gap:8px;margin-top:6px}
+.toggle-switch{position:relative;width:34px;height:18px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0;position:absolute}
+.toggle-slider{position:absolute;inset:0;background:var(--muted2);border-radius:9px;cursor:pointer;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;height:12px;width:12px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--green)}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px)}
+.toggle-label{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted)}
+
+/* ── 8-chart Season Grid ── */
+.season-grid-wrap{padding:0 16px 16px}
+.season-page-wrap{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:14px;margin-bottom:14px}
+.season-page-wrap:last-child{margin-bottom:0}
+.sc-cell{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:10px 12px}
+.sc-label{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.sc-wrap{position:relative;aspect-ratio:1/1}
+/* ── Country Summary Split Tables ── */
+.tbl-section-label{font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);padding:10px 18px 6px;border-top:1px solid var(--border)}
+.tbl-section-label:first-of-type{border-top:none;padding-top:12px}
+/* ── Print Layout ── */
+@media print{
+  /* A4 landscape: 297×210mm, tight margins so content fills page */
+  @page{size:A4 landscape;margin:6mm 7mm 6mm 7mm}
+
+  /* ── Hide UI chrome ── */
+  header,.controls,.status,.debug-box,.email-panel,footer,
+  #btnLoad,#btnPDF,.ctrl,button,.metric-tabs{display:none!important}
+
+  /* ── White everywhere, preserve colors ── */
+  html,body{background:#fff!important;color:#000!important;font-size:7pt!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .section{padding:0!important;margin:0!important;gap:0!important}
+
+  /* ── Generic cards ── */
+  .card{
+    background:#fff!important;border:1.5px solid #334155!important;
+    border-radius:2px!important;margin-bottom:3pt!important;
+    box-shadow:none!important;break-inside:avoid
+  }
+  .card-head{
+    background:#1e293b!important;color:#fff!important;
+    padding:4pt 8pt!important;border-bottom:none!important
+  }
+  .card-title{font-size:9pt!important;color:#fff!important;letter-spacing:.5px!important}
+  .card-sub{font-size:6pt!important;color:#94a3b8!important}
+  .chip{background:#334155!important;color:#fbbf24!important;border:none!important;font-size:5.5pt!important}
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     SEASONALITY — Pages 1 & 2
+     Card header hidden; grid fills full page
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #seasonCard{
+    border:none!important;margin:0!important;padding:0!important;
+    break-inside:auto!important;page-break-inside:auto!important
+  }
+  /* Hide card header + country filter on print */
+  #seasonCard .card-head,
+  #seasonCard > div:nth-child(2){display:none!important}
+
+  .season-grid-wrap{
+    padding:0!important;margin:0!important;
+    background:#fff!important;display:block!important
+  }
+
+  /* Each group of 4 = one full A4-landscape page */
+  .season-page-wrap{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    grid-template-rows:1fr 1fr!important;
+    gap:4pt!important;
+    /* A4 landscape printable height (210mm - 12mm margins) ≈ 198mm */
+    height:198mm!important;
+    max-height:198mm!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+    break-inside:avoid!important;
+    page-break-inside:avoid!important;
+    margin:0!important;padding:2pt!important;
+    background:#fff!important
+  }
+  .season-page-wrap:first-child{
+    break-after:page!important;page-break-after:always!important
+  }
+
+  /* Individual chart cell */
+  .sc-cell{
+    background:#f8fafc!important;border:1.5px solid #334155!important;
+    border-radius:2px!important;padding:4pt 6pt 3pt!important;
+    display:flex!important;flex-direction:column!important;
+    overflow:hidden!important;min-height:0!important
+  }
+  .sc-label{
+    font-size:7pt!important;font-weight:700!important;
+    color:#000!important;letter-spacing:.5px!important;
+    text-transform:uppercase!important;flex-shrink:0!important;
+    border-bottom:1.5px solid #334155!important;
+    padding-bottom:2pt!important;margin-bottom:2pt!important
+  }
+  .sc-wrap{
+    flex:1!important;min-height:0!important;
+    aspect-ratio:unset!important;
+    position:relative!important;overflow:hidden!important
+  }
+  .sc-wrap canvas{
+    position:absolute!important;top:0!important;left:0!important;
+    width:100%!important;height:100%!important
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     PAGE 3: INTELLIGENCE + PROJECTION
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #intelligenceCard{break-before:page!important;page-break-before:always!important}
+  #projectionCard{break-before:avoid!important;break-inside:avoid!important}
+
+  /* KPI grid */
+  .kpi-grid{background:#e2e8f0!important;gap:1px!important;border:1px solid #ccc!important}
+  .kpi-cell{background:#fff!important;padding:3pt 5pt!important}
+  .kpi-label{color:#555!important;font-size:5pt!important;letter-spacing:.3px!important}
+  .kpi-val{color:#000!important;font-size:10pt!important;letter-spacing:0!important}
+  .kpi-badge{font-size:5pt!important;padding:1px 3px!important;border:1px solid #ccc!important;background:#f1f5f9!important;color:#555!important}
+  .kpi-badge.pos{background:#dcfce7!important;color:#166534!important;border-color:#86efac!important}
+  .kpi-badge.neg{background:#fee2e2!important;color:#991b1b!important;border-color:#fca5a5!important}
+
+  /* Progress */
+  .prog-wrap{background:#f8fafc!important;border:1px solid #e2e8f0!important;padding:2pt 6pt!important;margin:2pt 0!important}
+  .prog-track{background:#ddd!important;height:4px!important}
+  .prog-fill{background:#b45309!important}
+  .prog-pct{color:#b45309!important;font-size:9pt!important}
+  .prog-label{color:#475569!important;font-size:5.5pt!important}
+
+  /* Intel */
+  .intel-body{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:5pt!important;padding:4pt 8pt!important;background:#fff!important}
+  .intel-panel{background:#f8fafc!important;border:1px solid #e2e8f0!important;border-radius:2px!important;padding:4pt 5pt!important}
+  .intel-panel-title{color:#000!important;font-size:5pt!important;font-weight:700!important;letter-spacing:.5px!important;border-bottom:1px solid #cbd5e1!important;padding-bottom:2pt!important;margin-bottom:3pt!important}
+  .intel-row{border-bottom:1px solid #f1f5f9!important;padding:1.5pt 0!important}
+  .intel-rank{color:#94a3b8!important;font-size:5.5pt!important}
+  .intel-country{color:#000!important;font-size:5.5pt!important}
+  .intel-val{color:#92400e!important;font-size:5.5pt!important}
+  .intel-chg{font-size:5pt!important}
+  .intel-bar-bg{background:#e2e8f0!important}
+  .intel-bar-fill{background:#b45309!important}
+  .signal-row{border-bottom:1px solid #f1f5f9!important;padding:1.5pt 0!important}
+  .sig-txt{color:#000!important;font-size:5.5pt!important;line-height:1.4!important}
+  .sig-dot{width:4px!important;height:4px!important;border-radius:50%!important;flex-shrink:0!important;margin-top:2pt!important}
+
+  /* Projection */
+  .proj-body{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:5pt!important;padding:4pt 8pt!important;background:#fff!important}
+  .proj-panel{background:#f8fafc!important;border:1px solid #e2e8f0!important;border-radius:2px!important;padding:4pt 5pt!important}
+  .proj-panel-title{color:#000!important;font-size:5pt!important;font-weight:700!important;letter-spacing:.5px!important;border-bottom:1px solid #cbd5e1!important;padding-bottom:2pt!important;margin-bottom:3pt!important}
+  .proj-row{padding:1.5pt 0!important;border-bottom:1px solid #f1f5f9!important}
+  .proj-row-name{color:#334155!important;font-size:5.5pt!important}
+  .proj-row-desc{color:#64748b!important;font-size:4.5pt!important}
+  .proj-row-val{color:#000!important;font-size:8pt!important}
+  .proj-row.consensus{background:#fffbeb!important;padding:2pt 3pt!important}
+  .proj-row.consensus .proj-row-name{color:#92400e!important}
+  .proj-row.consensus .proj-row-val{color:#92400e!important;font-size:10pt!important}
+  .proj-tbl{width:100%!important;border-collapse:collapse!important}
+  .proj-tbl th{background:#f1f5f9!important;color:#334155!important;padding:1.5pt 3pt!important;border:1px solid #cbd5e1!important;font-size:5pt!important}
+  .proj-tbl td{padding:1.5pt 3pt!important;border:1px solid #e2e8f0!important;font-size:5.5pt!important;color:#334155!important}
+  .proj-tbl td.hl{color:#92400e!important;font-weight:700!important}
+  .pos{color:#166534!important}.neg{color:#991b1b!important}.zero{color:#555!important}
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     PAGE 4: COUNTRY SUMMARY — fit all columns
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #countrySummaryCard{break-before:page!important;page-break-before:always!important;break-inside:auto!important}
+  #countrySummaryCard .card-head{background:#1e293b!important;padding:3pt 8pt!important}
+
+  .tbl-section-label{
+    font-size:5pt!important;letter-spacing:.5px!important;color:#334155!important;
+    border-top:1px solid #cbd5e1!important;padding:3pt 6pt 2pt!important;
+    background:#f8fafc!important;font-weight:700!important
+  }
+  .tbl-outer{max-height:none!important;overflow:visible!important;padding:0 4pt!important}
+
+  /* Compress tables to fit A4 landscape width (283mm usable) */
+  #countrySummaryCard table{
+    font-size:5pt!important;
+    border-collapse:collapse!important;
+    width:100%!important;
+    table-layout:fixed!important
+  }
+  #countrySummaryCard th{
+    font-size:4.5pt!important;
+    padding:2pt 2pt!important;
+    white-space:normal!important;
+    word-break:break-word!important;
+    line-height:1.2!important;
+    text-align:center!important;
+    border:1px solid #334155!important;
+    overflow:hidden!important
+  }
+  #countrySummaryCard thead tr.grp-row th{
+    background:#1e293b!important;color:#fff!important;
+    font-size:5pt!important;padding:2pt 3pt!important
+  }
+  #countrySummaryCard thead tr.hd-row th{
+    background:#f1f5f9!important;color:#334155!important;
+    border:1px solid #cbd5e1!important
+  }
+  #countrySummaryCard td{
+    font-size:5pt!important;
+    padding:1.5pt 2pt!important;
+    border:1px solid #e2e8f0!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    color:#000!important;
+    background:#fff!important
+  }
+  #countrySummaryCard td:first-child{
+    white-space:normal!important;
+    word-break:break-word!important;
+    font-size:5pt!important;
+    max-width:0!important /* table-layout:fixed handles actual width */
+  }
+  #countrySummaryCard tr:nth-child(even) td{background:#f8fafc!important}
+  #countrySummaryCard tr.total-row td{background:#fffbeb!important;color:#92400e!important;border-top:1.5px solid #d97706!important;font-weight:700!important}
+  #countrySummaryCard tr.others-row td{background:#f1f5f9!important;color:#475569!important}
+  .bar-cell{display:flex!important;align-items:center!important;gap:1pt!important}
+  .mini-bar{background:#b45309!important;height:3px!important;border-radius:1px!important;flex-shrink:0!important;max-width:20px!important}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-block">
+    <div class="eyebrow">USDA FAS · Export Sales Reporting · Live Weekly Data</div>
+    <h1>ESR Export Analytics</h1>
+  </div>
+  <div class="live-badge"><div class="live-dot" id="liveDot"></div><span id="liveLabel">Offline</span></div>
+</header>
+<div class="controls">
+  <div class="ctrl ctrl-wide">
+    <label>Commodity</label>
+    <select id="selCommodity">
+      <optgroup label="Cotton">
+        <option value="1404" selected>1404 · All Upland Cotton</option>
+        <option value="1401">1401 · Upland 1 1/16&quot; &amp; over</option>
+        <option value="1402">1402 · Upland 1&quot;–1 1/16&quot;</option>
+        <option value="1403">1403 · Upland under 1&quot;</option>
+        <option value="1301">1301 · Cotton Am Pima</option>
+      </optgroup>
+      <optgroup label="Grains">
+        <option value="107">107 · All Wheat</option><option value="101">101 · Wheat HRW</option>
+        <option value="102">102 · Wheat SRW</option><option value="103">103 · Wheat HRS</option>
+        <option value="104">104 · Wheat White</option><option value="105">105 · Wheat Durum</option>
+        <option value="106">106 · Wheat Mixed</option><option value="201">201 · Wheat Products</option>
+        <option value="301">301 · Barley</option><option value="401">401 · Corn</option>
+        <option value="501">501 · Rye</option><option value="601">601 · Oats</option>
+        <option value="701">701 · Sorghum</option>
+      </optgroup>
+      <optgroup label="Oilseeds &amp; Products">
+        <option value="801">801 · Soybeans</option><option value="901">901 · Soybean Cake &amp; Meal</option>
+        <option value="902">902 · Soybean Oil</option><option value="1001">1001 · Flaxseed</option>
+        <option value="1101">1101 · Linseed Oil</option><option value="1110">1110 · Sunflowerseed Oil</option>
+      </optgroup>
+      <optgroup label="Cottonseed">
+        <option value="1201">1201 · Cottonseed</option><option value="1202">1202 · Cottonseed Cake &amp; Meal</option>
+        <option value="1203">1203 · Cottonseed Oil</option>
+      </optgroup>
+      <optgroup label="Rice">
+        <option value="1505">1505 · All Rice</option><option value="1498">1498 · Rice LG Rough</option>
+        <option value="1499">1499 · Rice Med/Short Rough</option><option value="1501">1501 · Rice LG Brown</option>
+        <option value="1502">1502 · Rice Med/Short Brown</option><option value="1503">1503 · Rice LG Milled</option>
+        <option value="1504">1504 · Rice Med/Short Milled</option>
+      </optgroup>
+      <optgroup label="Hides &amp; Skins">
+        <option value="1601">1601 · Cattle Hides Whole</option><option value="1602">1602 · Calf Skins Whole</option>
+        <option value="1603">1603 · Kip Skins Whole</option><option value="1604">1604 · Cattle Hides Croupons</option>
+        <option value="1605">1605 · Cattle Hides &amp; Skins Other</option><option value="1606">1606 · Cattle Wet Blues Unsplit</option>
+        <option value="1607">1607 · Cattle Wet Blues Grain</option><option value="1608">1608 · Cattle Wet Blues Splits</option>
+      </optgroup>
+      <optgroup label="Meat">
+        <option value="1701">1701 · Beef Muscle Cuts</option><option value="1702">1702 · Pork Muscle Cuts</option>
+      </optgroup>
+    </select>
+  </div>
+  <div class="ctrl"><label>Primary Year</label><select id="selYear"></select></div>
+  <div class="ctrl"><label>Compare Years (hold Ctrl)</label><select id="selCompareYears" multiple></select></div>
+  <div class="ctrl" style="align-self:flex-end"><button class="btn" id="btnLoad" onclick="loadAll()">⟳ Load Data</button></div>
+  <div class="ctrl" style="align-self:flex-end">
+    <button class="btn" id="btnPDF" style="background:var(--s2);color:var(--gold);border:1px solid rgba(232,197,71,.35)" onclick="generatePDFReport()">🖨 Print / PDF</button>
+  </div>
+  <div class="ctrl" style="align-self:flex-end"><button class="btn" style="background:var(--s2);color:var(--muted);border:1px solid var(--border)" onclick="toggleDebug()">Debug</button></div>
+</div>
+<div class="status" id="statusBar">Select a commodity and click Load Data</div>
+<div class="debug-box" id="debugBox"></div>
+<div class="section">
+  <div class="card" id="seasonCard">
+    <div class="card-head">
+      <div><div class="card-title">Seasonality — Multi-Year Comparison</div><div class="card-sub" id="seasonSub">Weeks aligned from marketing year start · 8 metrics</div></div>
+      <span class="chip" id="seasonChip">—</span>
+    </div>
+    <div style="padding:8px 18px 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border)">
+      <span style="font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);white-space:nowrap">Country Filter</span>
+      <select id="selSeasonCountries" multiple style="min-height:60px;min-width:220px;flex:1;max-width:480px" onchange="onSeasonCountryChange()">
+        <option value="__total__" selected>TOTAL (All Countries)</option>
+      </select>
+      <span style="font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);max-width:160px;line-height:1.5">Hold Ctrl to select multiple</span>
+    </div>
+    <div class="season-grid-wrap">
+      <div class="season-page-wrap">
+        <div class="sc-cell">
+  <div class="sc-label" style="color:var(--gold)">Gross Sales (Weekly)</div>
+  <div class="sc-wrap"><canvas id="sc_grossNewSales"></canvas></div>
+</div><div class="sc-cell">
+  <div class="sc-label" style="color:var(--blue)">Net Sales (Weekly)</div>
+  <div class="sc-wrap"><canvas id="sc_currentMYNetSales"></canvas></div>
+</div><div class="sc-cell">
+  <div class="sc-label" style="color:var(--green)">Weekly Exports</div>
+  <div class="sc-wrap"><canvas id="sc_weeklyExports"></canvas></div>
+</div><div class="sc-cell">
+  <div class="sc-label" style="color:var(--orange)">Accumulated Exports</div>
+  <div class="sc-wrap"><canvas id="sc_accumulatedExports"></canvas></div>
+</div>
+      </div>
+      <div class="season-page-wrap">
+        <div class="sc-cell">
+  <div class="sc-label" style="color:var(--purple)">Outstanding Sales</div>
+  <div class="sc-wrap"><canvas id="sc_outstandingSales"></canvas></div>
+</div><div class="sc-cell">
+  <div class="sc-label" style="color:#ff6b6b">Total Commitment MY</div>
+  <div class="sc-wrap"><canvas id="sc_currentMYTotalCommitment"></canvas></div>
+</div><div class="sc-cell">
+  <div class="sc-label" style="color:#a8e063">Next MY Net Sales</div>
+  <div class="sc-wrap"><canvas id="sc_nextMYNetSales"></canvas></div>
+</div><div class="sc-cell">
+  <div class="sc-label" style="color:#56cfe1">Next MY Outstanding</div>
+  <div class="sc-wrap"><canvas id="sc_nextMYOutstandingSales"></canvas></div>
+</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="intelligenceCard" style="display:none">
+    <div class="card-head">
+      <div><div class="card-title">Weekly Market Intelligence</div><div class="card-sub" id="intelSub">—</div></div>
+      <span class="chip" id="intelChip">—</span>
+    </div>
+    <div id="intelKpis" class="kpi-grid"></div>
+    <div class="prog-wrap">
+      <span class="prog-label" id="progLabel">MY Progress</span>
+      <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+      <span class="prog-pct" id="progPct">0%</span>
+      <span class="prog-label" id="progWks" style="color:var(--muted2)"></span>
+    </div>
+    <div class="intel-body" id="intelBody"></div>
+  </div>
+  <div class="card" id="projectionCard" style="display:none">
+    <div class="card-head">
+      <div><div class="card-title">End-of-Year Export Projection</div><div class="card-sub" id="projSub">—</div></div>
+      <span class="chip" id="projChip" style="color:var(--gold);border-color:rgba(232,197,71,.3)">PROJECTION</span>
+    </div>
+    <div class="proj-body" id="projBody"></div>
+  </div>
+  <div class="card" id="countrySummaryCard">
+    <div class="card-head">
+      <div><div class="card-title">Country Summary</div><div class="card-sub" id="tblSub">Top destinations · Running Bales</div></div>
+    </div>
+    <div class="tbl-section-label">── This Week / Last Week / Change ──</div>
+    <div style="padding:0 18px 0">
+      <div id="summaryTbl1" class="tbl-outer"><div class="empty">Load data to view summary table</div></div>
+    </div>
+    <div class="tbl-section-label" style="margin-top:6px">── Accumulated Exports / Outstanding / Total Commitment / Next MY (multi-year) ──</div>
+    <div style="padding:0 18px 0">
+      <div id="summaryTbl2" class="tbl-outer"><div class="empty">Load data to view summary table</div></div>
+    </div>
+    <div style="height:16px"></div>
+  </div>
+</div>
+
+<!-- GAS Email Scheduler Panel -->
+<div class="email-panel" id="emailPanel" style="margin-bottom:0">
+  <div class="email-panel-head" onclick="toggleEmailPanel()">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.1rem">📧</span>
+      <div>
+        <div class="email-panel-title">Weekly Report Scheduler — Google Apps Script</div>
+        <div style="font-family:'DM Mono',monospace;font-size:.56rem;color:var(--muted);margin-top:2px">Sends via Gmail · No page needs to be open · Runs on Google's servers</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div id="schedBadge" style="font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);text-align:right"></div>
+      <span id="emailChevron" style="font-family:'DM Mono',monospace;color:var(--muted);font-size:.8rem;transition:transform .2s">▼</span>
+    </div>
+  </div>
+  <div class="email-panel-body" id="emailPanelBody">
+    <!-- Col 1: Recipients + actions -->
+    <div>
+      <div class="email-input-group">
+        <label>Recipient Email Addresses</label>
+        <input type="email" id="emailInput" placeholder="name@example.com — press Enter to add" onkeydown="handleEmailKey(event)" />
+        <div class="email-tags" id="emailTags"></div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="email-input-group">
+          <label>Email Subject (optional override)</label>
+          <input type="text" id="emailSubject" placeholder="USDA ESR Weekly Report — {commodity} {date}" />
+        </div>
+      </div>
+      <div class="email-status-bar" id="emailStatusBar"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn" style="font-size:.62rem;padding:7px 16px" onclick="sendReportNow()">⚡ Send Now</button>
+        <button class="btn" style="font-size:.62rem;padding:7px 16px;background:var(--s2);color:var(--muted);border:1px solid var(--border)" onclick="testGASConfig()">✓ Test Connection</button>
+      </div>
+    </div>
+    <!-- Col 2: Schedule info -->
+    <div>
+      <div class="sched-display">
+        <div class="sched-label">Next Scheduled Send</div>
+        <div class="sched-next" id="schedNext">—</div>
+        <div class="sched-sub" id="schedSub">Runs automatically via Google Apps Script trigger</div>
+        <div class="sched-last" id="schedLast"></div>
+      </div>
+      <div style="margin-top:10px;background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:10px 12px">
+        <div style="font-family:'DM Mono',monospace;font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">How It Works</div>
+        <div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--text);line-height:1.8">
+          ① You paste your Apps Script Web App URL below<br>
+          ② Dashboard POSTs the report HTML to your script<br>
+          ③ Apps Script emails it via <span style="color:var(--green)">your Gmail</span> for free<br>
+          ④ Set a Thursday trigger in Apps Script for auto-send<br>
+          ⑤ <span style="color:var(--green)">Page does not need to be open</span> for scheduled sends
+        </div>
+      </div>
+    </div>
+    <!-- Col 3: GAS configuration -->
+    <div>
+      <div class="ejs-setup">
+        <div class="ejs-setup-title">⚙️ Google Apps Script Setup</div>
+        <div style="font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);margin-bottom:10px;line-height:1.7">
+          Step 1 · Go to <span style="color:var(--blue)">script.google.com</span><br>
+          Step 2 · Create new project, paste the GAS code<br>
+          Step 3 · Deploy → Web App → Anyone → Copy URL<br>
+          Step 4 · Paste URL + choose a Secret Token below
+        </div>
+        <div class="ejs-setup-row">
+          <label>Apps Script Web App URL</label>
+          <input type="text" id="gasWebAppUrl" placeholder="https://script.google.com/macros/s/…/exec"
+            oninput="saveEmailConfig()"
+            style="background:var(--s1);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:.62rem;border-radius:2px;width:100%;outline:none" />
+        </div>
+        <div class="ejs-setup-row" style="margin-top:6px">
+          <label>Secret Token <span style="color:var(--muted2);font-weight:400">(you choose — must match Apps Script)</span></label>
+          <input type="password" id="gasSecret" placeholder="e.g. MyESRToken2024"
+            oninput="saveEmailConfig()"
+            style="background:var(--s1);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:.62rem;border-radius:2px;width:100%;outline:none" />
+        </div>
+        <div style="margin-top:8px">
+          <button class="btn" style="font-size:.58rem;padding:5px 12px;background:var(--s2);color:var(--blue);border:1px solid rgba(79,195,247,.3)"
+            onclick="copyGASCode()">📋 Copy Apps Script Code</button>
+        </div>
+        <div style="margin-top:8px;font-family:'DM Mono',monospace;font-size:.52rem;color:var(--muted2);line-height:1.6">
+          Free limits: 100 emails/day (Gmail) · 1,500/day (Workspace)<br>
+          No API keys · No account creation · Uses your Google account
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<footer>
+  <span>USDA FAS Export Sales Reporting System · api.fas.usda.gov</span>
+  <span id="footerTs">—</span>
+</footer><script>
+const API_KEY='p5rJTNhEZbSmIPVyRxEixuZrVfgKraUAhCNo8Kmg';
+const USDA_BASE='https://api.fas.usda.gov/api/esr';
+const PROXY='https://corsproxy.io/?';
+const MY_START_MONTH={101:6,102:6,103:6,104:6,105:6,106:6,107:6,201:6,301:6,501:6,601:6,1001:6,1101:6,401:9,701:9,801:9,901:10,902:10,1110:10,1202:10,1203:10,1201:8,1301:8,1401:8,1402:8,1403:8,1404:8,1498:8,1499:8,1501:8,1502:8,1503:8,1504:8,1505:8,1601:1,1602:1,1603:1,1604:1,1605:1,1606:1,1607:1,1608:1,1701:1,1702:1};
+const YEAR_COLORS=['#e8c547','#4fc3f7','#6fcf97','#bb86fc','#ffb347','#ff6b6b','#a8e063','#56cfe1'];
+const METRIC_LABELS={grossNewSales:'Gross Sales (Wkly)',currentMYNetSales:'Net Sales (Weekly)',weeklyExports:'Weekly Exports',accumulatedExports:'Accum Exports',outstandingSales:'Outstanding Sales',currentMYTotalCommitment:'Total Commit MY',nextMYNetSales:'Next MY Net Sales',nextMYOutstandingSales:'Next MY Outstanding'};
+const COUNTRIES={1:"European Union",2:"Unknown",1010:"Greenland",1220:"Canada",1610:"St. Pierre and Miquelon",2010:"Mexico",2050:"Guatemala",2080:"Belize",2110:"El Salvador",2150:"Honduras",2190:"Nicaragua",2230:"Costa Rica",2250:"Panama",2320:"Bermuda",2360:"Bahamas",2390:"Cuba",2410:"Jamaica",2450:"Haiti",2470:"Dominican Republic",2480:"Leeward-Windward Islands",2720:"Barbados",2740:"Trinidad and Tobago",2770:"Netherlands Antilles",2830:"French West Indies",3010:"Colombia",3070:"Venezuela",3120:"Guyana",3150:"Surinam",3310:"Ecuador",3330:"Peru",3350:"Bolivia",3370:"Chile",3510:"Brazil",3530:"Paraguay",3550:"Uruguay",3570:"Argentina",4000:"Iceland",4010:"Sweden",4030:"Norway",4050:"Finland",4090:"Denmark",4120:"United Kingdom",4190:"Ireland",4210:"Netherlands",4230:"Belgium-Luxembourg",4270:"France",4280:"Germany",4330:"Austria",4350:"Czechoslovakia",4351:"Czech Republic",4359:"Slovakia",4370:"Hungary",4410:"Switzerland",4461:"Former Soviet Union",4470:"Estonia",4490:"Latvia",4510:"Lithuania",4550:"Poland",4621:"Russia",4622:"Belarus",4623:"Ukraine",4631:"Armenia",4632:"Azerbaijan",4633:"Georgia",4634:"Kazakhstan",4635:"Kyrgyzstan",4641:"Moldova",4642:"Tajikistan",4643:"Turkmenistan",4644:"Uzbekistan",4700:"Spain",4710:"Portugal",4730:"Malta",4750:"Italy",4791:"Croatia",4792:"Slovenia",4793:"Bosnia-Herzegovina",4799:"Yugoslavia",4810:"Albania",4840:"Greece",4850:"Romania",4870:"Bulgaria",4890:"Turkey",4910:"Cyprus",5020:"Syria",5040:"Lebanon",5050:"Iraq",5070:"Iran",5080:"Israel",5110:"Jordan",5130:"Kuwait",5170:"Saudi Arabia",5180:"Qatar",5200:"United Arab Emirates",5210:"Yemen",5230:"Oman",5250:"Bahrain",5310:"Afghanistan",5330:"India",5350:"Pakistan",5360:"Nepal",5380:"Bangladesh",5420:"Sri Lanka",5460:"Burma/Myanmar",5490:"Thailand",5520:"Vietnam",5530:"Laos",5550:"Cambodia",5570:"Malaysia",5590:"Singapore",5600:"Indonesia",5650:"Philippines",5700:"China",5740:"Mongolia",5800:"South Korea",5820:"Hong Kong",5830:"Taiwan",5880:"Japan",6020:"Australia",6040:"Papua New Guinea",6140:"New Zealand",7140:"Morocco",7210:"Algeria",7230:"Tunisia",7250:"Libya",7290:"Egypt",7320:"Sudan",7323:"South Sudan",7380:"Equatorial Guinea",7410:"Mauritania",7420:"Cameroon",7440:"Senegal",7450:"Mali",7460:"Guinea",7480:"Cote d'Ivoire",7490:"Ghana",7510:"Niger",7520:"Togo",7530:"Nigeria",7540:"Central African Republic",7550:"Gabon",7560:"Chad",7600:"Burkina Faso",7610:"Benin",7620:"Angola",7630:"Congo (Brazzaville)",7640:"Western Africa NEC",7650:"Liberia",7660:"Congo DR",7700:"Somalia",7740:"Ethiopia",7741:"Eritrea",7780:"Uganda",7790:"Kenya",7830:"Tanzania",7870:"Mozambique",7880:"Madagascar",7910:"South Africa",7920:"Namibia",7930:"Botswana",7940:"Zambia",7960:"Zimbabwe",7970:"Malawi",9110:"Virgin Islands (US)",9350:"Guam",9510:"American Samoa",9610:"Northern Mariana Islands"};
+
+let globalData={},charts={},primaryYear=2026,allLoadedYears=[],debugLines=[];
+
+(function init(){
+  const yrSel=document.getElementById('selYear'),cmpSel=document.getElementById('selCompareYears');
+  for(let y=2026;y>=2000;y--){
+    const o1=document.createElement('option');o1.value=y;o1.textContent='MY '+y;if(y===2026)o1.selected=true;yrSel.appendChild(o1);
+    const o2=document.createElement('option');o2.value=y;o2.textContent='MY '+y;if(y>=2023&&y<=2025)o2.selected=true;cmpSel.appendChild(o2);
+  }
+})();
+
+function fmt(v){if(v==null||v===''||isNaN(v))return '—';const n=+v;if(Math.abs(n)>=1e6)return(n/1e6).toFixed(2)+'M';if(Math.abs(n)>=1e3)return(n/1e3).toFixed(1)+'K';return n.toLocaleString();}
+function fmtD(v){if(v==null||isNaN(v))return '—';const n=+v;const s=n>=0?'+':'-';if(Math.abs(n)>=1e6)return s+(Math.abs(n)/1e6).toFixed(2)+'M';if(Math.abs(n)>=1e3)return s+(Math.abs(n)/1e3).toFixed(1)+'K';return(n>=0?'+':'')+n.toLocaleString();}
+function dbg(msg){debugLines.push(msg);const box=document.getElementById('debugBox');const d=document.createElement('div');d.textContent=msg;box.appendChild(d);box.scrollTop=box.scrollHeight;}
+function toggleDebug(){document.getElementById('debugBox').classList.toggle('show');}
+function setStatus(cls,msg){const el=document.getElementById('statusBar');el.className='status '+cls;el.textContent=msg;}
+function setLive(on){document.getElementById('liveDot').className='live-dot'+(on?' on':'');document.getElementById('liveLabel').textContent=on?'Live':'Offline';}
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function getMYStart(commCode,myYear){const m=MY_START_MONTH[commCode]||1;return new Date(m===1?myYear:myYear-1,m-1,1);}
+function getWeekInMY(dateStr,commCode,myYear){const myStart=getMYStart(commCode,myYear);const wkDate=new Date(String(dateStr).split('T')[0]+'T00:00:00');return Math.round((wkDate-myStart)/(7*24*3600*1000))+1;}
+
+async function usdaFetch(path){
+  const target=`${USDA_BASE}/${path}`;
+  dbg(`→ ${target}`);
+  const enc=encodeURIComponent(target);
+  const attempts=[
+    ()=>fetch(target,{headers:{'X-Api-Key':API_KEY,'Accept':'application/json'}}),
+    ()=>fetch(`https://corsproxy.io/?${enc}`,{headers:{'X-Api-Key':API_KEY,'Accept':'application/json'}}),
+    ()=>fetch(`https://api.allorigins.win/raw?url=${enc}`),
+    ()=>fetch(`https://cors-anywhere.herokuapp.com/${target}`,{headers:{'X-Api-Key':API_KEY,'Accept':'application/json','Origin':'https://localhost'}}),
+    ()=>fetch(`https://thingproxy.freeboard.io/fetch/${target}`,{headers:{'X-Api-Key':API_KEY}}),
+  ];
+  for(let i=0;i<attempts.length;i++){
+    try{
+      dbg(` attempt ${i+1}…`);
+      const res=await attempts[i]();
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json=await res.json();
+      if(!Array.isArray(json)) throw new Error('Non-array response');
+      dbg(` ✓ ${json.length} records via proxy ${i+1}`);
+      if(i===0) setLive(true);
+      return json;
+    }catch(e){ dbg(` ✗ proxy ${i+1}: ${e.message}`); }
+  }
+  throw new Error('All 5 proxies failed — check debug log for details');
+}
+
+function aggregateByWeek(data,commCode,myYear){
+  const byDate={};
+  for(const r of data){if(!r.weekEndingDate)continue;const cc=r.countryCode;if(!cc||cc===0)continue;const key=String(r.weekEndingDate).split('T')[0];if(!byDate[key])byDate[key]={date:key,wkNum:getWeekInMY(key,commCode,myYear),grossNewSales:0,currentMYNetSales:0,weeklyExports:0,nextMYNetSales:0,_snap:{}};const w=byDate[key];w.grossNewSales+=(+(r.grossNewSales||0));w.currentMYNetSales+=(+(r.currentMYNetSales||0));w.weeklyExports+=(+(r.weeklyExports||0));w.nextMYNetSales+=(+(r.nextMYNetSales||0));w._snap[cc]={accumulatedExports:+(r.accumulatedExports||0),outstandingSales:+(r.outstandingSales||0),currentMYTotalCommitment:+(r.currentMYTotalCommitment||0),nextMYOutstandingSales:+(r.nextMYOutstandingSales||0)};}
+  for(const w of Object.values(byDate)){w.accumulatedExports=0;w.outstandingSales=0;w.currentMYTotalCommitment=0;w.nextMYOutstandingSales=0;for(const s of Object.values(w._snap)){w.accumulatedExports+=s.accumulatedExports;w.outstandingSales+=s.outstandingSales;w.currentMYTotalCommitment+=s.currentMYTotalCommitment;w.nextMYOutstandingSales+=s.nextMYOutstandingSales;}delete w._snap;}
+  const dated=Object.values(byDate).sort((a,b)=>a.date<b.date?-1:1);const byWkNum={};for(const e of dated)byWkNum[e.wkNum]=e;return Object.values(byWkNum).sort((a,b)=>a.wkNum-b.wkNum);
+}
+
+function aggregateByCountry(data){
+  const allDates=[...new Set(data.map(r=>String(r.weekEndingDate||'').split('T')[0]).filter(Boolean))].sort();
+  const thisWeek=allDates[allDates.length-1]||'',lastWeek=allDates[allDates.length-2]||'';
+  const byC={};
+  for(const r of data){const cc=r.countryCode;if(!cc||cc===0)continue;if(!byC[cc])byC[cc]={code:cc,name:COUNTRIES[cc]||`Code ${cc}`,grossNewSalesTW:0,grossNewSalesLW:0,currentMYNetSalesTW:0,currentMYNetSalesLW:0,weeklyExportsTW:0,weeklyExportsLW:0,nextMYNetSalesTW:0,nextMYNetSalesLW:0,accumulatedExportsTW:0,outstandingSalesTW:0,currentMYTotalCommitmentTW:0,nextMYOutstandingSalesTW:0};const wk=String(r.weekEndingDate||'').split('T')[0];if(wk===thisWeek){byC[cc].grossNewSalesTW+=(+(r.grossNewSales||0));byC[cc].currentMYNetSalesTW+=(+(r.currentMYNetSales||0));byC[cc].weeklyExportsTW+=(+(r.weeklyExports||0));byC[cc].nextMYNetSalesTW+=(+(r.nextMYNetSales||0));byC[cc].accumulatedExportsTW+=(+(r.accumulatedExports||0));byC[cc].outstandingSalesTW+=(+(r.outstandingSales||0));byC[cc].currentMYTotalCommitmentTW+=(+(r.currentMYTotalCommitment||0));byC[cc].nextMYOutstandingSalesTW+=(+(r.nextMYOutstandingSales||0));}if(wk===lastWeek){byC[cc].grossNewSalesLW+=(+(r.grossNewSales||0));byC[cc].currentMYNetSalesLW+=(+(r.currentMYNetSales||0));byC[cc].weeklyExportsLW+=(+(r.weeklyExports||0));byC[cc].nextMYNetSalesLW+=(+(r.nextMYNetSales||0));}}
+  return{byC,thisWeek,lastWeek};
+}
+
+async function loadAll(){
+  const commCode=+document.getElementById('selCommodity').value;
+  const yr=+document.getElementById('selYear').value;
+  const cmpYears=[...document.getElementById('selCompareYears').selectedOptions].map(o=>+o.value).filter(y=>y!==yr);
+  const btn=document.getElementById('btnLoad');btn.disabled=true;setLive(false);debugLines=[];document.getElementById('debugBox').innerHTML='';
+  try{setStatus('loading',`⟳ Fetching MY${yr} data…`);const raw=await usdaFetch(`exports/commodityCode/${commCode}/allCountries/marketYear/${yr}`);if(!Array.isArray(raw)||!raw.length)throw new Error('Empty response');globalData={};globalData[yr]=raw;allLoadedYears=[yr];
+  for(const cy of cmpYears){try{setStatus('loading',`⟳ Fetching MY${cy}…`);const d=await usdaFetch(`exports/commodityCode/${commCode}/allCountries/marketYear/${cy}`);if(Array.isArray(d)&&d.length>0){globalData[cy]=d;allLoadedYears.push(cy);}}catch(e){dbg(`MY${cy}: ${e.message}`);}}
+  allLoadedYears.sort((a,b)=>b-a);primaryYear=yr;
+  const commName=document.getElementById('selCommodity').selectedOptions[0].text;
+  setStatus('ok',`✓ Loaded ${allLoadedYears.map(y=>'MY'+y).join(' · ')} · ${commName}`);
+  const footerEl=document.getElementById('footerTs');if(footerEl)footerEl.textContent=`Updated ${new Date().toLocaleString()}`;
+  renderAll(commCode,commName);
+  }catch(e){setStatus('err','✗ '+e.message);setLive(false);}finally{btn.disabled=false;}
+}
+
+function renderAll(commCode,commName){populateSeasonCountries(commCode);renderSeasonality(commCode,commName);renderIntelligence(commCode,commName);renderProjections(commCode,commName);renderSummaryTable(commCode,commName);}
+
+function populateSeasonCountries(commCode){
+  const sel=document.getElementById('selSeasonCountries');const codeSet=new Set();
+  for(const y of allLoadedYears){const data=globalData[y];if(!data)continue;for(const r of data){if(r.countryCode&&r.countryCode!==0)codeSet.add(r.countryCode);}}
+  sel.innerHTML='<option value="__total__" selected>TOTAL (All Countries)</option>';
+  const sorted=[...codeSet].sort((a,b)=>{return(COUNTRIES[a]||`${a}`).localeCompare(COUNTRIES[b]||`${b}`);});
+  for(const cc of sorted){const opt=document.createElement('option');opt.value=cc;opt.textContent=COUNTRIES[cc]||`Code ${cc}`;sel.appendChild(opt);}
+}
+function onSeasonCountryChange(){const commCode=+document.getElementById('selCommodity').value;const commName=document.getElementById('selCommodity').selectedOptions[0].text;renderSeasonality(commCode,commName);}
+function getSeasonCountryCodes(){const opts=[...document.getElementById('selSeasonCountries').selectedOptions];if(!opts.length)return null;const codes=opts.map(o=>o.value);if(codes.includes('__total__'))return null;return codes.map(Number);}
+
+
+const ALL_METRICS_DEF=[
+  {id:'grossNewSales',label:'Gross Sales (Weekly)',color:'#e8c547'},
+  {id:'currentMYNetSales',label:'Net Sales (Weekly)',color:'#4fc3f7'},
+  {id:'weeklyExports',label:'Weekly Exports',color:'#6fcf97'},
+  {id:'accumulatedExports',label:'Accumulated Exports',color:'#ffb347'},
+  {id:'outstandingSales',label:'Outstanding Sales',color:'#bb86fc'},
+  {id:'currentMYTotalCommitment',label:'Total Commitment MY',color:'#ff6b6b'},
+  {id:'nextMYNetSales',label:'Next MY Net Sales',color:'#a8e063'},
+  {id:'nextMYOutstandingSales',label:'Next MY Outstanding',color:'#56cfe1'},
+];
+
+function renderSeasonality(commCode,commName){
+  // Destroy all previous season charts
+  for(const m of ALL_METRICS_DEF){if(charts['sc_'+m.id]){charts['sc_'+m.id].destroy();delete charts['sc_'+m.id];}}
+  const filterCodes=getSeasonCountryCodes();
+  seasonalityWeekData={};
+  const yearsSorted=[...allLoadedYears].sort((a,b)=>b-a);
+  const yearWeekMaps={};
+  for(const y of yearsSorted){
+    let data=globalData[y];if(!data)continue;
+    if(filterCodes)data=data.filter(r=>filterCodes.includes(r.countryCode));
+    const weeks=aggregateByWeek(data,commCode,y);
+    yearWeekMaps[y]={};
+    for(const w of weeks){if(w.wkNum>=1&&w.wkNum<=55)yearWeekMaps[y][w.wkNum]={...w};}
+    seasonalityWeekData[y]=Object.values(yearWeekMaps[y]).sort((a,b)=>a.wkNum-b.wkNum);
+  }
+  let maxWk=52;
+  for(const y of yearsSorted)if(yearWeekMaps[y])for(const wk of Object.keys(yearWeekMaps[y]))maxWk=Math.max(maxWk,+wk);
+  const allWeeks=[];for(let wk=1;wk<=maxWk;wk++)allWeeks.push(wk);
+  const myStartM=MY_START_MONTH[commCode]||1;
+  const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('seasonChip').textContent=allLoadedYears.length+' years';
+  document.getElementById('seasonSub').textContent='X-axis: weeks from MY start ('+monthNames[myStartM-1]+' 1) · '+(!filterCodes?'All Countries':filterCodes.map(c=>COUNTRIES[c]||'Code '+c).join(', '));
+  const crosshairPlugin={id:'crosshair',afterDraw(chart){if(chart.tooltip._active&&chart.tooltip._active.length){const ctx2=chart.ctx,x=chart.tooltip._active[0].element.x,{top,bottom}=chart.chartArea;ctx2.save();ctx2.beginPath();ctx2.moveTo(x,top);ctx2.lineTo(x,bottom);ctx2.lineWidth=1;ctx2.strokeStyle='rgba(232,197,71,0.3)';ctx2.setLineDash([4,3]);ctx2.stroke();ctx2.restore();}}};
+  for(const mDef of ALL_METRICS_DEF){
+    const metric=mDef.id;
+    const canvasEl=document.getElementById('sc_'+metric);
+    if(!canvasEl)continue;
+    const datasets=[];
+    for(let i=0;i<yearsSorted.length;i++){
+      const y=yearsSorted[i];if(!yearWeekMaps[y])continue;
+      const color=YEAR_COLORS[i%YEAR_COLORS.length];
+      const pts=allWeeks.map(wk=>{const e=yearWeekMaps[y][wk];return e!==undefined?{x:wk,y:e[metric]||0}:{x:wk,y:null};});
+      datasets.push({label:'MY'+y,data:pts,borderColor:color,backgroundColor:color+'22',borderWidth:i===0?2.5:1.5,borderDash:i===0?[]:[5,4],pointRadius:0,pointHoverRadius:4,tension:0.25,fill:false,spanGaps:false,order:i});
+    }
+    charts['sc_'+metric]=new Chart(canvasEl.getContext('2d'),{
+      type:'line',data:{datasets},
+      plugins:[crosshairPlugin],
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',axis:'x',intersect:false},
+        plugins:{
+          legend:{display:true,position:'top',labels:{color:'#dde4f0',font:{family:'DM Mono',size:9},boxWidth:14,padding:8}},
+          tooltip:{backgroundColor:'#0e1218',borderColor:'rgba(232,197,71,0.25)',borderWidth:1,titleFont:{family:'DM Mono',size:9},bodyFont:{family:'DM Mono',size:9},titleColor:'#e8c547',bodyColor:'#dde4f0',padding:9,
+            filter:item=>item.raw!==null&&item.raw.y!==null,
+            callbacks:{
+              title(items){const wk=allWeeks[items[0].dataIndex];return 'Week '+wk;},
+              label(item){if(item.raw===null||item.raw.y===null)return null;return '  '+item.dataset.label+': '+fmt(item.raw.y);}
+            }
+          }
+        },
+        scales:{
+          x:{type:'linear',min:1,max:maxWk,ticks:{color:'#5a6882',font:{family:'DM Mono',size:8},stepSize:8,callback:v=>Number.isInteger(v)?'Wk'+v:''},grid:{color:'#1e2530'}},
+          y:{ticks:{color:'#5a6882',font:{family:'DM Mono',size:8},callback:v=>fmt(v)},grid:{color:'#1e2530'}}
+        }
+      }
+    });
+  }
+}
+
+function linReg(pts){const n=pts.length;if(n<2)return{slope:0,intercept:pts[0]?.y||0,r2:0};const sx=pts.reduce((a,p)=>a+p.x,0),sy=pts.reduce((a,p)=>a+p.y,0),sxy=pts.reduce((a,p)=>a+p.x*p.y,0),sx2=pts.reduce((a,p)=>a+p.x*p.x,0);const d=n*sx2-sx*sx;if(!d)return{slope:0,intercept:sy/n,r2:0};const slope=(n*sxy-sx*sy)/d,intercept=(sy-slope*sx)/n;const ybar=sy/n,ss=pts.reduce((a,p)=>a+(p.y-ybar)**2,0),sr=pts.reduce((a,p)=>a+(p.y-(slope*p.x+intercept))**2,0);return{slope,intercept,r2:ss>0?1-sr/ss:1};}
+function pct(a,b){if(!b||b===0)return null;return((a-b)/Math.abs(b)*100);}
+function fmtPct(v){if(v===null||isNaN(v))return '';const n=+v;return(n>=0?'+':'')+n.toFixed(1)+'%';}
+function badgePct(v){if(v===null)return '';const cls=v>=0?'pos':'neg';return`<span class="kpi-badge ${cls}">${fmtPct(v)} YoY</span>`;}
+function badgeWoW(v){if(v===null)return '';const cls=v>=0?'pos':'neg';return`<span class="kpi-badge ${cls}">${fmtPct(v)} WoW</span>`;}
+
+function renderIntelligence(commCode,commName){
+  const card=document.getElementById('intelligenceCard');const primaryData=globalData[primaryYear];if(!primaryData){card.style.display='none';return;}card.style.display='';
+  const{byC,thisWeek,lastWeek}=aggregateByCountry(primaryData);const primaryWeeks=aggregateByWeek(primaryData,commCode,primaryYear);const currWk=primaryWeeks[primaryWeeks.length-1];if(!currWk){card.style.display='none';return;}
+  const currentWeekNum=currWk.wkNum,totalMYWeeks=52,weeksRemaining=Math.max(0,totalMYWeeks-currentWeekNum),pctDone=Math.min(100,(currentWeekNum/totalMYWeeks*100));
+  const allC=Object.values(byC);
+  const totGross=allC.reduce((s,r)=>s+(r.grossNewSalesTW||0),0),totGrossLW=allC.reduce((s,r)=>s+(r.grossNewSalesLW||0),0);
+  const totShips=allC.reduce((s,r)=>s+(r.weeklyExportsTW||0),0),totShipsLW=allC.reduce((s,r)=>s+(r.weeklyExportsLW||0),0);
+  const totAccum=allC.reduce((s,r)=>s+(r.accumulatedExportsTW||0),0),totOutst=allC.reduce((s,r)=>s+(r.outstandingSalesTW||0),0);
+  const totCommit=allC.reduce((s,r)=>s+(r.currentMYTotalCommitmentTW||0),0),totNextSal=allC.reduce((s,r)=>s+(r.nextMYNetSalesTW||0),0),totNextOut=allC.reduce((s,r)=>s+(r.nextMYOutstandingSalesTW||0),0);
+  const priorYears=allLoadedYears.filter(y=>y!==primaryYear).sort((a,b)=>b-a);
+  let lyGross=null,lyShips=null,lyAccum=null,lyOutst=null,lyCommit=null;
+  if(priorYears.length>0&&globalData[priorYears[0]]){const lyWeeks=aggregateByWeek(globalData[priorYears[0]],commCode,priorYears[0]);let lyWk=null;for(const w of lyWeeks)if(w.wkNum<=currentWeekNum)lyWk=w;if(lyWk){lyGross=lyWk.grossNewSales;lyShips=lyWk.weeklyExports;lyAccum=lyWk.accumulatedExports;lyOutst=lyWk.outstandingSales;lyCommit=lyWk.currentMYTotalCommitment;}}
+  const avgPace=currentWeekNum>0?totAccum/currentWeekNum:0,coverageWks=avgPace>0?(totOutst/avgPace).toFixed(1):'N/A';
+  document.getElementById('intelSub').textContent=`Week ending ${thisWeek} · Week ${currentWeekNum} of MY${primaryYear}`;
+  document.getElementById('intelChip').textContent=commName.split('·')[1]?.trim()||commName;
+  document.getElementById('progFill').style.width=pctDone.toFixed(1)+'%';
+  document.getElementById('progPct').textContent=pctDone.toFixed(0)+'%';
+  document.getElementById('progLabel').textContent=`MY${primaryYear} Progress — Wk ${currentWeekNum}/${totalMYWeeks}`;
+  document.getElementById('progWks').textContent=`${weeksRemaining} weeks remaining`;
+  const kpis=[{label:'Gross Sales TW',val:totGross,wow:pct(totGross,totGrossLW),yoy:pct(totGross,lyGross)},{label:'Weekly Exports TW',val:totShips,wow:pct(totShips,totShipsLW),yoy:pct(totShips,lyShips)},{label:'Accum Exports',val:totAccum,wow:null,yoy:pct(totAccum,lyAccum)},{label:'Outstanding Sales',val:totOutst,wow:null,yoy:pct(totOutst,lyOutst),note:`${coverageWks} wks coverage`},{label:'Total Commitment',val:totCommit,wow:null,yoy:pct(totCommit,lyCommit)},{label:'Next MY Outstanding',val:totNextOut,wow:null,yoy:null,note:`${fmt(totNextSal)} new sales`}];
+  document.getElementById('intelKpis').innerHTML=kpis.map(k=>`<div class="kpi-cell"><div class="kpi-label">${k.label}</div><div class="kpi-val">${fmt(k.val)}</div><div class="kpi-changes">${k.wow!==null?badgeWoW(k.wow):''}${k.yoy!==null?badgePct(k.yoy):''}${k.note?`<span class="kpi-badge neu">${k.note}</span>`:''}</div></div>`).join('');
+  const topBuyers=[...allC].filter(r=>r.grossNewSalesTW>0).sort((a,b)=>b.grossNewSalesTW-a.grossNewSalesTW).slice(0,7);const maxBuyer=topBuyers[0]?.grossNewSalesTW||1;
+  const buyerHtml=topBuyers.map((r,i)=>{const wow=pct(r.grossNewSalesTW,r.grossNewSalesLW);const wowStr=wow!==null?`<span class="${wow>=0?'pos':'neg'}" style="font-size:.52rem">${fmtPct(wow)}</span>`:'';const barW=Math.round((r.grossNewSalesTW/maxBuyer)*38);return`<div class="intel-row"><span class="intel-rank">${i+1}</span><span class="intel-country" title="${r.name}">${r.name}</span><div class="intel-bar-bg"><div class="intel-bar-fill" style="width:${barW}px"></div></div><span class="intel-val">${fmt(r.grossNewSalesTW)}</span><span class="intel-chg ${wow!==null&&wow>=0?'pos':'neg'}">${wowStr}</span></div>`;}).join('');
+  const topShipper=[...allC].filter(r=>r.weeklyExportsTW>0).sort((a,b)=>b.weeklyExportsTW-a.weeklyExportsTW).slice(0,7);const maxShip=topShipper[0]?.weeklyExportsTW||1;
+  const shipHtml=topShipper.map((r,i)=>{const barW=Math.round((r.weeklyExportsTW/maxShip)*38);return`<div class="intel-row"><span class="intel-rank">${i+1}</span><span class="intel-country" title="${r.name}">${r.name}</span><div class="intel-bar-bg"><div class="intel-bar-fill" style="width:${barW}px;background:var(--green)"></div></div><span class="intel-val" style="color:var(--green)">${fmt(r.weeklyExportsTW)}</span></div>`;}).join('');
+  const signals=[];
+  if(lyAccum!==null){const deficit=totAccum-lyAccum,defPct=pct(totAccum,lyAccum),col=deficit>=0?'var(--green)':'var(--red)';signals.push({col,txt:`Cumulative exports ${deficit>=0?'ahead of':'behind'} MY${priorYears[0]} by ${fmt(Math.abs(deficit))} (${fmtPct(defPct)})`});}
+  if(lyCommit!==null){const deficit=totCommit-lyCommit,col=deficit>=0?'var(--green)':'var(--red)';signals.push({col,txt:`Total commitment ${deficit>=0?'+':''}${fmt(deficit)} vs same week MY${priorYears[0]}`});}
+  if(avgPace>0){const cov=parseFloat(coverageWks),col=cov>=6?'var(--green)':cov>=3?'var(--gold)':'var(--red)';signals.push({col,txt:`Outstanding sales cover ~${coverageWks} weeks at current pace`});}
+  const canc=[...allC].filter(r=>r.grossNewSalesTW<0).sort((a,b)=>a.grossNewSalesTW-b.grossNewSalesTW);
+  if(canc.length>0){const cancTotal=canc.reduce((s,r)=>s+r.grossNewSalesTW,0),cancNames=canc.slice(0,2).map(r=>r.name).join(', ');signals.push({col:'var(--red)',txt:`Cancellations: ${fmt(Math.abs(cancTotal))} from ${cancNames}${canc.length>2?' + others':''}`});}
+  else{signals.push({col:'var(--green)',txt:'No cancellations this week — clean demand picture'});}
+  if(totNextOut>0)signals.push({col:'var(--blue)',txt:`Next MY: ${fmt(totNextOut)} outstanding — ${totNextOut>totOutst*0.1?'notable':'building'} forward interest`});
+  const gap=totGross-totShips;signals.push({col:gap>0?'var(--gold)':'var(--muted)',txt:`New sales (${fmt(totGross)}) ${gap>0?'>':'<'} exports (${fmt(totShips)}) — balance ${gap>0?'growing':'shrinking'}`});
+  const sigHtml=signals.map(s=>`<div class="signal-row"><div class="sig-dot" style="background:${s.col}"></div><div class="sig-txt">${s.txt}</div></div>`).join('');
+  document.getElementById('intelBody').innerHTML=`<div class="intel-panel"><div class="intel-panel-title">🔴 Top Buyers — Gross Sales TW</div>${buyerHtml||'<div style="color:var(--muted);font-size:.62rem;font-family:DM Mono,monospace">No sales this week</div>'}</div><div class="intel-panel"><div class="intel-panel-title">🟢 Top Destinations — Shipments TW</div>${shipHtml||'<div style="color:var(--muted);font-size:.62rem;font-family:DM Mono,monospace">No shipments</div>'}</div><div class="intel-panel"><div class="intel-panel-title">⚡ Market Signals</div>${sigHtml}</div>`;
+}
+
+let histCache={},histLoadedComm=null;
+function runModel(modelId,weeksUpToN,currentWeekNum,weeksLeft,priorYearWeeks){
+  if(!weeksUpToN.length)return null;const totAccum=weeksUpToN[weeksUpToN.length-1].accumulatedExports;if(!totAccum)return null;
+  switch(modelId){
+    case 'pace':{const avgW=totAccum/currentWeekNum;return Math.round(totAccum+avgW*weeksLeft);}
+    case 'trend':{const pts=weeksUpToN.filter(w=>w.weeklyExports>0).map(w=>({x:w.wkNum,y:w.weeklyExports}));if(pts.length<4)return null;const reg=linReg(pts);let sum=0;for(let wk=currentWeekNum+1;wk<=currentWeekNum+weeksLeft;wk++)sum+=Math.max(0,reg.slope*wk+reg.intercept);return Math.round(totAccum+sum);}
+    case 'poly':{const pts=weeksUpToN.filter(w=>w.accumulatedExports>0).map(w=>({x:w.wkNum,y:w.accumulatedExports}));if(pts.length<5)return null;const n=pts.length,sx=pts.reduce((s,p)=>s+p.x,0),sx2=pts.reduce((s,p)=>s+p.x**2,0),sx3=pts.reduce((s,p)=>s+p.x**3,0),sx4=pts.reduce((s,p)=>s+p.x**4,0),sy=pts.reduce((s,p)=>s+p.y,0),sxy=pts.reduce((s,p)=>s+p.x*p.y,0),sx2y=pts.reduce((s,p)=>s+p.x**2*p.y,0);try{const A=[[n,sx,sx2],[sx,sx2,sx3],[sx2,sx3,sx4]],b=[sy,sxy,sx2y],det=(m)=>m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]),D=det(A);if(Math.abs(D)<1e-10)return null;const swap=(M,col,v)=>M.map((r,i)=>[...r.slice(0,col),v[i],...r.slice(col+1)]),aa=det(swap(A,0,b))/D,ab=det(swap(A,1,b))/D,ac=det(swap(A,2,b))/D,finalWk=currentWeekNum+weeksLeft,proj=aa+ab*finalWk+ac*finalWk**2;return proj>totAccum?Math.round(proj):null;}catch(e){return null;}}
+    case 'yoy':{if(!priorYearWeeks||!priorYearWeeks.length)return null;let lyAtWk=null,lyFinal=null;for(const w of priorYearWeeks){if(w.wkNum<=currentWeekNum)lyAtWk=w;lyFinal=w;}if(!lyAtWk||!lyAtWk.accumulatedExports||!lyFinal)return null;return Math.round((totAccum/lyAtWk.accumulatedExports)*lyFinal.accumulatedExports);}
+    case 'seasonal':{if(!priorYearWeeks||!priorYearWeeks.length)return null;let lyAtWk=null,lyFinal=null;for(const w of priorYearWeeks){if(w.wkNum<=currentWeekNum)lyAtWk=w;lyFinal=w;}if(!lyAtWk||!lyAtWk.accumulatedExports||!lyFinal)return null;const cr=lyAtWk.accumulatedExports/lyFinal.accumulatedExports;if(cr<=0||cr>1.2)return null;return Math.round(totAccum/cr);}
+    case 'commit':{const lastW=weeksUpToN[weeksUpToN.length-1],totOutst=lastW?.outstandingSales||0,recent4=weeksUpToN.slice(-4),avgShip=recent4.reduce((s,w)=>s+(w.weeklyExports||0),0)/Math.max(1,recent4.length),avgSales=recent4.reduce((s,w)=>s+(w.grossNewSales||0),0)/Math.max(1,recent4.length);return Math.round(totAccum+Math.min(totOutst,avgShip*weeksLeft)+Math.max(0,avgSales*weeksLeft*0.55));}
+    default:return null;
+  }
+}
+const MODEL_DEFS=[{id:'pace',name:'Linear Pace',desc:'Avg weekly exports × remaining weeks',col:'#dde4f0'},{id:'yoy',name:'YoY Ratio',desc:'Scale LY final by current/LY ratio at Wk N',col:'#4fc3f7'},{id:'seasonal',name:'Seasonal Completion',desc:'Infer final from LY completion ratio at Wk N',col:'#6fcf97'},{id:'trend',name:'OLS Export Trend',desc:'Regression on weekly shipments, extrapolated',col:'#bb86fc'},{id:'poly',name:'Polynomial Trend',desc:'Quadratic fit on cumulative exports',col:'#ffb347'},{id:'commit',name:'Commitment Floor',desc:'Accum + outstanding + projected new sales',col:'#ff6b6b'}];
+
+async function renderProjections(commCode,commName){
+  const card=document.getElementById('projectionCard');const primaryData=globalData[primaryYear];if(!primaryData){card.style.display='none';return;}card.style.display='';
+  const primaryWeeks=aggregateByWeek(primaryData,commCode,primaryYear);if(!primaryWeeks.length){card.style.display='none';return;}
+  let currWkEntry=null;for(const w of primaryWeeks)if(w.accumulatedExports>0||w.weeklyExports>0||w.grossNewSales>0)currWkEntry=w;if(!currWkEntry)currWkEntry=primaryWeeks[primaryWeeks.length-1];
+  const currentWeekNum=currWkEntry.wkNum,totalMYWeeks=52,weeksLeft=Math.max(0,totalMYWeeks-currentWeekNum);
+  document.getElementById('projBody').innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:32px;font-family:'DM Mono',monospace;font-size:.7rem;color:var(--gold)">⟳ Fetching history…</div>`;
+  document.getElementById('projSub').textContent=`Week ${currentWeekNum} · Loading…`;
+  const HIST_YEARS=15,BACKTEST_YEARS=5;
+  if(histLoadedComm!==commCode){histCache={};histLoadedComm=commCode;}
+  const yearsNeeded=[];for(let i=1;i<=HIST_YEARS;i++)yearsNeeded.push(primaryYear-i);
+  const missing=yearsNeeded.filter(y=>!histCache[y]&&!globalData[y]);
+  for(let i=0;i<missing.length;i+=3){const batch=missing.slice(i,i+3);await Promise.all(batch.map(async y=>{try{const d=await usdaFetch(`exports/commodityCode/${commCode}/allCountries/marketYear/${y}`);if(Array.isArray(d)&&d.length>0){histCache[y]=aggregateByWeek(d,commCode,y);}}catch(e){};}));}
+  const getWeeksForYear=y=>histCache[y]||(globalData[y]?aggregateByWeek(globalData[y],commCode,y):null);
+  const histYears=yearsNeeded.filter(y=>(getWeeksForYear(y)||[]).length>0);
+  const modelStats={};for(const m of MODEL_DEFS)modelStats[m.id]={apes:[],years:[]};
+  for(const y of histYears){const yWeeks=getWeeksForYear(y);if(!yWeeks||yWeeks.length<5)continue;let actualFinal=null;for(const w of yWeeks)if(w.accumulatedExports>0)actualFinal=w.accumulatedExports;if(!actualFinal)continue;const weeksUpTo=yWeeks.filter(w=>w.wkNum<=currentWeekNum);if(weeksUpTo.length<3)continue;const priorYWeeks=getWeeksForYear(y-1);for(const m of MODEL_DEFS){const proj=runModel(m.id,weeksUpTo,currentWeekNum,Math.max(0,totalMYWeeks-currentWeekNum),priorYWeeks);if(proj&&proj>0){const ape=Math.abs(proj-actualFinal)/actualFinal*100;modelStats[m.id].apes.push(ape);modelStats[m.id].years.push({year:y,proj,actual:actualFinal,ape});}}}
+  for(const m of MODEL_DEFS){const st=modelStats[m.id];if(!st.apes.length){st.mape5=null;st.weight=0;continue;}const last5=st.apes.slice(-BACKTEST_YEARS);st.mape5=last5.reduce((a,b)=>a+b,0)/last5.length;st.weight=st.mape5>0?1/st.mape5:0;st.n=st.apes.length;}
+  const totalWeight=MODEL_DEFS.reduce((s,m)=>s+(modelStats[m.id].weight||0),0);for(const m of MODEL_DEFS)modelStats[m.id].normWeight=totalWeight>0?modelStats[m.id].weight/totalWeight:0;
+  const weeksUpToPrimary=primaryWeeks.filter(w=>w.wkNum<=currentWeekNum),lyWeeksForPrimary=getWeeksForYear(primaryYear-1);
+  const modelResults=MODEL_DEFS.map(m=>{const proj=runModel(m.id,weeksUpToPrimary,currentWeekNum,weeksLeft,lyWeeksForPrimary);const st=modelStats[m.id];return{...m,proj,mape5:st.mape5,weight:st.normWeight||0,n:st.n||0};}).filter(m=>m.proj!==null);
+  const eligibleModels=modelResults.filter(m=>m.weight>0);
+  let consensus=null;if(eligibleModels.length>0){const tw=eligibleModels.reduce((s,m)=>s+m.weight,0);consensus=Math.round(eligibleModels.reduce((s,m)=>s+m.proj*m.weight,0)/tw);}else if(modelResults.length>0){consensus=Math.round(modelResults.reduce((s,m)=>s+m.proj,0)/modelResults.length);}
+  const bestModel=modelResults.filter(m=>m.mape5!=null).sort((a,b)=>a.mape5-b.mape5)[0];
+  const projVals=modelResults.filter(m=>m.weight>0).map(m=>m.proj),pmean=projVals.reduce((a,b)=>a+b,0)/Math.max(1,projVals.length),pstdv=projVals.length>1?Math.sqrt(projVals.reduce((s,v)=>s+(v-pmean)**2,0)/projVals.length):0;
+  const low=Math.round(consensus-pstdv),high=Math.round(consensus+pstdv);
+  const lyFinals=histYears.slice(0,5).map(y=>{const w=getWeeksForYear(y);if(!w)return null;let f=null;for(const e of w)if(e.accumulatedExports>0)f=e.accumulatedExports;return f?{year:y,val:f}:null;}).filter(Boolean);
+  const{byC}=aggregateByCountry(primaryData);const allRows=Object.values(byC).filter(r=>r.accumulatedExportsTW>0).sort((a,b)=>b.accumulatedExportsTW-a.accumulatedExportsTW).slice(0,10);
+  const lyCountryFinals={},lyCountryAtWk={};
+  if(lyWeeksForPrimary&&globalData[primaryYear-1]){const lyRaw=globalData[primaryYear-1]||[],lyDates=[...new Set(lyRaw.map(r=>String(r.weekEndingDate||'').split('T')[0]))].sort(),lyFinalDate=lyDates[lyDates.length-1];let lyTgtEntry=null;for(const w of lyWeeksForPrimary)if(w.wkNum<=currentWeekNum)lyTgtEntry=w;const lyTgtDate=lyTgtEntry?.date||null;for(const r of lyRaw){const cc=r.countryCode;if(!cc||cc===0)continue;const dt=String(r.weekEndingDate||'').split('T')[0];if(dt===lyFinalDate)lyCountryFinals[cc]=(lyCountryFinals[cc]||0)+(+(r.accumulatedExports||0));if(dt===lyTgtDate)lyCountryAtWk[cc]=(lyCountryAtWk[cc]||0)+(+(r.accumulatedExports||0));}}
+  const bestModelId=bestModel?.id||'pace';
+  const countryProjs=allRows.map(r=>{const pace=currentWeekNum>0?Math.round(r.accumulatedExportsTW+(r.accumulatedExportsTW/currentWeekNum)*weeksLeft):0;let proj=pace;const lyF=lyCountryFinals[r.code],lyW=lyCountryAtWk[r.code];if(lyF>0&&lyW>0){const yoyP=Math.round((r.accumulatedExportsTW/lyW)*lyF),yoyWt=bestModelId==='yoy'||bestModelId==='seasonal'?0.65:0.45;proj=Math.round(pace*(1-yoyWt)+yoyP*yoyWt);}return{...r,proj,vsLY:lyF?pct(proj,lyF):null};});
+  document.getElementById('projSub').textContent=`Wk ${currentWeekNum} of ${totalMYWeeks} · ${modelResults.length} models · Backtested ${Math.max(...modelResults.map(m=>m.n||0))} yrs`;
+  const modelsHtml=`<div class="proj-panel"><div class="proj-panel-title">Projection Models — Accuracy-Weighted</div>${modelResults.sort((a,b)=>(a.mape5??99)-(b.mape5??99)).map(m=>{const isBest=m.id===bestModel?.id,wPct=(m.weight*100).toFixed(0),mapeStr=m.mape5!=null?m.mape5.toFixed(1)+'%':'N/A';return`<div class="proj-row${isBest?' consensus':''}"><div><div class="proj-row-name" style="color:${m.col}">${m.name}${isBest?' ★':''}</div><div class="proj-row-desc">MAPE₅yr: ${mapeStr} · Wt: ${wPct}% · n=${m.n}</div></div><div class="proj-row-val" style="color:${m.col}">${fmt(m.proj)}</div></div>`;}).join('')}<div class="proj-row consensus" style="margin-top:8px"><div><div class="proj-row-name">◆ Consensus</div><div class="proj-row-desc">Range ${fmt(low)} – ${fmt(high)}</div></div><div class="proj-row-val">${fmt(consensus)}</div></div>${lyFinals.length?`<div style="padding-top:7px;font-family:'DM Mono',monospace;font-size:.51rem;color:var(--muted2)">${lyFinals.map(f=>`MY${f.year}: ${fmt(f.val)}`).join(' · ')}</div>`:''}</div>`;
+  const btYears=histYears.slice(0,BACKTEST_YEARS),topModels=MODEL_DEFS.filter(m=>modelStats[m.id].mape5!=null).sort((a,b)=>modelStats[a.id].mape5-modelStats[b.id].mape5).slice(0,4);
+  const btHtml=`<div class="proj-panel"><div class="proj-panel-title">Backtest — Top 4 Models</div><table class="proj-tbl"><thead><tr><th>MY</th><th>Actual</th>${topModels.map(m=>`<th style="color:${m.col}">${m.name.split(' ')[0]}<br>APE%</th>`).join('')}</tr></thead><tbody>${btYears.map(y=>{const actual=modelStats[topModels[0]?.id]?.years.find(e=>e.year===y)?.actual||null;return`<tr><td style="color:var(--gold)">MY${y}</td><td>${actual?fmt(actual):'—'}</td>${topModels.map(m=>{const e=modelStats[m.id].years.find(r=>r.year===y);if(!e)return'<td>—</td>';const cls=e.ape<3?'pos':e.ape<7?'':'neg';return`<td class="${cls}">${e.ape.toFixed(1)}%</td>`;}).join('')}</tr>`;}).join('')}<tr><td style="color:var(--muted)">MAPE₅</td><td></td>${topModels.map(m=>{const st=modelStats[m.id],cls=st.mape5!=null?(st.mape5<3?'pos':st.mape5<7?'':'neg'):'';return`<td class="${cls}" style="color:${m.col}">${st.mape5!=null?st.mape5.toFixed(1)+'%':'—'}</td>`;}).join('')}</tr></tbody></table></div>`;
+  const ctryHtml=`<div class="proj-panel"><div class="proj-panel-title">Country Projections — Top 10</div><table class="proj-tbl"><thead><tr><th>Country</th><th>Accum</th><th>MY End Est</th><th>vs LY</th></tr></thead><tbody>${countryProjs.map(r=>{const cls=r.vsLY!=null?(r.vsLY>=0?'pos':'neg'):'';return`<tr><td>${r.name}</td><td>${fmt(r.accumulatedExportsTW)}</td><td class="hl">${fmt(r.proj)}</td><td class="${cls}">${r.vsLY!=null?fmtPct(r.vsLY):'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
+  document.getElementById('projBody').innerHTML=modelsHtml+btHtml+ctryHtml;
+}
+
+function renderSummaryTable(commCode,commName){
+  const c1=document.getElementById('summaryTbl1'),c2=document.getElementById('summaryTbl2');
+  const primaryData=globalData[primaryYear];
+  if(!primaryData){c1.innerHTML='<div class="empty">No data</div>';c2.innerHTML='<div class="empty">No data</div>';return;}
+  const{byC,thisWeek,lastWeek}=aggregateByCountry(primaryData);
+  const primaryWeeks=aggregateByWeek(primaryData,commCode,primaryYear);
+  let latestWkNum=0;
+  for(const w of primaryWeeks){if(w.accumulatedExports>0||w.currentMYTotalCommitment>0||w.weeklyExports>0||w.grossNewSales>0)latestWkNum=w.wkNum;}
+  if(!latestWkNum&&primaryWeeks.length)latestWkNum=primaryWeeks[primaryWeeks.length-1].wkNum;
+  const priorYears=allLoadedYears.filter(y=>y!==primaryYear).sort((a,b)=>b-a).slice(0,3);
+  const fourYears=[primaryYear,...priorYears];
+  const snapFields=['accumulatedExports','outstandingSales','currentMYTotalCommitment','nextMYOutstandingSales'];
+  const snapByYear={};
+  for(const y of priorYears){
+    if(!globalData[y])continue;
+    const ydata=globalData[y],yWeeks=aggregateByWeek(ydata,commCode,y);
+    let targetWk=null;for(const w of yWeeks)if(w.wkNum<=latestWkNum)targetWk=w.date;
+    snapByYear[y]={};const snapCC={};
+    for(const r of ydata){const wk=String(r.weekEndingDate||'').split('T')[0];if(wk!==targetWk)continue;const cc=r.countryCode;if(!cc||cc===0)continue;if(!snapCC[cc])snapCC[cc]={};for(const f of snapFields)snapCC[cc][f]=+(r[f]||0);}
+    for(const[cc,vals] of Object.entries(snapCC))snapByYear[y][+cc]=vals;
+  }
+  const allRows=Object.values(byC).filter(r=>r.currentMYTotalCommitmentTW>0||r.accumulatedExportsTW>0||r.grossNewSalesTW>0||r.outstandingSalesTW>0).sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW);
+  if(!allRows.length){c1.innerHTML='<div class="empty">No data</div>';c2.innerHTML='<div class="empty">No data</div>';return;}
+  const rows=allRows.slice(0,15),othersRaw=allRows.slice(15);
+  const emptyRow={name:'',code:-1,grossNewSalesTW:0,grossNewSalesLW:0,currentMYNetSalesTW:0,currentMYNetSalesLW:0,weeklyExportsTW:0,weeklyExportsLW:0,nextMYNetSalesTW:0,nextMYNetSalesLW:0,accumulatedExportsTW:0,outstandingSalesTW:0,currentMYTotalCommitmentTW:0,nextMYOutstandingSalesTW:0};
+  const othersRow={...emptyRow,name:'Others',code:-1};
+  for(const r of othersRaw)for(const k of Object.keys(othersRow))if(k!=='name'&&k!=='code')othersRow[k]=(othersRow[k]||0)+(r[k]||0);
+  const othersSnap={};for(const y of priorYears){othersSnap[y]={};for(const f of snapFields)othersSnap[y][f]=0;for(const r of othersRaw){const ys=snapByYear[y]?.[r.code]||{};for(const f of snapFields)othersSnap[y][f]+=(ys[f]||0);}}
+  const displayRows=[...rows,...(othersRaw.length>0?[othersRow]:[])];
+  const tot={...emptyRow,name:'TOTAL',code:0};
+  for(const r of displayRows)for(const k of Object.keys(tot))if(k!=='name'&&k!=='code')tot[k]=(tot[k]||0)+(r[k]||0);
+  const totSnap={};for(const y of priorYears){if(!globalData[y]){totSnap[y]={};continue;}const yWeeks=aggregateByWeek(globalData[y],commCode,y);let te=null;for(const w of yWeeks)if(w.wkNum<=latestWkNum)te=w;totSnap[y]=te||{};}
+  document.getElementById('tblSub').textContent=`Week ending ${thisWeek} · Top 15 + Others · ${fourYears.length}-year comparison`;
+
+  // ── TABLE 1: TW / LW / Change columns ──────────────────────────────────
+  const twCols=[{key:'grossNewSales',label:'Gross Sales'},{key:'currentMYNetSales',label:'Net Sales'},{key:'weeklyExports',label:'Wkly Exports'},{key:'nextMYNetSales',label:'Next MY Sales'}];
+  // Col widths for table1: country(13%) + 12 data cols(7.25% each)
+  const colT1=['13%','7.25%','7.25%','7.25%','7.25%','7.25%','7.25%','7.25%','7.25%','7.25%','7.25%','7.25%','7.25%'];
+  let h1='<table><colgroup>'+colT1.map(w=>`<col style="width:${w}">`).join('')+'</colgroup>';
+  h1+='<thead>';
+  h1+=`<tr class="grp-row"><th rowspan="2">Country</th><th colspan="${twCols.length*3}">── This Week / Last Week / Change ──</th></tr>`;
+  h1+='<tr class="hd-row">';
+  twCols.forEach((col,ci)=>{const last=ci===twCols.length-1;h1+=`<th>${col.label} TW</th><th>${col.label} LW</th><th class="${last?'sep':''}">&Delta;</th>`;});
+  h1+='</tr></thead><tbody>';
+  const rowHtml1=(r,rowType)=>{
+    const isTot=rowType==='total',isOthers=rowType==='others';
+    const nm=isTot?`<strong>${r.name}</strong>`:isOthers?`<em style="color:var(--muted)">${r.name}</em>`:r.name;
+    let td=`<td>${nm}</td>`;
+    twCols.forEach((col,ci)=>{
+      const tw=r[col.key+'TW']||0,lw=r[col.key+'LW']||0,d=tw-lw,dc=d>0?'pos':d<0?'neg':'zero',last=ci===twCols.length-1;
+      td+=`<td>${fmt(tw)}</td><td style="color:var(--muted)">${fmt(lw)}</td><td class="${dc} ${last?'sep':''}">${fmtD(d)}</td>`;
+    });
+    const cls=isTot?' class="total-row"':isOthers?' class="others-row"':'';
+    return`<tr${cls}>${td}</tr>`;
+  };
+  for(const r of rows)h1+=rowHtml1(r,'normal');
+  if(othersRaw.length>0)h1+=rowHtml1(othersRow,'others');
+  h1+=rowHtml1(tot,'total');
+  h1+='</tbody></table>';
+  c1.innerHTML=h1;
+
+  // ── TABLE 2: Accumulated exports / Outstanding / Commitment / Next MY ──
+  const snapCols=[{key:'accumulatedExports',label:'Accum Exports'},{key:'outstandingSales',label:'Outstanding'},{key:'currentMYTotalCommitment',label:'Total Commit'},{key:'nextMYOutstandingSales',label:'Next MY Outst'}];
+  const maxAccum=Math.max(...displayRows.map(r=>r.accumulatedExportsTW),1);
+  // Col widths for table2: country(12%) + 16 snap cols(5.5% each)
+  const colT2=['12%',...Array(snapCols.length*fourYears.length).fill((88/(snapCols.length*fourYears.length)).toFixed(1)+'%')];
+  let h2='<table><colgroup>'+colT2.map(w=>`<col style="width:${w}">`).join('')+'</colgroup>';
+  h2+='<thead>';
+  h2+=`<tr class="grp-row"><th rowspan="2">Country</th><th colspan="${snapCols.length*fourYears.length}">── Last ${fourYears.length} Years at Same Week ──</th></tr>`;
+  h2+='<tr class="hd-row">';
+  snapCols.forEach((col,ci)=>{const lastC=ci===snapCols.length-1;fourYears.forEach((y,yi)=>{const lastY=yi===fourYears.length-1;h2+=`<th class="${lastY&&lastC?'sep':''}">${col.label}<br><span style="color:var(--gold);font-size:.5rem">MY${y}</span></th>`;});});
+  h2+='</tr></thead><tbody>';
+  const rowHtml2=(r,rowType)=>{
+    const isTot=rowType==='total',isOthers=rowType==='others';
+    const nm=isTot?`<strong>${r.name}</strong>`:isOthers?`<em style="color:var(--muted)">${r.name}</em>`:r.name;
+    let td=`<td>${nm}</td>`;
+    snapCols.forEach((col,ci)=>{
+      const lastC=ci===snapCols.length-1;
+      fourYears.forEach((y,yi)=>{
+        const lastY=yi===fourYears.length-1;
+        let val;
+        if(y===primaryYear)val=r[col.key+'TW']||0;
+        else if(isTot)val=totSnap[y]?.[col.key]||0;
+        else if(isOthers)val=othersSnap[y]?.[col.key]||0;
+        else val=snapByYear[y]?.[r.code]?.[col.key]||0;
+        let inner=fmt(val);
+        if(col.key==='accumulatedExports'&&!isTot){const p=Math.max((val/maxAccum)*60,val>0?1:0);inner=`<div class="bar-cell"><div class="mini-bar" style="width:${p}px"></div>${fmt(val)}</div>`;}
+        td+=`<td class="${lastY&&lastC?'sep':''}">${inner}</td>`;
+      });
+    });
+    const cls=isTot?' class="total-row"':isOthers?' class="others-row"':'';
+    return`<tr${cls}>${td}</tr>`;
+  };
+  for(const r of rows)h2+=rowHtml2(r,'normal');
+  if(othersRaw.length>0)h2+=rowHtml2(othersRow,'others');
+  h2+=rowHtml2(tot,'total');
+  h2+='</tbody></table>';
+  c2.innerHTML=h2;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PDF REPORT GENERATOR
+// ═══════════════════════════════════════════════════════════
+
+function generatePDFReport(){
+  if(!allLoadedYears.length){ alert('Please load data first then print.'); return; }
+  prepChartsForPrint();
+  setTimeout(()=>{ window.print(); setTimeout(restoreChartsAfterPrint,500); },300);
+}
+
+// ── Swap chart legend/tick colors for print, then restore ────────────────
+function prepChartsForPrint(){
+  for(const [id,ch] of Object.entries(charts)){
+    if(!id.startsWith('sc_')) continue;
+    try{
+      const opts=ch.options;
+      // Legend text → black, bigger
+      opts.plugins.legend.labels.color='#000';
+      opts.plugins.legend.labels.font={family:'DM Mono',size:9};
+      opts.plugins.legend.labels.boxWidth=18;
+      opts.plugins.legend.labels.padding=6;
+      // Axis ticks → black
+      opts.scales.x.ticks.color='#000';
+      opts.scales.x.ticks.font={family:'DM Mono',size:7};
+      opts.scales.y.ticks.color='#000';
+      opts.scales.y.ticks.font={family:'DM Mono',size:7};
+      // Grid → light grey (readable on white)
+      opts.scales.x.grid.color='#ddd';
+      opts.scales.y.grid.color='#ddd';
+      ch.update('none');
+    }catch(err){}
+  }
+}
+
+function restoreChartsAfterPrint(){
+  for(const [id,ch] of Object.entries(charts)){
+    if(!id.startsWith('sc_')) continue;
+    try{
+      const opts=ch.options;
+      opts.plugins.legend.labels.color='#dde4f0';
+      opts.plugins.legend.labels.font={family:'DM Mono',size:9};
+      opts.plugins.legend.labels.boxWidth=14;
+      opts.plugins.legend.labels.padding=8;
+      opts.scales.x.ticks.color='#5a6882';
+      opts.scales.x.ticks.font={family:'DM Mono',size:8};
+      opts.scales.y.ticks.color='#5a6882';
+      opts.scales.y.ticks.font={family:'DM Mono',size:8};
+      opts.scales.x.grid.color='#1e2530';
+      opts.scales.y.grid.color='#1e2530';
+      ch.update('none');
+    }catch(err){}
+  }
+}
+
+// Also hook native beforeprint/afterprint for browser print shortcut (Ctrl+P)
+window.addEventListener('beforeprint',()=>{ if(allLoadedYears.length) prepChartsForPrint(); });
+window.addEventListener('afterprint',()=>{ restoreChartsAfterPrint(); });
+
+function buildPDFSummary(commCode,commName,weeklyAgg,allC,thisWeek,reportYears,primaryYear,latestWkNum,priorYears){
+  const primaryWeeks=weeklyAgg[primaryYear]||[];
+  let currWk=null; for(const w of primaryWeeks) if(w.grossNewSales>0||w.weeklyExports>0||w.accumulatedExports>0) currWk=w;
+  if(!currWk&&primaryWeeks.length) currWk=primaryWeeks[primaryWeeks.length-1];
+  if(!currWk) return ['Insufficient data for executive summary.'];
+  const totGross=allC.reduce((s,r)=>s+(r.grossNewSalesTW||0),0);
+  const totGrossLW=allC.reduce((s,r)=>s+(r.grossNewSalesLW||0),0);
+  const totShips=allC.reduce((s,r)=>s+(r.weeklyExportsTW||0),0);
+  const totShipsLW=allC.reduce((s,r)=>s+(r.weeklyExportsLW||0),0);
+  const totAccum=allC.reduce((s,r)=>s+(r.accumulatedExportsTW||0),0);
+  const totOutst=allC.reduce((s,r)=>s+(r.outstandingSalesTW||0),0);
+  const totCommit=allC.reduce((s,r)=>s+(r.currentMYTotalCommitmentTW||0),0);
+  const totNextOut=allC.reduce((s,r)=>s+(r.nextMYOutstandingSalesTW||0),0);
+  let lyAccum=null,lyCommit=null,lyShips=null;
+  let ly2Accum=null;
+  if(priorYears[0]&&weeklyAgg[priorYears[0]]){const lyWks=weeklyAgg[priorYears[0]];let lyW=null;for(const w of lyWks)if(w.wkNum<=currWk.wkNum)lyW=w;if(lyW){lyAccum=lyW.accumulatedExports;lyCommit=lyW.currentMYTotalCommitment;lyShips=lyW.weeklyExports;}}
+  if(priorYears[1]&&weeklyAgg[priorYears[1]]){const ly2Wks=weeklyAgg[priorYears[1]];let ly2W=null;for(const w of ly2Wks)if(w.wkNum<=currWk.wkNum)ly2W=w;if(ly2W)ly2Accum=ly2W.accumulatedExports;}
+  const topBuyers=[...allC].filter(r=>r.grossNewSalesTW>0).sort((a,b)=>b.grossNewSalesTW-a.grossNewSalesTW).slice(0,3);
+  const avgPace=currWk.wkNum>0?totAccum/currWk.wkNum:0;
+  const coverage=avgPace>0?(totOutst/avgPace).toFixed(1):'N/A';
+  const commShort=commName.split('·').slice(1).join('·').trim()||commName;
+  const fmtL=v=>{if(!v&&v!==0)return'—';const n=+v;if(Math.abs(n)>=1e6)return(n/1e6).toFixed(2)+'M';if(Math.abs(n)>=1e3)return(n/1e3).toFixed(1)+'K';return n.toLocaleString();};
+  const pctFmt=(a,b)=>{if(!b||b===0)return'';const v=(a-b)/Math.abs(b)*100;return`${v>=0?'+':''}${v.toFixed(1)}%`;};
+  const lines=[];
+  lines.push(`Week ${currWk.wkNum} of MY${primaryYear} ending ${thisWeek} — ${commShort}. Report spans ${reportYears.length} marketing year${reportYears.length>1?'s':''}: ${reportYears.map(y=>'MY'+y).join(', ')}.`);
+  if(lyAccum){const d=totAccum-lyAccum,dp=(d/lyAccum*100);const ly2str=ly2Accum?`, and ${Math.abs(((totAccum-ly2Accum)/ly2Accum*100)).toFixed(1)}% ${totAccum>=ly2Accum?'above':'below'} MY${priorYears[1]} at the same stage`:'';lines.push(`Cumulative exports of ${fmtL(totAccum)} are ${Math.abs(dp).toFixed(1)}% ${d>=0?'ahead of':'behind'} MY${priorYears[0]} pace (${fmtL(lyAccum)})${ly2str} — ${d>=0?'shipment activity remains on an elevated trajectory':'a pace shortfall versus prior year has persisted'}.`);}
+  else{lines.push(`Cumulative exports through week ${currWk.wkNum} stand at ${fmtL(totAccum)}, with ${fmtL(totOutst)} in outstanding sales committed for future shipment.`);}
+  const wowG=totGrossLW>0?((totGross-totGrossLW)/totGrossLW*100):null,wowS=totShipsLW>0?((totShips-totShipsLW)/totShipsLW*100):null;
+  lines.push(`This week: ${fmtL(totGross)} gross new sales${wowG!==null?` (${wowG>=0?'+':''}${wowG.toFixed(1)}% WoW)`:''}, ${fmtL(totShips)} shipped${wowS!==null?` (${wowS>=0?'+':''}${wowS.toFixed(1)}% WoW)`:''}. The outstanding balance is ${totGross>totShips?'growing, indicating net positive booking activity':'declining, as shipments outpace new bookings'}.`);
+  if(lyCommit){const d=totCommit-lyCommit,dp=(d/lyCommit*100);lines.push(`Total MY${primaryYear} commitment of ${fmtL(totCommit)} is ${Math.abs(dp).toFixed(1)}% ${d>=0?'above':'below'} MY${priorYears[0]} at this stage (${fmtL(lyCommit)}) — ${d>=0?'a constructive demand signal pointing to sustained importer engagement':'caution warranted given the softer commitment posture relative to the prior year comparison'}. `);}
+  else{lines.push(`Total commitment of ${fmtL(totCommit)} encompasses ${fmtL(totAccum)} shipped and ${fmtL(totOutst)} outstanding, representing the full demand profile committed from importing nations at current.`);}
+  if(topBuyers.length>0){const topShare=totGross>0?((topBuyers.reduce((s,r)=>s+r.grossNewSalesTW,0)/totGross)*100).toFixed(0):0;const names=topBuyers.map(r=>r.name).join(', ');lines.push(`Leading buyers this week: ${names} — top three countries accounted for ${topShare}% of gross new sales. Buying breadth ${+topShare>=60?'was concentrated, suggesting a narrow demand base':'remained broadly distributed across multiple importing nations'}${lyShips?`; prior-year weekly shipments were ${fmtL(lyShips)}`:''}. `);}
+  const covN=parseFloat(coverage);const covSignal=!isNaN(covN)?(covN>=6?'a well-supported pipeline with comfortable forward coverage':covN>=3?'adequate near-term coverage, though fresh sales will be needed':'a thin pipeline — new sales are needed to sustain shipment pace'):'pipeline coverage data unavailable';
+  lines.push(`Outstanding sales of ${fmtL(totOutst)} represent ~${coverage} weeks of shipment coverage at current pace — ${covSignal}. The marketing year is ${(currWk.wkNum/52*100).toFixed(0)}% complete with ${52-currWk.wkNum} weeks remaining.`);
+  if(totNextOut>0){const rel=totNextOut>totOutst*0.25?'particularly robust, well above seasonal norms':totNextOut>totOutst*0.10?'notable, indicating active forward purchasing':totNextOut>0.03*totOutst?'emerging but still limited':'early-stage with minimal volume committed';lines.push(`Next marketing year outstanding totals ${fmtL(totNextOut)} — early booking activity is ${rel}. This forward demand signal warrants monitoring as a leading indicator for the next season's demand trajectory and trade flow expectations.`);}
+  else{lines.push(`No material next marketing year forward bookings were recorded this week, consistent with the current stage of the marketing year. Forward demand signals will be watched as the season progresses toward the traditional booking window for the subsequent marketing year.`);}
+  return lines;
+}
+
+function buildReportHTML(p){
+  const{commCode,commName,primaryYear,reportYears,priorYears,weeklyAgg,allC,byC,snapByYear,totSnapByYear,thisWeek,summaryLines,latestWkNum}=p;
+  const commShort=commName.split('·').slice(1).join('·').trim()||commName;
+  const genDate=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const fmtV=v=>{if(v==null||isNaN(+v))return'—';const n=+v;if(Math.abs(n)>=1e6)return(n/1e6).toFixed(2)+'M';if(Math.abs(n)>=1e3)return(n/1e3).toFixed(1)+'K';return n.toLocaleString();};
+  const pctFmt=(a,b)=>{if(!b||b===0)return'';const v=(a-b)/Math.abs(b)*100;return`${v>=0?'+':''}${v.toFixed(1)}%`;};
+
+  // Current-week totals
+  const totGross=allC.reduce((s,r)=>s+(r.grossNewSalesTW||0),0);
+  const totGrossLW=allC.reduce((s,r)=>s+(r.grossNewSalesLW||0),0);
+  const totShips=allC.reduce((s,r)=>s+(r.weeklyExportsTW||0),0);
+  const totShipsLW=allC.reduce((s,r)=>s+(r.weeklyExportsLW||0),0);
+  const totAccum=allC.reduce((s,r)=>s+(r.accumulatedExportsTW||0),0);
+  const totOutst=allC.reduce((s,r)=>s+(r.outstandingSalesTW||0),0);
+  const totCommit=allC.reduce((s,r)=>s+(r.currentMYTotalCommitmentTW||0),0);
+  const totNextOut=allC.reduce((s,r)=>s+(r.nextMYOutstandingSalesTW||0),0);
+
+  const primaryWeeks=weeklyAgg[primaryYear]||[];
+  let currWk=null; for(const w of primaryWeeks) if(w.grossNewSales>0||w.weeklyExports>0||w.accumulatedExports>0) currWk=w;
+  if(!currWk&&primaryWeeks.length) currWk=primaryWeeks[primaryWeeks.length-1];
+  const curWkNum=currWk?.wkNum||0;
+  const pctDone=Math.min(100,(curWkNum/52*100));
+
+  let lyAccum=null,lyCommit=null;
+  if(priorYears[0]&&weeklyAgg[priorYears[0]]){const lyWks=weeklyAgg[priorYears[0]];let lyW=null;for(const w of lyWks)if(w.wkNum<=curWkNum)lyW=w;if(lyW){lyAccum=lyW.accumulatedExports;lyCommit=lyW.currentMYTotalCommitment;}}
+
+  const avgPace=curWkNum>0?totAccum/curWkNum:0;
+  const coverage=avgPace>0?(totOutst/avgPace).toFixed(1):'N/A';
+
+  // Top buyers/shippers
+  const topBuyers=[...allC].filter(r=>r.grossNewSalesTW>0).sort((a,b)=>b.grossNewSalesTW-a.grossNewSalesTW).slice(0,8);
+  const topShippers=[...allC].filter(r=>r.weeklyExportsTW>0).sort((a,b)=>b.weeklyExportsTW-a.weeklyExportsTW).slice(0,8);
+  const maxBuyer=topBuyers[0]?.grossNewSalesTW||1;
+  const maxShipper=topShippers[0]?.weeklyExportsTW||1;
+
+  // Signals
+  const signals=[];
+  if(lyAccum){const d=totAccum-lyAccum;signals.push({c:d>=0?'#15803d':'#dc2626',t:`Cumulative exports are ${d>=0?'ahead of':'behind'} MY${priorYears[0]} by ${fmtV(Math.abs(d))} (${pctFmt(totAccum,lyAccum)}) at this week`});}
+  if(lyCommit){const d=totCommit-lyCommit;signals.push({c:d>=0?'#15803d':'#dc2626',t:`Total commitment ${d>=0?'+':''}${fmtV(d)} vs same week MY${priorYears[0]} — ${d>=0?'constructive demand tone':'weaker commitment vs LY'}`});}
+  const covN2=parseFloat(coverage);
+  signals.push({c:covN2>=6?'#15803d':covN2>=3?'#b45309':'#dc2626',t:`Outstanding covers ~${coverage} weeks at current shipment pace — ${covN2>=6?'well-covered':covN2>=3?'adequate, monitor replenishment':'thin, new sales needed'}`});
+  const cancs=[...allC].filter(r=>r.grossNewSalesTW<0);
+  if(cancs.length){signals.push({c:'#dc2626',t:`Cancellations: ${fmtV(Math.abs(cancs.reduce((s,r)=>s+r.grossNewSalesTW,0)))} from ${cancs.slice(0,2).map(r=>r.name).join(', ')}${cancs.length>2?' + others':''}`});}
+  else{signals.push({c:'#15803d',t:'No cancellations reported — clean demand picture'});}
+  if(totNextOut>0)signals.push({c:'#1d4ed8',t:`Next MY outstanding: ${fmtV(totNextOut)} — ${totNextOut>totOutst*0.15?'notable forward activity':'early forward interest'}`});
+  const gap=totGross-totShips;
+  signals.push({c:gap>0?'#b45309':'#64748b',t:`New sales (${fmtV(totGross)}) ${gap>0?'>':'<'} exports (${fmtV(totShips)}) — balance ${gap>0?'increasing':'decreasing'}`});
+
+  // ── Country table data — exactly matching web page logic ──────────────
+  // allRows filtered same as web page renderSummaryTable
+  const ctAllRows = Object.values(byC).filter(r=>
+    r.currentMYTotalCommitmentTW>0||r.accumulatedExportsTW>0||
+    r.grossNewSalesTW>0||r.outstandingSalesTW>0
+  ).sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW);
+
+  const top25     = ctAllRows.slice(0,25);
+  const othersRaw = ctAllRows.slice(25);
+
+  // emptyRow template with ALL fields (matches web page emptyRow)
+  const emptyR = {name:'',code:-1,
+    grossNewSalesTW:0,grossNewSalesLW:0,
+    currentMYNetSalesTW:0,currentMYNetSalesLW:0,
+    weeklyExportsTW:0,weeklyExportsLW:0,
+    nextMYNetSalesTW:0,nextMYNetSalesLW:0,
+    accumulatedExportsTW:0,outstandingSalesTW:0,
+    currentMYTotalCommitmentTW:0,nextMYOutstandingSalesTW:0};
+
+  // Others row — sum all fields across othersRaw
+  const othRow = {...emptyR, name:'Others', code:-1};
+  for(const r of othersRaw)
+    for(const k of Object.keys(othRow))
+      if(k!=='name'&&k!=='code') othRow[k]=(othRow[k]||0)+(r[k]||0);
+
+  // othersSnap — prior-year snap sums for Others (matches web page othersSnap)
+  const snapFields4=['accumulatedExports','outstandingSales','currentMYTotalCommitment','nextMYOutstandingSales'];
+  const othersSnap={};
+  for(const y of priorYears){
+    othersSnap[y]={};
+    for(const f of snapFields4) othersSnap[y][f]=0;
+    for(const r of othersRaw){
+      const ys=snapByYear[y]?.[r.code]||{};
+      for(const f of snapFields4) othersSnap[y][f]+=(ys[f]||0);
+    }
+  }
+
+  // displayRows = top25 + Others
+  const ctDisplayRows=[...top25,...(othersRaw.length>0?[othRow]:[])];
+
+  // Total row — sum displayRows (same as web page tot)
+  const totRow = {...emptyR, name:'TOTAL', code:0};
+  for(const r of ctDisplayRows)
+    for(const k of Object.keys(totRow))
+      if(k!=='name'&&k!=='code') totRow[k]=(totRow[k]||0)+(r[k]||0);
+
+  // totSnap — use weeklyAgg totals at same week (matches web page totSnap)
+  // web page: aggregateByWeek then find week entry at latestWkNum
+  const fourYears=[primaryYear,...priorYears.slice(0,3)];
+  const totSnap={};
+  for(const y of priorYears){
+    if(!globalData[y]){totSnap[y]={};continue;}
+    const yWeeks=weeklyAgg[y]||[];
+    let te=null;
+    for(const w of yWeeks) if(w.wkNum<=latestWkNum) te=w;
+    totSnap[y]=te||{};
+  }
+
+  // getSnap — mirrors web page rowHtml2 logic exactly
+  const getSnap=(r,y,f)=>{
+    if(y===primaryYear) return r[f+'TW']||0;
+    if(r.name==='TOTAL') return totSnap[y]?.[f]||0;
+    if(r.name==='Others') return othersSnap[y]?.[f]||0;
+    return snapByYear[y]?.[r.code]?.[f]||0;
+  };
+
+  // Style helpers
+  const thSm='padding:5px 6px;border:1px solid #334155;font-size:9px;text-align:right;font-family:Courier New,monospace;white-space:nowrap';
+  const tdSm='padding:3px 5px;border:1px solid #e2e8f0;font-size:9px;text-align:right;font-family:Courier New,monospace;white-space:nowrap';
+
+  // ── TABLE 1: TW / LW / Δ  (matches web page Table 1) ────────────────────
+  const twCols=[
+    {key:'grossNewSales',    label:'Gross Sales',   col:'#b45309'},
+    {key:'currentMYNetSales',label:'Net Sales',     col:'#475569'},
+    {key:'weeklyExports',   label:'Wkly Exports',  col:'#15803d'},
+    {key:'nextMYNetSales',  label:'Next MY Sales', col:'#1d4ed8'}
+  ];
+
+  const rowT1=(r,bg,bold)=>{
+    const isTot=r.name==='TOTAL', isOth=r.name==='Others';
+    const nm=isTot?`<strong>${r.name}</strong>`:isOth?`<em style="color:#64748b">${r.name}</em>`:r.name;
+    let row=`<tr style="background:${bg}"><td style="${tdSm};text-align:left;font-weight:${bold?'bold':'normal'};min-width:80px">${nm}</td>`;
+    twCols.forEach(col=>{
+      const tw=r[col.key+'TW']||0, lw=r[col.key+'LW']||0;
+      const d=tw-lw;
+      // Δ: show absolute value (like web page fmtD), no % for total row
+      const dStr = isTot ? fmtV(d) : (d===0?'\u2014':(d>0?'+':'')+fmtV(d));
+      const dc   = d>0?'#15803d':d<0?'#dc2626':'#64748b';
+      row+=`<td style="${tdSm};color:${col.col};font-weight:${bold?'bold':'normal'}">${fmtV(tw)}</td>`;
+      row+=`<td style="${tdSm};color:#64748b">${fmtV(lw)}</td>`;
+      row+=`<td style="${tdSm};color:${bold?'#1e293b':dc};font-weight:${bold?'bold':'normal'}">${bold?fmtV(d):dStr}</td>`;
+    });
+    return row+'</tr>';
+  };
+
+  H+=`<div style="padding:14px 24px 0">
+  <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">COUNTRY TABLE 1 \u2014 THIS WEEK / LAST WEEK / CHANGE (TOP 25)</div>
+  <div style="overflow-x:auto"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
+  <thead><tr><th style="${thSm};text-align:left;background:#1e293b;color:#e2e8f0" rowspan="2">Country</th>`;
+  twCols.forEach(col=>{ H+=`<th colspan="3" style="${thSm};text-align:center;background:#1e293b;color:${col.col}">${col.label}</th>`; });
+  H+=`</tr><tr>`;
+  twCols.forEach(()=>{
+    H+=`<th style="${thSm};background:#0f172a;color:#94a3b8">TW</th>`;
+    H+=`<th style="${thSm};background:#0f172a;color:#64748b">LW</th>`;
+    H+=`<th style="${thSm};background:#0f172a;color:#64748b">\u0394</th>`;
+  });
+  H+='</tr></thead><tbody>';
+  top25.forEach((r,i)=>{ H+=rowT1(r,i%2===0?'#fff':'#f8fafc',false); });
+  if(othersRaw.length>0) H+=rowT1(othRow,'#f1f5f9',false);
+  H+=rowT1(totRow,'#fffbeb',true);
+  H+='</tbody></table></div></div>';
+
+  // ── TABLE 2: 4-year snap (matches web page Table 2) ──────────────────────
+  const snapCols=[
+    {key:'accumulatedExports',        label:'Accum Exports', col:'#166534'},
+    {key:'outstandingSales',          label:'Outstanding',   col:'#1d4ed8'},
+    {key:'currentMYTotalCommitment',  label:'Total Commit',  col:'#dc2626'},
+    {key:'nextMYOutstandingSales',    label:'Next MY Outst', col:'#0e7490'}
+  ];
+
+  const rowT2=(r,bg,bold)=>{
+    const isTot=r.name==='TOTAL', isOth=r.name==='Others';
+    const nm=isTot?`<strong>${r.name}</strong>`:isOth?`<em style="color:#64748b">${r.name}</em>`:r.name;
+    let row=`<tr style="background:${bg}"><td style="${tdSm};text-align:left;font-weight:${bold?'bold':'normal'};min-width:80px">${nm}</td>`;
+    snapCols.forEach(col=>{
+      fourYears.forEach(y=>{
+        const isPY=y===primaryYear;
+        const val=getSnap(r,y,col.key);
+        const pyVal=isPY?null:getSnap(r,primaryYear,col.key);
+        const chg=(!isPY&&!bold&&pyVal>0)
+          ? ` <span style="color:${val>=pyVal?'#15803d':'#dc2626'}">${pctFmt(val,pyVal)}</span>` : '';
+        row+=`<td style="${tdSm};color:${isPY?col.col:'#64748b'};font-weight:${isPY||bold?'bold':'normal'}">${fmtV(val)}${chg}</td>`;
+      });
+    });
+    return row+'</tr>';
+  };
+
+  H+=`<div style="padding:14px 24px 0">
+  <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">COUNTRY TABLE 2 \u2014 ${fourYears.length}-YEAR COMPARISON AT SAME WEEK (TOP 25)</div>
+  <div style="overflow-x:auto"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
+  <thead><tr><th style="${thSm};text-align:left;background:#1e293b;color:#e2e8f0" rowspan="2">Country</th>`;
+  snapCols.forEach(col=>{ H+=`<th colspan="${fourYears.length}" style="${thSm};text-align:center;background:#1e293b;color:${col.col}">${col.label}</th>`; });
+  H+=`</tr><tr>`;
+  snapCols.forEach(()=>{
+    fourYears.forEach(y=>{ H+=`<th style="${thSm};background:#0f172a;color:${y===primaryYear?'#fbbf24':'#64748b'}">MY${y}</th>`; });
+  });
+  H+='</tr></thead><tbody>';
+  top25.forEach((r,i)=>{ H+=rowT2(r,i%2===0?'#fff':'#f8fafc',false); });
+  if(othersRaw.length>0) H+=rowT2(othRow,'#f1f5f9',false);
+  H+=rowT2(totRow,'#fffbeb',true);
+  H+='</tbody></table></div></div>';
+
+  // Footer
+  H+=`<div style="background:#1e293b;padding:12px 24px;margin-top:16px">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td style="font-family:Courier New,monospace;font-size:10px;color:#64748b">USDA FAS ESR &nbsp;\u00b7&nbsp; ${commShort} &nbsp;\u00b7&nbsp; MY${primaryYear} &nbsp;\u00b7&nbsp; Week ${curWkNum} ending ${thisWeek}</td>
+      <td align="right" style="font-family:Courier New,monospace;font-size:10px;color:#64748b">Generated ${genDate} &nbsp;\u00b7&nbsp; ESR Analytics Dashboard</td>
+    </tr></table>
+  </div></div></body></html>`;
+
+  return H;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// EMAIL SCHEDULER — Google Apps Script
+// ═══════════════════════════════════════════════════════════════════════
+
+let emailRecipients = [];
+
+const GAS_SOURCE_CODE = '// ════════════════════════════════════════════════════════════════\n// USDA ESR — Google Apps Script Email Sender\n// ════════════════════════════════════════════════════════════════\n// SETUP:\n//   1. Go to https://script.google.com  →  New project\n//   2. Replace ALL default code with this entire script\n//   3. Change SECRET_TOKEN below to any password you like\n//   4. Click Deploy → New deployment\n//      · Type: Web App\n//      · Execute as: Me\n//      · Who has access: Anyone\n//   5. Click Deploy → authorize → copy the Web App URL\n//   6. Paste URL + same token into the dashboard fields\n//   7. Click Test Connection — should say "Token accepted ✓"\n//\n// RE-DEPLOY AFTER ANY CODE CHANGE:\n//   Deploy → Manage deployments → edit (pencil) → New version → Deploy\n// ════════════════════════════════════════════════════════════════\n\n// ▶ CHANGE THIS — must exactly match the Secret Token field in the dashboard\nconst SECRET_TOKEN = \'CHANGE_ME_TO_YOUR_PASSWORD\';\n\nconst SHEET_NAME = \'ESR_SendLog\';\n\n// ── doGet handles test + saveConfig (GET avoids CORS redirect issues) ──\nfunction doGet(e) {\n  try {\n    const raw     = e.parameter.payload;\n    if (!raw) return jsonResponse({ ok: false, message: \'No payload\' });\n    const payload = JSON.parse(raw);\n\n    if (!payload.secret || payload.secret !== SECRET_TOKEN) {\n      return jsonResponse({ ok: false, message: \'Unauthorized: wrong token\' });\n    }\n\n    if (payload.action === \'test\') {\n      return jsonResponse({ ok: true, message: \'Connection successful! Token accepted \\u2713\' });\n    }\n\n    if (payload.action === \'saveConfig\') {\n      saveConfig(payload.config);\n      return jsonResponse({ ok: true });\n    }\n\n    return jsonResponse({ ok: false, message: \'Unknown action: \' + payload.action });\n  } catch(err) {\n    return jsonResponse({ ok: false, message: err.message });\n  }\n}\n\n// ── doPost handles report sending (large HTML body) ────────────────\nfunction doPost(e) {\n  try {\n    const payload = JSON.parse(e.postData.contents);\n\n    if (!payload.secret || payload.secret !== SECRET_TOKEN) {\n      return jsonResponse({ ok: false, message: \'Unauthorized: wrong token\' });\n    }\n\n    if (payload.action === \'send\') {\n      const { recipients, subject, reportHtml, commodity, weekDate } = payload;\n      if (!recipients || !recipients.length) throw new Error(\'No recipients\');\n\n      const finalSubject = subject ||\n        (\'USDA ESR Weekly Report \\u2014 \' + commodity + \' \\u2014 \' + weekDate);\n\n      const failed = [];\n      for (const email of recipients) {\n        try {\n          GmailApp.sendEmail(email, finalSubject, \'\', {\n            htmlBody: reportHtml,\n            name: \'USDA ESR Analytics\',\n          });\n        } catch(err) { failed.push(email + \': \' + err.message); }\n      }\n\n      if (failed.length) {\n        return jsonResponse({ ok: false, message: \'Partial failure: \' + failed.join(\'; \') });\n      }\n\n      logSend(commodity, weekDate, recipients.length);\n      return jsonResponse({ ok: true, message: \'Sent to \' + recipients.length + \' recipient(s)\' });\n    }\n\n    return jsonResponse({ ok: false, message: \'Unknown action\' });\n  } catch(err) {\n    return jsonResponse({ ok: false, message: err.message });\n  }\n}\n\n// ── Scheduled trigger (set via Triggers panel — no browser needed) ─\nfunction sendScheduledReport() {\n  const cfg = getConfig();\n  if (!cfg || !cfg.recipients || !cfg.recipients.length) return;\n\n  const ct   = Utilities.formatDate(new Date(), \'America/Chicago\', \'yyyy-MM-dd\');\n  if (PropertiesService.getScriptProperties().getProperty(\'sent_\' + ct)) return;\n\n  const now  = Utilities.formatDate(new Date(), \'America/Chicago\', \'MMMM d, yyyy\');\n  const subj = \'USDA ESR Scheduled Reminder \\u2014 \' + (cfg.commodity || \'Export Sales\') + \' \\u2014 \' + now;\n  const body = \'<div style="font-family:Arial,sans-serif;padding:20px;color:#1e293b">\'\n    + \'<h2 style="color:#b45309">USDA ESR Weekly Report Ready</h2>\'\n    + \'<p>Open the dashboard and click <strong>Send Now</strong> to send the full report.</p>\'\n    + \'<p style="color:#94a3b8;font-size:12px">Auto-sent by Google Apps Script \\u00b7 \' + now + \'</p>\'\n    + \'</div>\';\n\n  for (const email of cfg.recipients) {\n    try { GmailApp.sendEmail(email, subj, \'\', { htmlBody: body, name: \'USDA ESR Analytics\' }); }\n    catch(err) { Logger.log(\'Failed: \' + email + \' \' + err.message); }\n  }\n\n  PropertiesService.getScriptProperties().setProperty(\'sent_\' + ct, \'1\');\n  logSend(cfg.commodity, now, cfg.recipients.length);\n}\n\n// ── Helpers ───────────────────────────────────────────────────────\nfunction saveConfig(cfg) {\n  PropertiesService.getScriptProperties()\n    .setProperty(\'esr_config\', JSON.stringify(cfg));\n}\nfunction getConfig() {\n  const raw = PropertiesService.getScriptProperties().getProperty(\'esr_config\');\n  return raw ? JSON.parse(raw) : null;\n}\nfunction logSend(commodity, weekDate, count) {\n  try {\n    const ss    = SpreadsheetApp.getActiveSpreadsheet();\n    let sheet   = ss.getSheetByName(SHEET_NAME);\n    if (!sheet) {\n      sheet = ss.insertSheet(SHEET_NAME);\n      sheet.appendRow([\'Timestamp (CT)\', \'Commodity\', \'Week Date\', \'Recipients\']);\n    }\n    sheet.appendRow([\n      Utilities.formatDate(new Date(), \'America/Chicago\', \'yyyy-MM-dd HH:mm\'),\n      commodity, weekDate, count\n    ]);\n  } catch(e) { Logger.log(\'Log skipped: \' + e.message); }\n}\nfunction jsonResponse(obj) {\n  return ContentService\n    .createTextOutput(JSON.stringify(obj))\n    .setMimeType(ContentService.MimeType.JSON);\n}';
+
+function copyGASCode() {
+  navigator.clipboard.writeText(GAS_SOURCE_CODE).then(() => {
+    setEmailStatus('ok', '✓ Apps Script code copied — paste it at script.google.com, then change SECRET_TOKEN');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = GAS_SOURCE_CODE;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    setEmailStatus('ok', '✓ Code copied — paste at script.google.com, then change SECRET_TOKEN');
+  });
+}
+
+// ── Persist config ────────────────────────────────────────────────────
+function saveEmailConfig() {
+  try {
+    localStorage.setItem('esr_gas_cfg', JSON.stringify({
+      recipients: emailRecipients,
+      subject:    document.getElementById('emailSubject').value,
+      gasUrl:     document.getElementById('gasWebAppUrl').value,
+      gasSecret:  document.getElementById('gasSecret').value,
+    }));
+  } catch(e) {}
+}
+
+function loadEmailConfig() {
+  try {
+    const raw = localStorage.getItem('esr_gas_cfg');
+    if (!raw) return;
+    const cfg = JSON.parse(raw);
+    emailRecipients = cfg.recipients || [];
+    document.getElementById('emailSubject').value = cfg.subject   || '';
+    document.getElementById('gasWebAppUrl').value  = cfg.gasUrl   || '';
+    document.getElementById('gasSecret').value     = cfg.gasSecret || '';
+    renderTags();
+  } catch(e) {}
+}
+
+// ── Tag input ─────────────────────────────────────────────────────────
+function handleEmailKey(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = document.getElementById('emailInput').value.trim().replace(/,$/, '');
+    if (val && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      if (!emailRecipients.includes(val)) { emailRecipients.push(val); renderTags(); saveEmailConfig(); }
+      document.getElementById('emailInput').value = '';
+    } else if (val) { setEmailStatus('err', '✗ Invalid email address'); }
+  }
+}
+function removeTag(email) {
+  emailRecipients = emailRecipients.filter(e => e !== email);
+  renderTags(); saveEmailConfig();
+}
+function renderTags() {
+  document.getElementById('emailTags').innerHTML = emailRecipients.map(e =>
+    `<span class="email-tag">${e}<span class="email-tag-x" onclick="removeTag('${e}')">✕</span></span>`
+  ).join('');
+  updateScheduleBadge();
+}
+
+// ── Panel toggle ──────────────────────────────────────────────────────
+function toggleEmailPanel() {
+  const body = document.getElementById('emailPanelBody');
+  const chev = document.getElementById('emailChevron');
+  chev.style.transform = body.classList.toggle('open') ? 'rotate(180deg)' : '';
+}
+
+function setEmailStatus(cls, msg) {
+  const el = document.getElementById('emailStatusBar');
+  el.className = 'email-status-bar ' + cls;
+  el.textContent = msg;
+}
+
+// ── GAS fetch — attaches secret to every request ──────────────────────
+async function gasRequest(payload) {
+  const url    = document.getElementById('gasWebAppUrl').value.trim();
+  const secret = document.getElementById('gasSecret').value.trim();
+  if (!url)    throw new Error('Paste your Apps Script Web App URL first');
+  if (!secret) throw new Error('Enter a Secret Token — it must match the one in your Apps Script');
+
+  const body = JSON.stringify({ ...payload, secret });
+
+  // Apps Script Web Apps redirect POST→GET via 302, which causes CORS failures.
+  // Solution: send as a GET request with the payload as a URL parameter.
+  // For large sends (report HTML) we fall back to POST with redirect:follow.
+  const isLargeSend = payload.action === 'send';
+
+  let res;
+  if (!isLargeSend) {
+    // Small requests: use GET with encoded payload — avoids all CORS/redirect issues
+    const getUrl = url + '?payload=' + encodeURIComponent(body);
+    res = await fetch(getUrl, { method: 'GET', redirect: 'follow' });
+  } else {
+    // Large sends: POST with redirect follow + text/plain to skip preflight
+    res = await fetch(url, {
+      method:   'POST',
+      redirect: 'follow',
+      headers:  { 'Content-Type': 'text/plain' },
+      body,
+    });
+  }
+
+  if (!res.ok) throw new Error(`HTTP ${res.status} — check your Web App URL`);
+  let data;
+  try { data = await res.json(); }
+  catch(e) { throw new Error('Invalid response from Apps Script — redeploy the Web App and try again'); }
+  if (!data.ok) throw new Error(data.message || 'Apps Script returned an error');
+  return data;
+}
+
+// ── Test connection ────────────────────────────────────────────────────
+async function testGASConfig() {
+  setEmailStatus('sending', '⟳ Testing connection and token…');
+  try {
+    const data = await gasRequest({ action: 'test' });
+    setEmailStatus('ok', '✓ ' + data.message);
+  } catch(err) {
+    setEmailStatus('err', '✗ ' + err.message);
+  }
+}
+
+// ── Build rich HTML email from current data ────────────────────────────
+function buildEmailReportHTML(){
+  if(!allLoadedYears.length) return null;
+  const commCode = +document.getElementById('selCommodity').value;
+  const commName = document.getElementById('selCommodity').selectedOptions[0].text;
+  const commShort = commName.split('\u00b7').slice(1).join('\u00b7').trim() || commName;
+  const reportYears = [...allLoadedYears].sort((a,b)=>b-a).slice(0,5);
+  const weeklyAgg = {};
+  for(const y of reportYears) if(globalData[y]) weeklyAgg[y] = aggregateByWeek(globalData[y], commCode, y);
+  const {byC, thisWeek} = aggregateByCountry(globalData[primaryYear]);
+  const allC = Object.values(byC);
+  const primaryWeeks = weeklyAgg[primaryYear]||[];
+  let currWk=null;
+  for(const w of primaryWeeks) if(w.grossNewSales>0||w.weeklyExports>0||w.accumulatedExports>0) currWk=w;
+  if(!currWk&&primaryWeeks.length) currWk=primaryWeeks[primaryWeeks.length-1];
+  const curWkNum = currWk?.wkNum||0;
+  let latestWkNum = curWkNum;
+  const priorYears = reportYears.filter(y=>y!==primaryYear).sort((a,b)=>b-a);
+  const snapByYear={}, totSnapByYear={};
+  const snapFields4=['accumulatedExports','outstandingSales','currentMYTotalCommitment','nextMYOutstandingSales'];
+  for(const y of priorYears){
+    if(!globalData[y]) continue;
+    const yWeeks=weeklyAgg[y]||[]; let targetDate=null, targetEntry=null;
+    for(const w of yWeeks) if(w.wkNum<=latestWkNum){targetDate=w.date;targetEntry=w;}
+    totSnapByYear[y]=targetEntry||{};
+    snapByYear[y]={};
+    if(targetDate){
+      for(const r of globalData[y]){
+        const cc=r.countryCode; if(!cc||cc===0) continue;
+        const wk=String(r.weekEndingDate||'').split('T')[0]; if(wk!==targetDate) continue;
+        if(!snapByYear[y][cc]) snapByYear[y][cc]={};
+        for(const f of snapFields4) snapByYear[y][cc][f]=+(r[f]||0);
+      }
+    }
+  }
+  const summaryLines = buildPDFSummary(commCode,commName,weeklyAgg,allC,thisWeek,reportYears,primaryYear,latestWkNum,priorYears);
+
+  const fmtV=v=>{if(v==null||isNaN(+v))return'\u2014';const n=+v;if(Math.abs(n)>=1e6)return(n/1e6).toFixed(2)+'M';if(Math.abs(n)>=1e3)return(n/1e3).toFixed(1)+'K';return n.toLocaleString();};
+  const pctFmt=(a,b)=>{if(!b||b===0)return'';const v=(a-b)/Math.abs(b)*100;return(v>=0?'+':'')+v.toFixed(1)+'%';};
+  const pctColor=(a,b)=>{if(!b||b===0)return'#64748b';return((a-b)/Math.abs(b))>=0?'#15803d':'#dc2626';};
+
+  const totGross=allC.reduce((s,r)=>s+(r.grossNewSalesTW||0),0);
+  const totGrossLW=allC.reduce((s,r)=>s+(r.grossNewSalesLW||0),0);
+  const totShips=allC.reduce((s,r)=>s+(r.weeklyExportsTW||0),0);
+  const totShipsLW=allC.reduce((s,r)=>s+(r.weeklyExportsLW||0),0);
+  const totAccum=allC.reduce((s,r)=>s+(r.accumulatedExportsTW||0),0);
+  const totOutst=allC.reduce((s,r)=>s+(r.outstandingSalesTW||0),0);
+  const totCommit=allC.reduce((s,r)=>s+(r.currentMYTotalCommitmentTW||0),0);
+  const totNextOut=allC.reduce((s,r)=>s+(r.nextMYOutstandingSalesTW||0),0);
+  let lyAccum=null,lyCommit=null;
+  if(priorYears[0]&&weeklyAgg[priorYears[0]]){
+    const lyW=[...weeklyAgg[priorYears[0]]].filter(w=>w.wkNum<=curWkNum).pop();
+    if(lyW){lyAccum=lyW.accumulatedExports;lyCommit=lyW.currentMYTotalCommitment;}
+  }
+  const avgPace=curWkNum>0?totAccum/curWkNum:0;
+  const coverage=avgPace>0?(totOutst/avgPace).toFixed(1):'N/A';
+  const pctDone=(curWkNum/52*100).toFixed(0);
+  const topBuyers=[...allC].filter(r=>r.grossNewSalesTW>0).sort((a,b)=>b.grossNewSalesTW-a.grossNewSalesTW).slice(0,10);
+  const topShippers=[...allC].filter(r=>r.weeklyExportsTW>0).sort((a,b)=>b.weeklyExportsTW-a.weeklyExportsTW).slice(0,10);
+  const genDate=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+  const kpis=[
+    {l:'Gross Sales TW',    v:fmtV(totGross),   d:pctFmt(totGross,totGrossLW),   dc:pctColor(totGross,totGrossLW),   s:'vs prev week'},
+    {l:'Weekly Exports',    v:fmtV(totShips),   d:pctFmt(totShips,totShipsLW),   dc:pctColor(totShips,totShipsLW),   s:'vs prev week'},
+    {l:'Accum Exports',     v:fmtV(totAccum),   d:pctFmt(totAccum,lyAccum),      dc:pctColor(totAccum,lyAccum),      s:'vs LY same wk'},
+    {l:'Outstanding Sales', v:fmtV(totOutst),   d:coverage+' wks cov',           dc:'#64748b',                       s:'pipeline coverage'},
+    {l:'Total Commitment',  v:fmtV(totCommit),  d:pctFmt(totCommit,lyCommit),    dc:pctColor(totCommit,lyCommit),    s:'vs LY same wk'},
+    {l:'Next MY Outst',     v:fmtV(totNextOut), d:'fwd bookings',                dc:'#1d4ed8',                       s:'early indicator'},
+    {l:'MY Progress',       v:pctDone+'%',      d:'Wk '+curWkNum+'/52',          dc:'#b45309',                       s:(52-curWkNum)+' wks remain'},
+  ];
+
+  const thS='padding:6px 8px;border:1px solid #334155;font-size:10px;text-align:right;font-family:Courier New,monospace';
+  const tdS='padding:4px 8px;border:1px solid #e2e8f0;vertical-align:top';
+  const thSm='padding:5px 6px;border:1px solid #334155;font-size:9px;text-align:right;font-family:Courier New,monospace;white-space:nowrap';
+  const tdSm='padding:3px 5px;border:1px solid #e2e8f0;font-size:9px;text-align:right;font-family:Courier New,monospace;white-space:nowrap';
+
+  let H='<!DOCTYPE html><html><head><meta charset="UTF-8"></head>';
+  H+='<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">';
+  H+='<div style="max-width:900px;margin:0 auto;background:#fff">';
+
+  // Header
+  H+=`<div style="background:#1e293b;padding:18px 24px;border-bottom:4px solid #f59e0b">
+    <div style="font-family:Courier New,monospace;font-size:22px;font-weight:900;letter-spacing:2px;color:#fff">ESR EXPORT ANALYTICS</div>
+    <div style="font-family:Courier New,monospace;font-size:11px;color:#94a3b8;margin-top:4px">${commShort} &nbsp;\u00b7&nbsp; Week ${curWkNum} ending ${thisWeek} &nbsp;\u00b7&nbsp; MY${primaryYear} &nbsp;\u00b7&nbsp; ${genDate}</div>
+  </div>`;
+
+  // Executive Summary
+  H+=`<div style="padding:16px 24px 0">
+    <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">EXECUTIVE SUMMARY</div>
+    <div style="background:#fffbeb;border:1.5px solid #fbbf24;border-radius:4px;padding:14px 16px">`;
+  summaryLines.forEach((ln,i)=>{
+    H+=`<div style="font-size:13px;line-height:1.65;color:#1e293b;margin-bottom:${i<summaryLines.length-1?'8px':'0'};padding-bottom:${i<summaryLines.length-1?'8px':'0'};border-bottom:${i<summaryLines.length-1?'1px dotted #fde68a':'none'}">
+      <span style="font-family:Courier New,monospace;color:#b45309;font-weight:bold;margin-right:6px">[${i+1}]</span>${ln}</div>`;
+  });
+  H+=`</div></div>`;
+
+  // KPI grid
+  H+=`<div style="padding:14px 24px 0">
+    <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">KEY METRICS \u2014 WEEK ${curWkNum}</div>
+    <table width="100%" cellpadding="0" cellspacing="1" style="background:#e2e8f0;border-radius:4px"><tr>`;
+  kpis.forEach(k=>{
+    H+=`<td style="background:#fff;padding:8px 10px;vertical-align:top">
+      <div style="font-family:Courier New,monospace;font-size:9px;letter-spacing:1px;color:#64748b;margin-bottom:3px">${k.l}</div>
+      <div style="font-family:Courier New,monospace;font-size:17px;font-weight:bold;color:#1e293b;line-height:1">${k.v}</div>
+      <div style="font-size:10px;color:${k.dc};margin-top:3px;font-weight:bold">${k.d}</div>
+      <div style="font-size:9px;color:#94a3b8">${k.s}</div>
+    </td>`;
+  });
+  H+='</tr></table></div>';
+
+  // Top buyers / shippers
+  H+=`<div style="padding:14px 24px 0">
+  <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">WEEKLY TRADE ACTIVITY</div>
+  <table width="100%" cellpadding="0" cellspacing="10"><tr valign="top">
+  <td width="50%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:10px">
+    <div style="font-family:Courier New,monospace;font-size:9px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:5px;margin-bottom:8px">TOP BUYERS \u2014 GROSS SALES</div>`;
+  topBuyers.forEach((r,i)=>{
+    const wow=r.grossNewSalesLW>0?((r.grossNewSalesTW-r.grossNewSalesLW)/r.grossNewSalesLW*100):null;
+    H+=`<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:5px"><tr>
+      <td style="font-family:Courier New,monospace;font-size:9px;color:#94a3b8;width:16px">${i+1}</td>
+      <td style="font-family:Courier New,monospace;font-size:10px;color:#1e293b">${r.name}</td>
+      <td align="right" style="font-family:Courier New,monospace;font-size:10px;color:#b45309;white-space:nowrap">
+        ${fmtV(r.grossNewSalesTW)}${wow!==null?`<span style="color:${wow>=0?'#15803d':'#dc2626'};font-size:8px"> ${wow>=0?'+':''}${wow.toFixed(0)}%</span>`:''}
+      </td></tr></table>`;
+  });
+  H+=`</td><td width="50%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:10px">
+    <div style="font-family:Courier New,monospace;font-size:9px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:5px;margin-bottom:8px">TOP SHIPPERS \u2014 WEEKLY EXPORTS</div>`;
+  topShippers.forEach((r,i)=>{
+    H+=`<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:5px"><tr>
+      <td style="font-family:Courier New,monospace;font-size:9px;color:#94a3b8;width:16px">${i+1}</td>
+      <td style="font-family:Courier New,monospace;font-size:10px;color:#1e293b">${r.name}</td>
+      <td align="right" style="font-family:Courier New,monospace;font-size:10px;color:#15803d;white-space:nowrap">${fmtV(r.weeklyExportsTW)}</td>
+    </tr></table>`;
+  });
+  H+=`</td></tr></table></div>`;
+
+  // ── Country table data — exactly matching web page renderSummaryTable ────
+  const ctAllRows=Object.values(byC).filter(r=>
+    r.currentMYTotalCommitmentTW>0||r.accumulatedExportsTW>0||
+    r.grossNewSalesTW>0||r.outstandingSalesTW>0
+  ).sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW);
+
+  const ctTop25=ctAllRows.slice(0,25);
+  const othersRaw=ctAllRows.slice(25);
+
+  const emptyR={name:'',code:-1,
+    grossNewSalesTW:0,grossNewSalesLW:0,currentMYNetSalesTW:0,currentMYNetSalesLW:0,
+    weeklyExportsTW:0,weeklyExportsLW:0,nextMYNetSalesTW:0,nextMYNetSalesLW:0,
+    accumulatedExportsTW:0,outstandingSalesTW:0,currentMYTotalCommitmentTW:0,nextMYOutstandingSalesTW:0};
+
+  const othRow={...emptyR,name:'Others',code:-1};
+  for(const r of othersRaw)
+    for(const k of Object.keys(othRow))
+      if(k!=='name'&&k!=='code') othRow[k]=(othRow[k]||0)+(r[k]||0);
+
+  const othersSnap={};
+  for(const y of priorYears){
+    othersSnap[y]={};
+    for(const f of snapFields4) othersSnap[y][f]=0;
+    for(const r of othersRaw){
+      const ys=snapByYear[y]?.[r.code]||{};
+      for(const f of snapFields4) othersSnap[y][f]+=(ys[f]||0);
+    }
+  }
+
+  const ctDisplay=[...ctTop25,...(othersRaw.length>0?[othRow]:[])];
+  const totRow={...emptyR,name:'TOTAL',code:0};
+  for(const r of ctDisplay)
+    for(const k of Object.keys(totRow))
+      if(k!=='name'&&k!=='code') totRow[k]=(totRow[k]||0)+(r[k]||0);
+
+  const fourYears=[primaryYear,...priorYears.slice(0,3)];
+  const totSnap={};
+  for(const y of priorYears){
+    if(!globalData[y]){totSnap[y]={};continue;}
+    const yW=weeklyAgg[y]||[]; let te=null;
+    for(const w of yW) if(w.wkNum<=latestWkNum) te=w;
+    totSnap[y]=te||{};
+  }
+
+  const getSnap=(r,y,f)=>{
+    if(y===primaryYear) return r[f+'TW']||0;
+    if(r.name==='TOTAL') return totSnap[y]?.[f]||0;
+    if(r.name==='Others') return othersSnap[y]?.[f]||0;
+    return snapByYear[y]?.[r.code]?.[f]||0;
+  };
+
+  // TABLE 1: TW / LW / Δ
+  const twCols=[
+    {key:'grossNewSales',    label:'Gross Sales',   col:'#b45309'},
+    {key:'currentMYNetSales',label:'Net Sales',     col:'#475569'},
+    {key:'weeklyExports',    label:'Wkly Exports',  col:'#15803d'},
+    {key:'nextMYNetSales',   label:'Next MY Sales', col:'#1d4ed8'}
+  ];
+  const rowT1=(r,bg,bold)=>{
+    const isTot=r.name==='TOTAL',isOth=r.name==='Others';
+    const nm=isTot?`<strong>${r.name}</strong>`:isOth?`<em style="color:#64748b">${r.name}</em>`:r.name;
+    let row=`<tr style="background:${bg}"><td style="${tdSm};text-align:left;font-weight:${bold?'bold':'normal'};min-width:80px">${nm}</td>`;
+    twCols.forEach(col=>{
+      const tw=r[col.key+'TW']||0, lw=r[col.key+'LW']||0, d=tw-lw;
+      const dc=d>0?'#15803d':d<0?'#dc2626':'#64748b';
+      const dStr=bold?fmtV(d):(d===0?'\u2014':(d>0?'+':'')+fmtV(d));
+      row+=`<td style="${tdSm};color:${col.col};font-weight:${bold?'bold':'normal'}">${fmtV(tw)}</td>`;
+      row+=`<td style="${tdSm};color:#64748b">${fmtV(lw)}</td>`;
+      row+=`<td style="${tdSm};color:${bold?'#1e293b':dc};font-weight:${bold?'bold':'normal'}">${dStr}</td>`;
+    });
+    return row+'</tr>';
+  };
+
+  H+=`<div style="padding:14px 24px 0">
+  <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">COUNTRY TABLE 1 \u2014 THIS WEEK / LAST WEEK / CHANGE (TOP 25)</div>
+  <div style="overflow-x:auto"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
+  <thead><tr><th style="${thSm};text-align:left;background:#1e293b;color:#e2e8f0" rowspan="2">Country</th>`;
+  twCols.forEach(col=>{ H+=`<th colspan="3" style="${thSm};text-align:center;background:#1e293b;color:${col.col}">${col.label}</th>`; });
+  H+=`</tr><tr>`;
+  twCols.forEach(()=>{
+    H+=`<th style="${thSm};background:#0f172a;color:#94a3b8">TW</th>`;
+    H+=`<th style="${thSm};background:#0f172a;color:#64748b">LW</th>`;
+    H+=`<th style="${thSm};background:#0f172a;color:#64748b">\u0394</th>`;
+  });
+  H+='</tr></thead><tbody>';
+  ctTop25.forEach((r,i)=>{ H+=rowT1(r,i%2===0?'#fff':'#f8fafc',false); });
+  if(othersRaw.length>0) H+=rowT1(othRow,'#f1f5f9',false);
+  H+=rowT1(totRow,'#fffbeb',true);
+  H+='</tbody></table></div></div>';
+
+  // TABLE 2: 4-year snap
+  const snapCols=[
+    {key:'accumulatedExports',       label:'Accum Exports', col:'#166534'},
+    {key:'outstandingSales',         label:'Outstanding',   col:'#1d4ed8'},
+    {key:'currentMYTotalCommitment', label:'Total Commit',  col:'#dc2626'},
+    {key:'nextMYOutstandingSales',   label:'Next MY Outst', col:'#0e7490'}
+  ];
+  const rowT2=(r,bg,bold)=>{
+    const isTot=r.name==='TOTAL',isOth=r.name==='Others';
+    const nm=isTot?`<strong>${r.name}</strong>`:isOth?`<em style="color:#64748b">${r.name}</em>`:r.name;
+    let row=`<tr style="background:${bg}"><td style="${tdSm};text-align:left;font-weight:${bold?'bold':'normal'};min-width:80px">${nm}</td>`;
+    snapCols.forEach(col=>{
+      fourYears.forEach(y=>{
+        const isPY=y===primaryYear;
+        const val=getSnap(r,y,col.key);
+        const pyVal=isPY?null:getSnap(r,primaryYear,col.key);
+        row+=`<td style="${tdSm};color:${isPY?col.col:'#64748b'};font-weight:${isPY||bold?'bold':'normal'}">${fmtV(val)}</td>`;
+      });
+    });
+    return row+'</tr>';
+  };
+
+  H+=`<div style="padding:14px 24px 0">
+  <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">COUNTRY TABLE 2 \u2014 ${fourYears.length}-YEAR COMPARISON AT SAME WEEK (TOP 25)</div>
+  <div style="overflow-x:auto"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
+  <thead><tr><th style="${thSm};text-align:left;background:#1e293b;color:#e2e8f0" rowspan="2">Country</th>`;
+  snapCols.forEach(col=>{ H+=`<th colspan="${fourYears.length}" style="${thSm};text-align:center;background:#1e293b;color:${col.col}">${col.label}</th>`; });
+  H+=`</tr><tr>`;
+  snapCols.forEach(()=>{
+    fourYears.forEach(y=>{ H+=`<th style="${thSm};background:#0f172a;color:${y===primaryYear?'#fbbf24':'#64748b'}">MY${y}</th>`; });
+  });
+  H+='</tr></thead><tbody>';
+  ctTop25.forEach((r,i)=>{ H+=rowT2(r,i%2===0?'#fff':'#f8fafc',false); });
+  if(othersRaw.length>0) H+=rowT2(othRow,'#f1f5f9',false);
+  H+=rowT2(totRow,'#fffbeb',true);
+  H+='</tbody></table></div></div>';
+
+  // Footer
+  H+=`<div style="background:#1e293b;padding:12px 24px;margin-top:16px">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td style="font-family:Courier New,monospace;font-size:10px;color:#64748b">USDA FAS ESR &nbsp;\u00b7&nbsp; ${commShort} &nbsp;\u00b7&nbsp; MY${primaryYear} &nbsp;\u00b7&nbsp; Week ${curWkNum} ending ${thisWeek}</td>
+      <td align="right" style="font-family:Courier New,monospace;font-size:10px;color:#64748b">Generated ${genDate} &nbsp;\u00b7&nbsp; ESR Analytics Dashboard</td>
+    </tr></table>
+  </div></div></body></html>`;
+
+  return H;
+}
+
+// ── Send report ────────────────────────────────────────────────────────
+async function sendReportNow() {
+  if (!allLoadedYears.length) { setEmailStatus('err', '\u2717 Load data first'); return; }
+  if (!emailRecipients.length) { setEmailStatus('err', '\u2717 Add at least one recipient'); return; }
+  setEmailStatus('sending', '\u27f3 Building report\u2026');
+  try {
+    const html = buildEmailReportHTML();
+    if (!html) throw new Error('Failed to build report HTML');
+    const commName  = document.getElementById('selCommodity').selectedOptions[0].text;
+    const commShort = commName.split('\u00b7').slice(1).join('\u00b7').trim() || commName;
+    const weekDate  = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    const subjectTmpl = document.getElementById('emailSubject').value.trim();
+    const subject = subjectTmpl
+      ? subjectTmpl.replace('{commodity}',commShort).replace('{date}',new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}))
+      : `USDA ESR Weekly Report \u2014 ${commShort} \u2014 ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+    setEmailStatus('sending', '\u27f3 Sending via Gmail\u2026');
+    const data = await gasRequest({action:'send', recipients:emailRecipients, subject, reportHtml:html, commodity:commShort, weekDate});
+    const sentLabel = new Date().toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+    localStorage.setItem('esr_last_sent_ct', sentLabel);
+    updateScheduleBadge();
+    setEmailStatus('ok', `\u2713 ${data.message} \u2014 ${sentLabel}`);
+    gasRequest({action:'saveConfig',config:{recipients:emailRecipients,commodity:commShort}}).catch(()=>{});
+  } catch(err) {
+    setEmailStatus('err', '\u2717 ' + err.message);
+  }
+}
+
+// ── Schedule badge ─────────────────────────────────────────────────────
+function updateScheduleBadge() {
+  const now = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',weekday:'long'}).formatToParts(now);
+  const weekday = parts.find(p=>p.type==='weekday')?.value || '';
+  const dayIdx = days.indexOf(weekday);
+  const dToThu = (4 - dayIdx + 7) % 7 || 7;
+  const nextThu = new Date(now.getTime() + dToThu * 86400000);
+  const label = nextThu.toLocaleDateString('en-US',
+    { timeZone:'America/Chicago', weekday:'long', month:'short', day:'numeric' });
+
+  const el = document.getElementById('schedNext');
+  if (el) el.textContent = label + ' @ 7:30 AM CT';
+  const sub = document.getElementById('schedSub');
+  if (sub) sub.textContent = emailRecipients.length > 0
+    ? `${emailRecipients.length} recipient${emailRecipients.length>1?'s':''} · GAS trigger runs automatically`
+    : 'No recipients configured yet';
+  const last = document.getElementById('schedLast');
+  const lastSent = localStorage.getItem('esr_last_sent_ct');
+  if (last) last.textContent = lastSent ? 'Last sent: ' + lastSent : '';
+
+  const url = document.getElementById('gasWebAppUrl')?.value?.trim();
+  const secret = document.getElementById('gasSecret')?.value?.trim();
+  const badge = document.getElementById('schedBadge');
+  if (badge) {
+    if (url && secret && emailRecipients.length > 0)
+      badge.innerHTML = `<span style="color:var(--green)">● GAS connected</span><br>${emailRecipients.length} recipient${emailRecipients.length>1?'s':''}`;
+    else if (emailRecipients.length > 0)
+      badge.innerHTML = `<span style="color:var(--gold)">${emailRecipients.length} recipient${emailRecipients.length>1?'s':''} · finish setup</span>`;
+    else
+      badge.innerHTML = '<span style="color:var(--muted2)">Not configured</span>';
+  }
+}
+
+(function initEmail() {
+  loadEmailConfig();
+  updateScheduleBadge();
+  setInterval(updateScheduleBadge, 60000);
+})();
+</script>
+</body>
+</html>
