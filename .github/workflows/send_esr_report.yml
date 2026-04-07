@@ -1,0 +1,83 @@
+name: ESR Weekly Email Report
+
+on:
+  schedule:
+    # Thursday 8:31, 8:36, 8:41 AM ET
+    # EDT (summer UTC-4): 12:31, 12:36, 12:41 UTC
+    - cron: '31 12 * * 4'
+    - cron: '36 12 * * 4'
+    - cron: '41 12 * * 4'
+    # EST (winter UTC-5): 13:31, 13:36, 13:41 UTC
+    - cron: '31 13 * * 4'
+    - cron: '36 13 * * 4'
+    - cron: '41 13 * * 4'
+  workflow_dispatch:
+    inputs:
+      force_send:
+        description: 'Force send even if already sent today'
+        required: false
+        default: 'false'
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if already sent today
+        id: check_sent
+        run: |
+          TODAY=$(TZ="America/New_York" date +%Y-%m-%d)
+          echo "today=$TODAY" >> $GITHUB_OUTPUT
+          FORCE="${{ github.event.inputs.force_send }}"
+          if [ -f data/last_sent.txt ] && grep -q "$TODAY" data/last_sent.txt && [ "$FORCE" != "true" ]; then
+            echo "already_sent=true" >> $GITHUB_OUTPUT
+            echo "Already sent today ($TODAY) — skipping"
+          else
+            echo "already_sent=false" >> $GITHUB_OUTPUT
+            echo "Will send report for $TODAY"
+          fi
+
+      - name: Set up Python 3.11
+        if: steps.check_sent.outputs.already_sent == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        if: steps.check_sent.outputs.already_sent == 'false'
+        run: |
+          pip install -r scripts/requirements.txt
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Generate and send report
+        if: steps.check_sent.outputs.already_sent == 'false'
+        env:
+          SMTP_HOST:   ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:   ${{ secrets.SMTP_PORT }}
+          SMTP_USER:   ${{ secrets.SMTP_USER }}
+          SMTP_PASS:   ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM:  ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:    ${{ secrets.EMAIL_TO }}
+          HTML_FILE:   ${{ github.workspace }}/index.html
+          REPORT_DATE: ${{ steps.check_sent.outputs.today }}
+        run: python scripts/send_report.py
+
+      - name: Mark as sent
+        if: steps.check_sent.outputs.already_sent == 'false' && success()
+        run: |
+          TODAY=${{ steps.check_sent.outputs.today }}
+          mkdir -p data
+          echo "$TODAY" > data/last_sent.txt
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/last_sent.txt
+          git commit -m "chore: ESR report sent $TODAY [skip ci]" || echo "Nothing to commit"
+          git push
