@@ -360,6 +360,82 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
   .bar-cell{display:flex!important;align-items:center!important;gap:1pt!important}
   .mini-bar{background:#b45309!important;height:3px!important;border-radius:1px!important;flex-shrink:0!important;max-width:20px!important}
 }
+
+/* ═══ MAIN TABS ═══ */
+.main-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin:0 0 0;background:var(--s1)}
+.main-tab{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;
+  padding:10px 20px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;
+  margin-bottom:-2px;transition:all .15s;user-select:none}
+.main-tab:hover{color:var(--text);background:var(--s2)}
+.main-tab.active{color:var(--gold);border-bottom-color:var(--gold);background:var(--s2)}
+.tab-pane{display:none}.tab-pane.active{display:block}
+
+/* ═══ AI TAB ═══ */
+.ai-wrap{display:grid;grid-template-columns:300px 1fr;gap:0;height:calc(100vh - 180px);min-height:500px}
+.ai-sidebar{background:var(--s1);border-right:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.ai-sidebar-title{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--border)}
+.ai-key-row{display:flex;flex-direction:column;gap:4px}
+.ai-key-row label{font-family:'DM Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.ai-key-input{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:6px 8px;font-family:'DM Mono',monospace;font-size:.62rem;border-radius:2px;outline:none;width:100%}
+.ai-key-input:focus{border-color:var(--gold)}
+.ai-model-sel{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:.62rem;border-radius:2px;outline:none;width:100%}
+.ai-status{font-family:'DM Mono',monospace;font-size:.55rem;padding:5px 8px;border-radius:2px;background:var(--s2);border:1px solid var(--border);color:var(--muted);min-height:24px}
+.ai-status.ok{color:var(--green);border-color:rgba(111,207,151,.3)}
+.ai-status.err{color:var(--red);border-color:rgba(255,107,107,.3)}
+.ai-quick-btns{display:flex;flex-direction:column;gap:4px}
+.ai-quick-btn{font-family:'DM Mono',monospace;font-size:.55rem;padding:5px 8px;background:var(--s2);border:1px solid var(--border);color:var(--muted);border-radius:2px;cursor:pointer;text-align:left;transition:all .15s}
+.ai-quick-btn:hover{border-color:var(--gold);color:var(--gold)}
+.ai-chat-area{display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+.ai-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.ai-msg{display:flex;gap:10px;align-items:flex-start}
+.ai-msg.user{flex-direction:row-reverse}
+.ai-msg-bubble{max-width:75%;padding:10px 13px;border-radius:3px;font-family:'DM Sans',sans-serif;font-size:.72rem;line-height:1.6}
+.ai-msg.assistant .ai-msg-bubble{background:var(--s1);border:1px solid var(--border);color:var(--text)}
+.ai-msg.user .ai-msg-bubble{background:var(--gold);color:#1a1400;font-weight:500}
+.ai-msg-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;flex-shrink:0;margin-top:2px}
+.ai-msg.assistant .ai-msg-avatar{background:var(--s2);border:1px solid var(--border);color:var(--gold)}
+.ai-msg.user .ai-msg-avatar{background:var(--gold);color:#1a1400}
+.ai-chart-embed{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:10px;margin-top:8px}
+.ai-chart-embed canvas{max-height:260px}
+.ai-input-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--s1)}
+.ai-input{flex:1;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:.72rem;border-radius:2px;outline:none;resize:none;min-height:38px;max-height:120px}
+.ai-input:focus{border-color:var(--gold)}
+.ai-send-btn{padding:8px 16px;background:var(--gold);color:#1a1400;border:none;font-family:'DM Mono',monospace;font-size:.62rem;font-weight:700;border-radius:2px;cursor:pointer;flex-shrink:0}
+.ai-send-btn:disabled{opacity:.4;cursor:not-allowed}
+.ai-thinking{display:flex;gap:4px;padding:8px 0}
+.ai-thinking span{width:6px;height:6px;background:var(--muted);border-radius:50%;animation:aiBounce .8s infinite}
+.ai-thinking span:nth-child(2){animation-delay:.15s}
+.ai-thinking span:nth-child(3){animation-delay:.3s}
+@keyframes aiBounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+
+/* ═══ SUMMARY SECTION ═══ */
+.summary-card{background:var(--s1);border:1px solid var(--border);border-radius:3px;padding:0;margin-bottom:14px}
+.summary-narrative{padding:14px 18px;font-family:'DM Sans',sans-serif;font-size:.78rem;line-height:1.75;color:var(--text)}
+.summary-narrative p{margin-bottom:10px}
+.summary-narrative p:last-child{margin-bottom:0}
+.summary-highlight{color:var(--gold);font-weight:600}
+.summary-pos{color:var(--green);font-weight:600}
+.summary-neg{color:var(--red);font-weight:600}
+.summary-country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;padding:0 18px 14px}
+.summary-country-chip{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:8px 10px}
+.summary-country-name{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+.summary-country-val{font-family:'DM Mono',monospace;font-size:.9rem;color:var(--text);font-weight:700}
+.summary-country-chg{font-family:'DM Mono',monospace;font-size:.56rem;margin-top:2px}
+
+/* ═══ PERCENTILE TABLE ═══ */
+.pct-bar-wrap{display:flex;flex-direction:column;gap:3px}
+.pct-bar-row{display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:.5rem;color:var(--muted)}
+.pct-bar-lbl{width:18px;flex-shrink:0;text-align:right}
+.pct-track{flex:1;height:6px;background:var(--s1);border-radius:2px;position:relative;border:1px solid var(--border)}
+.pct-range{position:absolute;top:0;height:100%;background:rgba(232,197,71,.25);border-radius:2px}
+.pct-dot{position:absolute;top:-2px;width:10px;height:10px;border-radius:50%;background:var(--gold);border:1.5px solid var(--bg);transform:translateX(-50%);z-index:1}
+.pct-val{width:28px;flex-shrink:0;text-align:right;color:var(--text);font-size:.52rem}
+
+/* ═══ CSV DOWNLOAD ═══ */
+.csv-panel{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:10px 14px;margin:8px 18px}
+.csv-panel-title{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.csv-progress{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--text);margin-top:6px;min-height:18px}
+
 </style>
 </head>
 <body>
@@ -426,6 +502,15 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
 </div>
 <div class="status" id="statusBar">Select a commodity and click Load Data</div>
 <div class="debug-box" id="debugBox"></div>
+
+<!-- ══ MAIN TAB NAV ══ -->
+<div class="main-tabs">
+  <div class="main-tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
+  <div class="main-tab" onclick="switchTab('ai')">🤖 AI Assistant</div>
+</div>
+
+<!-- ══ DASHBOARD TAB ══ -->
+<div class="tab-pane active" id="tab-dashboard">
 <div class="section">
   <div class="card" id="seasonCard">
     <div class="card-head">
@@ -506,17 +591,128 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
       <div id="summaryTbl2" class="tbl-outer"><div class="empty">Load data to view summary table</div></div>
     </div>
     <div style="height:16px"></div>
+
+    <!-- ── CSV DOWNLOAD ── -->
+    <div class="csv-panel" id="csvPanel">
+      <div class="csv-panel-title">📥 Historical Data — Download All Years as CSV</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn" style="font-size:.58rem;padding:5px 14px" onclick="downloadHistoricalCSV()">⬇ Download cotton_history.csv</button>
+        <button class="btn" style="font-size:.58rem;padding:5px 14px;background:var(--s2);color:var(--muted);border:1px solid var(--border)" onclick="updateHistoricalCSV()">↻ Update with New Data</button>
+        <span style="font-family:'DM Mono',monospace;font-size:.55rem;color:var(--muted2)">All years since 1991 · Same-week snap by country</span>
+      </div>
+      <div class="csv-progress" id="csvProgress"></div>
+    </div>
+
+    <!-- ── TABLE 3: 8-WEEK TREND ── -->
+    <div class="tbl-section-label">── Gross Sales &amp; Exports — Recent 8 Weeks ──</div>
+    <div style="padding:0 18px 0">
+      <div id="summaryTbl3" class="tbl-outer"><div class="empty">Load data to view 8-week table</div></div>
+    </div>
+
+    <!-- ── TABLE 4: PERCENTILE BARS ── -->
+    <div class="tbl-section-label" style="margin-top:6px">── Historical Percentile Ranges — Outstanding / Accum / Commitment / Next MY ──</div>
+    <div style="padding:0 18px 0">
+      <div id="summaryTbl4" class="tbl-outer"><div class="empty">Load data to view percentile table</div></div>
+    </div>
+
+  </div><!-- /card countrySummaryCard -->
+</div><!-- /section -->
+
+<!-- ══ EXPORT SALES SUMMARY CARD ══ -->
+<div style="padding:0 0 14px">
+  <div class="card summary-card" id="salesSummaryCard" style="display:none">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Export Sales Summary</div>
+        <div class="card-sub" id="summaryCardSub">—</div>
+      </div>
+      <span class="chip" id="summaryChip">SUMMARY</span>
+    </div>
+    <div class="summary-narrative" id="summaryNarrative"></div>
+    <div style="font-family:'DM Mono',monospace;font-size:.56rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:4px 18px 6px;border-top:1px solid var(--border)">▸ Major Importers — Current vs Prior Year</div>
+    <div class="summary-country-grid" id="summaryCountryGrid"></div>
   </div>
 </div>
 
-<!-- GAS Email Scheduler Panel -->
+</div><!-- /tab-pane dashboard -->
+
+<!-- ══ AI TAB ══ -->
+<div class="tab-pane" id="tab-ai">
+  <div class="ai-wrap">
+    <!-- Sidebar -->
+    <div class="ai-sidebar">
+      <div class="ai-sidebar-title">🤖 AI Configuration</div>
+      <div class="ai-key-row">
+        <label>Groq API Key</label>
+        <input type="password" class="ai-key-input" id="groqApiKey"
+          placeholder="gsk_xxxxxxxxxxxxxxxxxxxx"
+          oninput="saveAIConfig()" />
+      </div>
+      <div class="ai-key-row">
+        <label>Model</label>
+        <select class="ai-model-sel" id="groqModel" onchange="saveAIConfig()">
+          <option value="llama-3.3-70b-versatile">Llama 3.3 70B (recommended)</option>
+          <option value="llama-3.1-8b-instant">Llama 3.1 8B (fast)</option>
+          <option value="mixtral-8x7b-32768">Mixtral 8x7B (long context)</option>
+          <option value="gemma2-9b-it">Gemma 2 9B</option>
+        </select>
+      </div>
+      <button class="btn" style="font-size:.58rem;padding:6px 12px" onclick="testGroqKey()">✓ Test Connection</button>
+      <div class="ai-status" id="aiStatus">Enter your Groq API key to start</div>
+
+      <div style="border-top:1px solid var(--border);padding-top:10px">
+        <div class="ai-sidebar-title">Quick Questions</div>
+        <div class="ai-quick-btns">
+          <button class="ai-quick-btn" onclick="aiQuickAsk('What are the total gross sales and shipments this week compared to last year?')">📊 Sales vs Last Year</button>
+          <button class="ai-quick-btn" onclick="aiQuickAsk('Which countries are the top buyers this week and how do they compare to historical averages?')">🌍 Top Buyers Analysis</button>
+          <button class="ai-quick-btn" onclick="aiQuickAsk('How does the current outstanding sales level compare to the 5-year average at this point in the marketing year?')">📈 Outstanding vs 5yr Avg</button>
+          <button class="ai-quick-btn" onclick="aiQuickAsk('Plot a bar chart of gross sales by top 10 countries this week')">📉 Plot Top 10 Countries</button>
+          <button class="ai-quick-btn" onclick="aiQuickAsk('What is the year-end export projection and how confident are the models?')">🎯 Year-End Projection</button>
+          <button class="ai-quick-btn" onclick="aiQuickAsk('Summarize the key market signals and any cancellations this week')">⚡ Market Signals</button>
+          <button class="ai-quick-btn" onclick="aiQuickAsk('Plot accumulated exports for all loaded years as a line chart by week')">📐 Plot Seasonality</button>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:auto">
+        <div class="ai-sidebar-title">Data Context</div>
+        <div style="font-family:'DM Mono',monospace;font-size:.54rem;color:var(--muted);line-height:1.7" id="aiDataContext">
+          Load data first to enable AI analysis
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat area -->
+    <div class="ai-chat-area">
+      <div class="ai-messages" id="aiMessages">
+        <div class="ai-msg assistant">
+          <div class="ai-msg-avatar">AI</div>
+          <div class="ai-msg-bubble">
+            Hello! I'm your USDA ESR export analysis assistant powered by Groq. I can analyze cotton export data, compare years, identify trends, and plot charts.<br><br>
+            <strong>To get started:</strong><br>
+            1. Enter your Groq API key in the sidebar (free at console.groq.com)<br>
+            2. Load export data in the Dashboard tab<br>
+            3. Ask me anything about the data!
+          </div>
+        </div>
+      </div>
+      <div class="ai-input-row">
+        <textarea class="ai-input" id="aiInput" placeholder="Ask about export data, request a chart, or compare years…"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIMessage()}"
+          rows="1"></textarea>
+        <button class="ai-send-btn" id="aiSendBtn" onclick="sendAIMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+</div><!-- /tab-pane ai -->
+
+<!-- Email Scheduler Panel — GitHub Actions / SMTP -->
 <div class="email-panel" id="emailPanel" style="margin-bottom:0">
   <div class="email-panel-head" onclick="toggleEmailPanel()">
     <div style="display:flex;align-items:center;gap:10px">
       <span style="font-size:1.1rem">📧</span>
       <div>
-        <div class="email-panel-title">Weekly Report Scheduler — Google Apps Script</div>
-        <div style="font-family:'DM Mono',monospace;font-size:.56rem;color:var(--muted);margin-top:2px">Sends via Gmail · No page needs to be open · Runs on Google's servers</div>
+        <div class="email-panel-title">Weekly Report Scheduler — GitHub Actions</div>
+        <div style="font-family:'DM Mono',monospace;font-size:.56rem;color:var(--muted);margin-top:2px">Auto-sends Thu 8:31 AM ET via your SMTP · Fully server-side · No browser required</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -525,7 +721,8 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
     </div>
   </div>
   <div class="email-panel-body" id="emailPanelBody">
-    <!-- Col 1: Recipients + actions -->
+
+    <!-- Col 1: Recipients + subject -->
     <div>
       <div class="email-input-group">
         <label>Recipient Email Addresses</label>
@@ -535,66 +732,66 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
       <div style="margin-top:10px">
         <div class="email-input-group">
           <label>Email Subject (optional override)</label>
-          <input type="text" id="emailSubject" placeholder="USDA ESR Weekly Report — {commodity} {date}" />
+          <input type="text" id="emailSubject" placeholder="USDA ESR Weekly Report — {commodity} {date}" oninput="saveEmailConfig()" />
         </div>
       </div>
       <div class="email-status-bar" id="emailStatusBar"></div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-        <button class="btn" style="font-size:.62rem;padding:7px 16px" onclick="sendReportNow()">⚡ Send Now</button>
-        <button class="btn" style="font-size:.62rem;padding:7px 16px;background:var(--s2);color:var(--muted);border:1px solid var(--border)" onclick="testGASConfig()">✓ Test Connection</button>
+        <button class="btn" style="font-size:.62rem;padding:7px 16px" onclick="triggerGitHubWorkflow()">⚡ Send Now</button>
+        <button class="btn" style="font-size:.62rem;padding:7px 16px;background:var(--s2);color:var(--muted);border:1px solid var(--border)" onclick="checkWorkflowStatus()">↻ Check Status</button>
       </div>
     </div>
-    <!-- Col 2: Schedule info -->
+
+    <!-- Col 2: Schedule display -->
     <div>
       <div class="sched-display">
-        <div class="sched-label">Next Scheduled Send</div>
+        <div class="sched-label">Next Automatic Send</div>
         <div class="sched-next" id="schedNext">—</div>
-        <div class="sched-sub" id="schedSub">Runs automatically via Google Apps Script trigger</div>
+        <div class="sched-sub" id="schedSub">Thursday 8:31 AM ET · GitHub Actions</div>
         <div class="sched-last" id="schedLast"></div>
       </div>
       <div style="margin-top:10px;background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:10px 12px">
-        <div style="font-family:'DM Mono',monospace;font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">How It Works</div>
+        <div style="font-family:'DM Mono',monospace;font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Schedule Logic</div>
         <div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--text);line-height:1.8">
-          ① You paste your Apps Script Web App URL below<br>
-          ② Dashboard POSTs the report HTML to your script<br>
-          ③ Apps Script emails it via <span style="color:var(--green)">your Gmail</span> for free<br>
-          ④ Set a Thursday trigger in Apps Script for auto-send<br>
-          ⑤ <span style="color:var(--green)">Page does not need to be open</span> for scheduled sends
+          ① GitHub cron fires at 8:31 AM ET every Thursday<br>
+          ② Playwright loads your page, renders all charts<br>
+          ③ Sends via your SMTP server (Gmail or any provider)<br>
+          ④ Retries at 8:36 and 8:41 if first attempt fails<br>
+          ⑤ <span style="color:var(--green)">Fully automatic — no browser needed</span>
         </div>
       </div>
     </div>
-    <!-- Col 3: GAS configuration -->
+
+    <!-- Col 3: GitHub API token for manual trigger -->
     <div>
       <div class="ejs-setup">
-        <div class="ejs-setup-title">⚙️ Google Apps Script Setup</div>
+        <div class="ejs-setup-title">⚙️ GitHub Actions Trigger</div>
         <div style="font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);margin-bottom:10px;line-height:1.7">
-          Step 1 · Go to <span style="color:var(--blue)">script.google.com</span><br>
-          Step 2 · Create new project, paste the GAS code<br>
-          Step 3 · Deploy → Web App → Anyone → Copy URL<br>
-          Step 4 · Paste URL + choose a Secret Token below
+          Paste a GitHub Personal Access Token to trigger<br>
+          manual sends from this dashboard (optional).<br>
+          <span style="color:var(--blue)">github.com → Settings → Developer settings → PAT</span>
         </div>
         <div class="ejs-setup-row">
-          <label>Apps Script Web App URL</label>
-          <input type="text" id="gasWebAppUrl" placeholder="https://script.google.com/macros/s/…/exec"
+          <label>GitHub Repo (owner/repo)</label>
+          <input type="text" id="ghRepo" placeholder="BMR-Com/usd-export-sales-email"
             oninput="saveEmailConfig()"
             style="background:var(--s1);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:.62rem;border-radius:2px;width:100%;outline:none" />
         </div>
         <div class="ejs-setup-row" style="margin-top:6px">
-          <label>Secret Token <span style="color:var(--muted2);font-weight:400">(you choose — must match Apps Script)</span></label>
-          <input type="password" id="gasSecret" placeholder="e.g. MyESRToken2024"
+          <label>GitHub Personal Access Token</label>
+          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
             oninput="saveEmailConfig()"
             style="background:var(--s1);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:'DM Mono',monospace;font-size:.62rem;border-radius:2px;width:100%;outline:none" />
         </div>
-        <div style="margin-top:8px">
-          <button class="btn" style="font-size:.58rem;padding:5px 12px;background:var(--s2);color:var(--blue);border:1px solid rgba(79,195,247,.3)"
-            onclick="copyGASCode()">📋 Copy Apps Script Code</button>
-        </div>
         <div style="margin-top:8px;font-family:'DM Mono',monospace;font-size:.52rem;color:var(--muted2);line-height:1.6">
-          Free limits: 100 emails/day (Gmail) · 1,500/day (Workspace)<br>
-          No API keys · No account creation · Uses your Google account
+          Token needs: <span style="color:var(--blue)">repo</span> + <span style="color:var(--blue)">workflow</span> scopes<br>
+          SMTP secrets are set in GitHub repo Settings → Secrets<br>
+          Required secrets: SMTP_HOST · SMTP_PORT · SMTP_USER<br>
+          SMTP_PASS · EMAIL_FROM · EMAIL_TO
         </div>
       </div>
     </div>
+
   </div>
 </div>
 
@@ -688,7 +885,7 @@ async function loadAll(){
   }catch(e){setStatus('err','✗ '+e.message);setLive(false);}finally{btn.disabled=false;}
 }
 
-function renderAll(commCode,commName){populateSeasonCountries(commCode);renderSeasonality(commCode,commName);renderIntelligence(commCode,commName);renderProjections(commCode,commName);renderSummaryTable(commCode,commName);}
+function renderAll(commCode,commName){populateSeasonCountries(commCode);renderSeasonality(commCode,commName);renderIntelligence(commCode,commName);renderProjections(commCode,commName);renderSummaryTable(commCode,commName);renderTable3(commCode);renderTable4(commCode);renderSalesSummary(commCode,commName);loadAIConfig();updateAIDataContext();}
 
 function populateSeasonCountries(commCode){
   const sel=document.getElementById('selSeasonCountries');const codeSet=new Set();
@@ -1114,633 +1311,1445 @@ function buildReportHTML(p){
   const gap=totGross-totShips;
   signals.push({c:gap>0?'#b45309':'#64748b',t:`New sales (${fmtV(totGross)}) ${gap>0?'>':'<'} exports (${fmtV(totShips)}) — balance ${gap>0?'increasing':'decreasing'}`});
 
-  // ── Country table data — exactly matching web page logic ──────────────
-  // allRows filtered same as web page renderSummaryTable
-  const ctAllRows = Object.values(byC).filter(r=>
-    r.currentMYTotalCommitmentTW>0||r.accumulatedExportsTW>0||
-    r.grossNewSalesTW>0||r.outstandingSalesTW>0
-  ).sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW);
+  // Country table data — top 25 + others + total
+  const allRows=Object.values(byC).filter(r=>r.currentMYTotalCommitmentTW>0||r.accumulatedExportsTW>0||r.grossNewSalesTW>0).sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW);
+  const top25=allRows.slice(0,25);
+  const othersRaw=allRows.slice(25);
+  const othK=['grossNewSalesTW','currentMYNetSalesTW','weeklyExportsTW','nextMYNetSalesTW','accumulatedExportsTW','outstandingSalesTW','currentMYTotalCommitmentTW','nextMYOutstandingSalesTW'];
+  const othRow={name:'Others',code:-1};for(const k of othK)othRow[k]=0;for(const r of othersRaw)for(const k of othK)othRow[k]=(othRow[k]||0)+(r[k]||0);
+  const gtRow={name:'GRAND TOTAL',code:0};for(const k of othK)gtRow[k]=0;for(const r of[...top25,othRow])for(const k of othK)gtRow[k]=(gtRow[k]||0)+(r[k]||0);
 
-  const top25     = ctAllRows.slice(0,25);
-  const othersRaw = ctAllRows.slice(25);
+  // Prior-year snap helpers for country tables
+  const snapF=['accumulatedExports','currentMYTotalCommitment','outstandingSales'];
+  const displayYears=[primaryYear,...priorYears.slice(0,3)];
+  const getSnap=(r,y,f)=>{if(y===primaryYear)return r[f+'TW']||0;if(r.name==='GRAND TOTAL')return totSnapByYear[y]?.[f]||0;if(r.name==='Others')return othersRaw.reduce((s,rc)=>s+(snapByYear[y]?.[rc.code]?.[f]||0),0);return snapByYear[y]?.[r.code]?.[f]||0;};
 
-  // emptyRow template with ALL fields (matches web page emptyRow)
-  const emptyR = {name:'',code:-1,
-    grossNewSalesTW:0,grossNewSalesLW:0,
-    currentMYNetSalesTW:0,currentMYNetSalesLW:0,
-    weeklyExportsTW:0,weeklyExportsLW:0,
-    nextMYNetSalesTW:0,nextMYNetSalesLW:0,
-    accumulatedExportsTW:0,outstandingSalesTW:0,
-    currentMYTotalCommitmentTW:0,nextMYOutstandingSalesTW:0};
+  // ── CHART DATA for embedded Chart.js ──────────────────────────────────────
+  const METRICS_PDF=[
+    {id:'grossNewSales',label:'Gross Sales (Weekly)',col:['#92400e','#1e40af','#166534','#6b21a8','#9a3412']},
+    {id:'currentMYNetSales',label:'Net Sales (Weekly)',col:['#1d4ed8','#7c3aed','#0e7490','#065f46','#92400e']},
+    {id:'weeklyExports',label:'Weekly Exports',col:['#166534','#15803d','#1e40af','#6b21a8','#9a3412']},
+    {id:'accumulatedExports',label:'Accumulated Exports',col:['#b45309','#1e40af','#166534','#6b21a8','#dc2626']},
+    {id:'outstandingSales',label:'Outstanding Sales',col:['#6b21a8','#1d4ed8','#166534','#92400e','#9a3412']},
+    {id:'currentMYTotalCommitment',label:'Total Commitment MY',col:['#dc2626','#1e40af','#166534','#6b21a8','#92400e']},
+    {id:'nextMYNetSales',label:'Next MY Net Sales',col:['#166534','#1d4ed8','#6b21a8','#92400e','#dc2626']},
+    {id:'nextMYOutstandingSales',label:'Next MY Outstanding',col:['#0e7490','#1e40af','#166534','#6b21a8','#9a3412']}
+  ];
 
-  // Others row — sum all fields across othersRaw
-  const othRow = {...emptyR, name:'Others', code:-1};
-  for(const r of othersRaw)
-    for(const k of Object.keys(othRow))
-      if(k!=='name'&&k!=='code') othRow[k]=(othRow[k]||0)+(r[k]||0);
+  // Serialize weeklyAgg data for injection into report window
+  const chartDataStr=JSON.stringify({reportYears,weeklyAgg});
 
-  // othersSnap — prior-year snap sums for Others (matches web page othersSnap)
-  const snapFields4=['accumulatedExports','outstandingSales','currentMYTotalCommitment','nextMYOutstandingSales'];
-  const othersSnap={};
-  for(const y of priorYears){
-    othersSnap[y]={};
-    for(const f of snapFields4) othersSnap[y][f]=0;
-    for(const r of othersRaw){
-      const ys=snapByYear[y]?.[r.code]||{};
-      for(const f of snapFields4) othersSnap[y][f]+=(ys[f]||0);
+  const CHART_COLS=['#92400e','#1e40af','#166534','#6b21a8','#9a3412','#0e7490','#7c2d12','#3730a3'];
+
+  // ── REPORT HTML ───────────────────────────────────────────────────────────
+  let H=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>ESR Report — ${commShort} MY${primaryYear}</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Georgia,'Times New Roman',serif;background:white;color:#1e293b;font-size:16.2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:landscape;margin:.38in .42in .38in .42in}
+.page{page-break-after:always;min-height:97vh;position:relative;padding-bottom:14px}
+.page:last-child{page-break-after:auto}
+.rpt-hdr{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #1e293b;padding-bottom:8px;margin-bottom:10px}
+.wordmark{font-family:'Courier New',monospace;font-size:34.2px;font-weight:900;letter-spacing:2px;color:#1e293b}
+.rpt-meta{font-family:'Courier New',monospace;font-size:11.7px;color:#64748b;text-align:right;line-height:1.6}
+.badge{font-family:'Courier New',monospace;font-size:11.7px;background:#1e293b;color:#fbbf24;padding:2px 7px;border-radius:2px}
+.sec-lbl{font-family:'Courier New',monospace;font-size:11.7px;letter-spacing:2.5px;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:3px;margin-bottom:7px;margin-top:12px}
+.sec-lbl:first-of-type{margin-top:0}
+/* Executive summary */
+.summary-box{background:#fffbeb;border:1.5px solid #fbbf24;border-radius:3px;padding:10px 13px;margin-bottom:10px}
+.summary-line{font-family:Georgia,serif;font-size:83.8pxline-height:1.65;color:#1e293b;margin-bottom:4px;padding-bottom:4px;border-bottom:1px dotted #e2e8f0}
+.summary-line:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.s-num{font-family:'Courier New',monospace;font-size:18.9px;color:#b45309;font-weight:bold;margin-right:5px;min-width:16px;display:inline-block}
+/* KPI strip */
+.kpi-strip{display:grid;grid-template-columns:repeat(8,1fr);gap:1px;background:#e2e8f0;border:1px solid #e2e8f0;border-radius:3px;overflow:hidden;margin-bottom:10px}
+.kpi-cell{background:white;padding:6px 7px}
+.kpi-lbl{font-family:'Courier New',monospace;font-size:9.9px;letter-spacing:1px;text-transform:uppercase;color:#64748b;margin-bottom:2px}
+.kpi-val{font-family:'Courier New',monospace;font-size:21.6px;font-weight:bold;color:#1e293b;letter-spacing:.5px;line-height:1.1}
+.kpi-sub{font-family:'Courier New',monospace;font-size:9.9px;margin-top:2px}
+.pos-t{color:#15803d}.neg-t{color:#dc2626}.neu-t{color:#64748b}
+/* Progress bar */
+.prog-bar-wrap{display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:2px;padding:5px 10px;margin-bottom:10px}
+.prog-lbl{font-family:'Courier New',monospace;font-size:10.8px;color:#475569;white-space:nowrap}
+.prog-track{flex:1;height:4px;background:#e2e8f0;border-radius:2px}
+.prog-fill-el{height:4px;border-radius:2px;background:linear-gradient(90deg,#b45309,#d97706)}
+.prog-pct{font-family:'Courier New',monospace;font-size:18px;font-weight:bold;color:#b45309;white-space:nowrap}
+/* Three-col layout */
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:9px 10px}
+.panel-title{font-family:'Courier New',monospace;font-size:41.5px;letter-spacing:2px;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:5px;margin-bottom:7px}
+/* Intel rows */
+.int-row{display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid #f1f5f9}
+.int-row:last-child{border-bottom:none}
+.int-rank{font-family:'Courier New',monospace;font-size:10.8px;color:#94a3b8;width:12px;flex-shrink:0;text-align:right}
+.int-name{font-family:'Courier New',monospace;font-size:11.7px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#1e293b}
+.int-bar-bg{width:36px;height:2.5px;background:#e2e8f0;border-radius:2px;flex-shrink:0}
+.int-bar-fill{height:2.5px;border-radius:2px}
+.int-val{font-family:'Courier New',monospace;font-size:11.7px;text-align:right;flex-shrink:0;min-width:42px;font-weight:500}
+.int-chg{font-family:'Courier New',monospace;font-size:9.9px;text-align:right;flex-shrink:0;min-width:34px}
+/* Signals */
+.sig-row{display:flex;gap:7px;padding:4px 0;border-bottom:1px solid #f1f5f9;align-items:flex-start}
+.sig-row:last-child{border-bottom:none}
+.sig-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.sig-txt{font-family:Georgia,serif;font-size:12.6px;line-height:1.5;color:#1e293b}
+/* Charts */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chart-grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+.chart-container{background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:8px}
+.chart-title{font-family:'Courier New',monospace;font-size:10.8px;letter-spacing:1.5px;text-transform:uppercase;color:#475569;margin-bottom:5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
+.chart-wrap{position:relative}
+/* Country tables */
+.ctry-tbl{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:10.8px}
+.ctry-tbl th{padding:3px 4px;border:1px solid #cbd5e1;text-align:right;font-size:9.9px;letter-spacing:.5px;text-transform:uppercase;color:#475569;background:#f8fafc;white-space:nowrap}
+.ctry-tbl th:first-child{text-align:left;min-width:95px}
+.ctry-tbl td{padding:2.5px 4px;border:1px solid #e2e8f0;text-align:right;white-space:nowrap}
+.ctry-tbl td:first-child{text-align:left;max-width:100px;overflow:hidden;text-overflow:ellipsis}
+.ctry-tbl tr:nth-child(even) td{background:#f8fafc}
+.ctry-tbl tr.others-r td{background:#f1f5f9;color:#64748b}
+.ctry-tbl tr.total-r td{background:#fffbeb;font-weight:bold;border-top:2px solid #fbbf24;color:#1e293b}
+.ctry-tbl tr.total-r td:first-child{color:#92400e}
+.pg-footer{position:absolute;bottom:0;left:0;right:0;border-top:1px solid #e2e8f0;padding:4px 0 0;display:flex;justify-content:space-between;font-family:'Courier New',monospace;font-size:9.9px;color:#94a3b8}
+.no-print{position:fixed;top:14px;right:18px;z-index:999;display:flex;gap:8px}
+.print-btn{background:#1e293b;color:#fbbf24;border:none;padding:8px 18px;font-family:'Courier New',monospace;font-size:19.8px;font-weight:700;letter-spacing:1.5px;cursor:pointer;border-radius:3px}
+.print-btn:hover{background:#334155}
+@media print{.no-print{display:none!important}.page{min-height:0}}
+</style>
+</head><body>
+<div class="no-print">
+  <button class="print-btn" onclick="window.print()">⎙ PRINT / SAVE PDF</button>
+</div>`;
+
+  // ────────────────────────────────────────────────────────────────────────
+  // PAGE 1 — EXECUTIVE SUMMARY + WEEKLY INTELLIGENCE
+  // ────────────────────────────────────────────────────────────────────────
+  H+=`<div class="page">
+<div class="rpt-hdr">
+  <div>
+    <div class="wordmark">ESR EXPORT ANALYTICS</div>
+    <div style="font-family:'Courier New',monospace;font-size:11.7px;color:#64748b;margin-top:2px">USDA Foreign Agricultural Service · Export Sales Reporting · ${commShort}</div>
+  </div>
+  <div class="rpt-meta">
+    <div><span class="badge">WEEKLY REPORT</span></div>
+    <div style="margin-top:3px">Week ending: <strong>${thisWeek}</strong> &nbsp;·&nbsp; Week ${curWkNum} of MY${primaryYear}</div>
+    <div>Generated: ${genDate}</div>
+    <div>Years: ${reportYears.map(y=>'MY'+y).join(' · ')}</div>
+  </div>
+</div>`;
+
+  // Executive Summary
+  H+=`<div class="sec-lbl">▸ 7-Line Executive Summary</div>
+<div class="summary-box">`;
+  summaryLines.forEach((ln,i)=>{
+    H+=`<div class="summary-line"><span class="s-num">[${i+1}]</span>${ln}</div>`;
+  });
+  H+=`</div>`;
+
+  // KPI Strip
+  const pctBadge=(a,b,lbl)=>{if(!b||b===0)return`<span class="neu-t">—</span>`;const v=(a-b)/Math.abs(b)*100;const cls=v>=0?'pos-t':'neg-t';return`<span class="${cls}">${v>=0?'+':''}${v.toFixed(1)}% ${lbl}</span>`;};
+  H+=`<div class="sec-lbl">▸ Key Performance Indicators — Week ${curWkNum} of MY${primaryYear}</div>
+<div class="kpi-strip">
+  <div class="kpi-cell"><div class="kpi-lbl">Gross Sales TW</div><div class="kpi-val">${fmtV(totGross)}</div><div class="kpi-sub">${pctBadge(totGross,totGrossLW,'WoW')}&nbsp;${pctBadge(totGross,lyAccum?null:null,'YoY')}</div></div>
+  <div class="kpi-cell"><div class="kpi-lbl">Weekly Exports TW</div><div class="kpi-val">${fmtV(totShips)}</div><div class="kpi-sub">${pctBadge(totShips,totShipsLW,'WoW')}</div></div>
+  <div class="kpi-cell"><div class="kpi-lbl">Accum Exports</div><div class="kpi-val">${fmtV(totAccum)}</div><div class="kpi-sub">${pctBadge(totAccum,lyAccum,'YoY')}</div></div>
+  <div class="kpi-cell"><div class="kpi-lbl">Outstanding Sales</div><div class="kpi-val">${fmtV(totOutst)}</div><div class="kpi-sub"><span class="neu-t">${coverage} wks cov</span></div></div>
+  <div class="kpi-cell"><div class="kpi-lbl">Total Commitment</div><div class="kpi-val">${fmtV(totCommit)}</div><div class="kpi-sub">${pctBadge(totCommit,lyCommit,'YoY')}</div></div>
+  <div class="kpi-cell"><div class="kpi-lbl">Next MY Outstanding</div><div class="kpi-val">${fmtV(totNextOut)}</div><div class="kpi-sub"><span class="neu-t">fwd bookings</span></div></div>
+  <div class="kpi-cell"><div class="kpi-lbl">MY Progress</div><div class="kpi-val">${pctDone.toFixed(0)}%</div><div class="kpi-sub"><span class="neu-t">Wk ${curWkNum}/52</span></div></div>
+  <div class="kpi-cell"><div class="kpi-lbl">Wks Remaining</div><div class="kpi-val">${52-curWkNum}</div><div class="kpi-sub"><span class="neu-t">of 52</span></div></div>
+</div>
+<div class="prog-bar-wrap">
+  <span class="prog-lbl">MY${primaryYear} MARKETING YEAR PROGRESS — WK ${curWkNum} of 52</span>
+  <div class="prog-track"><div class="prog-fill-el" style="width:${pctDone.toFixed(1)}%"></div></div>
+  <span class="prog-pct">${pctDone.toFixed(0)}%</span>
+  <span class="prog-lbl" style="color:#94a3b8">${52-curWkNum} weeks remaining</span>
+</div>`;
+
+  // Three-panel: buyers | shippers | signals
+  const buyerRows=topBuyers.map((r,i)=>{const wow=r.grossNewSalesLW>0?((r.grossNewSalesTW-r.grossNewSalesLW)/r.grossNewSalesLW*100):null;const bw=Math.round((r.grossNewSalesTW/maxBuyer)*32);return`<div class="int-row"><span class="int-rank">${i+1}</span><span class="int-name">${r.name}</span><div class="int-bar-bg"><div class="int-bar-fill" style="width:${bw}px;background:#b45309"></div></div><span class="int-val" style="color:#b45309">${fmtV(r.grossNewSalesTW)}</span><span class="int-chg ${wow!==null?(wow>=0?'pos-t':'neg-t'):'neu-t'}">${wow!==null?(wow>=0?'+':'')+wow.toFixed(1)+'%':''}</span></div>`;}).join('');
+  const shipRows=topShippers.map((r,i)=>{const bw=Math.round((r.weeklyExportsTW/maxShipper)*32);return`<div class="int-row"><span class="int-rank">${i+1}</span><span class="int-name">${r.name}</span><div class="int-bar-bg"><div class="int-bar-fill" style="width:${bw}px;background:#15803d"></div></div><span class="int-val" style="color:#15803d">${fmtV(r.weeklyExportsTW)}</span></div>`;}).join('');
+  const sigRows=signals.map(s=>`<div class="sig-row"><div class="sig-dot" style="background:${s.c}"></div><div class="sig-txt">${s.t}</div></div>`).join('');
+
+  H+=`<div class="sec-lbl">▸ Weekly Market Intelligence — ${thisWeek}</div>
+<div class="three-col">
+  <div class="panel"><div class="panel-title">Top Buyers — Gross Sales This Week</div>${buyerRows||'<div style="color:#94a3b8;font-size:11.7px;font-family:Courier New">No sales this week</div>'}</div>
+  <div class="panel"><div class="panel-title">Top Destinations — Weekly Shipments</div>${shipRows||'<div style="color:#94a3b8;font-size:11.7px;font-family:Courier New">No shipments</div>'}</div>
+  <div class="panel"><div class="panel-title">Market Signals &amp; Indicators</div>${sigRows}</div>
+</div>
+<div class="pg-footer"><span>USDA FAS ESR · ${commShort} · MY${primaryYear}</span><span>Page 1 of 4</span><span>Week ${curWkNum} ending ${thisWeek}</span></div>
+</div>`;
+
+  // ────────────────────────────────────────────────────────────────────────
+  // PAGES 2 & 3 — SEASONALITY CHARTS (all 8 metrics, 4 per page)
+  // ────────────────────────────────────────────────────────────────────────
+  const METRICS_4=[
+    ['grossNewSales','Gross Sales (Weekly)'],
+    ['currentMYNetSales','Net Sales (Weekly)'],
+    ['weeklyExports','Weekly Exports'],
+    ['accumulatedExports','Accumulated Exports']
+  ];
+  const METRICS_4B=[
+    ['outstandingSales','Outstanding Sales'],
+    ['currentMYTotalCommitment','Total Commitment MY'],
+    ['nextMYNetSales','Next MY Net Sales'],
+    ['nextMYOutstandingSales','Next MY Outstanding']
+  ];
+
+  const chartPageHTML=(metrics,pageNum)=>{
+    let ph=`<div class="page" style="display:flex;flex-direction:column">
+<div class="rpt-hdr">
+  <div><div class="wordmark" style="font-size:25.2px">ESR — SEASONALITY CHARTS</div><div style="font-family:'Courier New',monospace;font-size:11.7px;color:#64748b;margin-top:2px">${commShort} · ${reportYears.slice(0,5).map(y=>'MY'+y).join(' vs ')} · All Countries · Weeks from MY Start</div></div>
+  <div class="rpt-meta"><div><span class="badge">MY${primaryYear}</span></div><div style="margin-top:3px">Week ${curWkNum} ending ${thisWeek}</div></div>
+</div>
+<div class="sec-lbl">▸ Multi-Year Seasonality Comparison — ${metrics.map(m=>m[1]).join(' | ')}</div>
+<div class="chart-grid" style="gap:8px;flex:1">`;
+    metrics.forEach(([metricId,metricLabel],mi)=>{
+      ph+=`<div class="chart-container">
+<div class="chart-title">${metricLabel}</div>
+<div class="chart-wrap" style="height:290px"><canvas id="ch_${metricId}"></canvas></div>
+</div>`;
+    });
+    ph+=`</div>
+<div class="pg-footer"><span>USDA FAS ESR · ${commShort} · MY${primaryYear}</span><span>Page ${pageNum} of 4</span><span>Week ${curWkNum} ending ${thisWeek}</span></div>
+</div>`;
+    return ph;
+  };
+
+  H+=chartPageHTML(METRICS_4,2);
+  H+=chartPageHTML(METRICS_4B,3);
+
+  // ────────────────────────────────────────────────────────────────────────
+  // PAGE 4 — COUNTRY SUMMARY TABLE
+  // ────────────────────────────────────────────────────────────────────────
+  H+=`<div class="page" style="display:flex;flex-direction:column">
+<div class="rpt-hdr">
+  <div><div class="wordmark" style="font-size:25.2px">ESR — COUNTRY SUMMARY</div><div style="font-family:'Courier New',monospace;font-size:11.7px;color:#64748b;margin-top:2px">${commShort} · Top 25 Destinations + Grand Total · Week ${curWkNum} ending ${thisWeek}</div></div>
+  <div class="rpt-meta"><div><span class="badge">MY${primaryYear}</span></div><div style="margin-top:3px">Sorted by Total Commitment</div><div>Historical snap at equivalent Wk ${curWkNum}</div></div>
+</div>
+<div class="sec-lbl">▸ Country Summary — MY${primaryYear} Current Week + Prior Year Comparison (same week)</div>`;
+
+  // Build country table: Country | Current MY metrics | Snap comparison cols
+  // Columns: Country, Gross TW, Net TW, Wkly Exp TW, Accum MY+3prior, Outst MY+3prior, Commit MY+3prior
+  // We compress to fit landscape. Use 3 snap years max.
+  const dispY=[primaryYear,...priorYears.slice(0,3)];
+
+  let ctH=`<table class="ctry-tbl">
+<thead>
+<tr>
+  <th rowspan="2" style="text-align:left;background:#1e293b;color:#e2e8f0;font-size:9.9px">Country</th>
+  <th colspan="4" style="text-align:center;background:#1e293b;color:#fbbf24;font-size:9.9px">── Current Week (MY${primaryYear}) ──</th>
+  <th colspan="${dispY.length}" style="text-align:center;background:#1e293b;color:#6ee7b7;font-size:9.9px">── Accum Exports (same wk) ──</th>
+  <th colspan="${dispY.length}" style="text-align:center;background:#1e293b;color:#93c5fd;font-size:9.9px">── Outstanding Sales (same wk) ──</th>
+  <th colspan="${dispY.length}" style="text-align:center;background:#1e293b;color:#fca5a5;font-size:9.9px">── Total Commitment (same wk) ──</th>
+</tr>
+<tr>
+  <th style="background:#fffbeb;color:#92400e">Gross Sales</th>
+  <th style="background:#fffbeb;color:#475569">Net Sales</th>
+  <th style="background:#fffbeb;color:#15803d">Wkly Exports</th>
+  <th style="background:#fffbeb;color:#1d4ed8">Next MY</th>`;
+  dispY.forEach(y=>{const isPY=y===primaryYear;ctH+=`<th style="background:${isPY?'#fef9c3':'#f0fdf4'};color:${isPY?'#92400e':'#166534'}">MY${y}</th>`;});
+  dispY.forEach(y=>{const isPY=y===primaryYear;ctH+=`<th style="background:${isPY?'#fef9c3':'#eff6ff'};color:${isPY?'#92400e':'#1d4ed8'}">MY${y}</th>`;});
+  dispY.forEach(y=>{const isPY=y===primaryYear;ctH+=`<th style="background:${isPY?'#fef9c3':'#fef2f2'};color:${isPY?'#92400e':'#dc2626'}">MY${y}</th>`;});
+  ctH+=`</tr></thead><tbody>`;
+
+  const renderCtryRow=(r,cls='')=>{
+    let row=`<tr class="${cls}">`;
+    row+=`<td>${r.name}</td>`;
+    row+=`<td>${fmtV(r.grossNewSalesTW)}</td>`;
+    row+=`<td>${fmtV(r.currentMYNetSalesTW)}</td>`;
+    row+=`<td>${fmtV(r.weeklyExportsTW)}</td>`;
+    row+=`<td>${fmtV(r.nextMYNetSalesTW)}</td>`;
+    // Accum for each year
+    dispY.forEach(y=>{
+      const v=getSnap(r,y,'accumulatedExports');
+      const baseV=getSnap(r,primaryYear,'accumulatedExports');
+      const isPY=y===primaryYear;
+      let chg='';
+      if(!isPY&&baseV>0){const pv=(v-baseV)/baseV*100;chg=`<span style="color:${pv>=0?'#15803d':'#dc2626'};font-size:9px;display:block">${pv>=0?'+':''}${pv.toFixed(0)}%</span>`;}
+      row+=`<td style="color:${isPY?'#92400e':'#166534'};font-weight:${isPY?'500':'normal'}">${fmtV(v)}${chg}</td>`;
+    });
+    // Outstanding
+    dispY.forEach(y=>{
+      const v=getSnap(r,y,'outstandingSales');
+      const isPY=y===primaryYear;
+      row+=`<td style="color:${isPY?'#92400e':'#1d4ed8'};font-weight:${isPY?'500':'normal'}">${fmtV(v)}</td>`;
+    });
+    // Commitment
+    dispY.forEach(y=>{
+      const v=getSnap(r,y,'currentMYTotalCommitment');
+      const baseV=getSnap(r,primaryYear,'currentMYTotalCommitment');
+      const isPY=y===primaryYear;
+      let chg='';
+      if(!isPY&&baseV>0){const pv=(v-baseV)/baseV*100;chg=`<span style="color:${pv>=0?'#15803d':'#dc2626'};font-size:9px;display:block">${pv>=0?'+':''}${pv.toFixed(0)}%</span>`;}
+      row+=`<td style="color:${isPY?'#92400e':'#dc2626'};font-weight:${isPY?'500':'normal'}">${fmtV(v)}${chg}</td>`;
+    });
+    row+=`</tr>`;
+    return row;
+  };
+
+  top25.forEach(r=>{ctH+=renderCtryRow(r);});
+  if(othersRaw.length>0) ctH+=renderCtryRow(othRow,'others-r');
+  ctH+=renderCtryRow(gtRow,'total-r');
+  ctH+=`</tbody></table>`;
+  H+=ctH;
+
+  H+=`<div class="pg-footer"><span>USDA FAS ESR · ${commShort} · MY${primaryYear}</span><span>Page 4 of 4</span><span>Week ${curWkNum} ending ${thisWeek} · Sorted by Total Commitment · Top 25 + Grand Total</span></div>
+</div>`;
+
+  // ────────────────────────────────────────────────────────────────────────
+  // CHART RENDERING SCRIPT
+  // ────────────────────────────────────────────────────────────────────────
+  H+=`<script>
+(function(){
+  const DATA=${chartDataStr};
+  const{reportYears,weeklyAgg}=DATA;
+  const COLS=['#92400e','#1e40af','#166534','#6b21a8','#9a3412','#0e7490'];
+  const METRICS=['grossNewSales','currentMYNetSales','weeklyExports','accumulatedExports','outstandingSales','currentMYTotalCommitment','nextMYNetSales','nextMYOutstandingSales'];
+  function fmtV(v){if(v==null||isNaN(+v))return'';const n=+v;if(Math.abs(n)>=1e6)return(n/1e6).toFixed(1)+'M';if(Math.abs(n)>=1e3)return(n/1e3).toFixed(0)+'K';return n.toLocaleString();}
+  METRICS.forEach(function(metric){
+    const canvas=document.getElementById('ch_'+metric);
+    if(!canvas)return;
+    const yearsSorted=[...reportYears].sort((a,b)=>b-a);
+    const yearWeekMaps={};
+    for(const y of yearsSorted){
+      const weeks=weeklyAgg[y]||[];yearWeekMaps[y]={};
+      for(const w of weeks){if(w.wkNum>=1&&w.wkNum<=55)yearWeekMaps[y][w.wkNum]={value:w[metric]||0};}
     }
-  }
-
-  // displayRows = top25 + Others
-  const ctDisplayRows=[...top25,...(othersRaw.length>0?[othRow]:[])];
-
-  // Total row — sum displayRows (same as web page tot)
-  const totRow = {...emptyR, name:'TOTAL', code:0};
-  for(const r of ctDisplayRows)
-    for(const k of Object.keys(totRow))
-      if(k!=='name'&&k!=='code') totRow[k]=(totRow[k]||0)+(r[k]||0);
-
-  // totSnap — use weeklyAgg totals at same week (matches web page totSnap)
-  // web page: aggregateByWeek then find week entry at latestWkNum
-  const fourYears=[primaryYear,...priorYears.slice(0,3)];
-  const totSnap={};
-  for(const y of priorYears){
-    if(!globalData[y]){totSnap[y]={};continue;}
-    const yWeeks=weeklyAgg[y]||[];
-    let te=null;
-    for(const w of yWeeks) if(w.wkNum<=latestWkNum) te=w;
-    totSnap[y]=te||{};
-  }
-
-  // getSnap — mirrors web page rowHtml2 logic exactly
-  const getSnap=(r,y,f)=>{
-    if(y===primaryYear) return r[f+'TW']||0;
-    if(r.name==='TOTAL') return totSnap[y]?.[f]||0;
-    if(r.name==='Others') return othersSnap[y]?.[f]||0;
-    return snapByYear[y]?.[r.code]?.[f]||0;
-  };
-
-  // Style helpers
-  const thSm='padding:5px 6px;border:1px solid #334155;font-size:9px;text-align:right;font-family:Courier New,monospace;white-space:nowrap';
-  const tdSm='padding:3px 5px;border:1px solid #e2e8f0;font-size:9px;text-align:right;font-family:Courier New,monospace;white-space:nowrap';
-
-  // ── TABLE 1: TW / LW / Δ  (matches web page Table 1) ────────────────────
-  const twCols=[
-    {key:'grossNewSales',    label:'Gross Sales',   col:'#b45309'},
-    {key:'currentMYNetSales',label:'Net Sales',     col:'#475569'},
-    {key:'weeklyExports',   label:'Wkly Exports',  col:'#15803d'},
-    {key:'nextMYNetSales',  label:'Next MY Sales', col:'#1d4ed8'}
-  ];
-
-  const rowT1=(r,bg,bold)=>{
-    const isTot=r.name==='TOTAL', isOth=r.name==='Others';
-    const nm=isTot?`<strong>${r.name}</strong>`:isOth?`<em style="color:#64748b">${r.name}</em>`:r.name;
-    let row=`<tr style="background:${bg}"><td style="${tdSm};text-align:left;font-weight:${bold?'bold':'normal'};min-width:80px">${nm}</td>`;
-    twCols.forEach(col=>{
-      const tw=r[col.key+'TW']||0, lw=r[col.key+'LW']||0;
-      const d=tw-lw;
-      // Δ: show absolute value (like web page fmtD), no % for total row
-      const dStr = isTot ? fmtV(d) : (d===0?'\u2014':(d>0?'+':'')+fmtV(d));
-      const dc   = d>0?'#15803d':d<0?'#dc2626':'#64748b';
-      row+=`<td style="${tdSm};color:${col.col};font-weight:${bold?'bold':'normal'}">${fmtV(tw)}</td>`;
-      row+=`<td style="${tdSm};color:#64748b">${fmtV(lw)}</td>`;
-      row+=`<td style="${tdSm};color:${bold?'#1e293b':dc};font-weight:${bold?'bold':'normal'}">${bold?fmtV(d):dStr}</td>`;
-    });
-    return row+'</tr>';
-  };
-
-  H+=`<div style="padding:14px 24px 0">
-  <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">COUNTRY TABLE 1 \u2014 THIS WEEK / LAST WEEK / CHANGE (TOP 25)</div>
-  <div style="overflow-x:auto"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
-  <thead><tr><th style="${thSm};text-align:left;background:#1e293b;color:#e2e8f0" rowspan="2">Country</th>`;
-  twCols.forEach(col=>{ H+=`<th colspan="3" style="${thSm};text-align:center;background:#1e293b;color:${col.col}">${col.label}</th>`; });
-  H+=`</tr><tr>`;
-  twCols.forEach(()=>{
-    H+=`<th style="${thSm};background:#0f172a;color:#94a3b8">TW</th>`;
-    H+=`<th style="${thSm};background:#0f172a;color:#64748b">LW</th>`;
-    H+=`<th style="${thSm};background:#0f172a;color:#64748b">\u0394</th>`;
+    let maxWk=52;
+    for(const y of yearsSorted) for(const wk of Object.keys(yearWeekMaps[y]||{})) maxWk=Math.max(maxWk,+wk);
+    const allWks=[];for(let wk=1;wk<=maxWk;wk++)allWks.push(wk);
+    const datasets=[];
+    for(let i=0;i<yearsSorted.length;i++){
+      const y=yearsSorted[i];if(!yearWeekMaps[y])continue;
+      const color=COLS[i%COLS.length];
+      const pts=allWks.map(wk=>{const e=yearWeekMaps[y][wk];return e!==undefined?{x:wk,y:e.value}:{x:wk,y:null};});
+      datasets.push({label:'MY'+y,data:pts,borderColor:color,backgroundColor:color+'18',borderWidth:i===0?2:1,borderDash:i===0?[]:[4,3],pointRadius:0,tension:0.3,fill:false,spanGaps:false});
+    }
+    new Chart(canvas.getContext('2d'),{type:'line',data:{datasets},options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},interaction:{mode:'index',axis:'x',intersect:false},plugins:{legend:{display:true,position:'top',labels:{color:'#475569',font:{family:'Courier New',size:12},boxWidth:12,padding:6,boxHeight:2}},tooltip:{enabled:true,backgroundColor:'rgba(30,41,59,0.9)',titleFont:{family:'Courier New',size:15},bodyFont:{family:'Courier New',size:12},padding:6,callbacks:{label:function(item){if(item.raw===null)return null;return ' MY'+(+item.dataset.label.replace('MY',''))+': '+fmtV(item.raw.y);}}}},scales:{x:{type:'linear',min:1,max:maxWk,ticks:{color:'#94a3b8',font:{family:'Courier New',size:10},stepSize:8,callback:function(v){return Number.isInteger(v)?'W'+v:''}},grid:{color:'#e2e8f0'}},y:{ticks:{color:'#94a3b8',font:{family:'Courier New',size:10},callback:function(v){return fmtV(v)}},grid:{color:'#e2e8f0'}}}}});
   });
-  H+='</tr></thead><tbody>';
-  top25.forEach((r,i)=>{ H+=rowT1(r,i%2===0?'#fff':'#f8fafc',false); });
-  if(othersRaw.length>0) H+=rowT1(othRow,'#f1f5f9',false);
-  H+=rowT1(totRow,'#fffbeb',true);
-  H+='</tbody></table></div></div>';
-
-  // ── TABLE 2: 4-year snap (matches web page Table 2) ──────────────────────
-  const snapCols=[
-    {key:'accumulatedExports',        label:'Accum Exports', col:'#166534'},
-    {key:'outstandingSales',          label:'Outstanding',   col:'#1d4ed8'},
-    {key:'currentMYTotalCommitment',  label:'Total Commit',  col:'#dc2626'},
-    {key:'nextMYOutstandingSales',    label:'Next MY Outst', col:'#0e7490'}
-  ];
-
-  const rowT2=(r,bg,bold)=>{
-    const isTot=r.name==='TOTAL', isOth=r.name==='Others';
-    const nm=isTot?`<strong>${r.name}</strong>`:isOth?`<em style="color:#64748b">${r.name}</em>`:r.name;
-    let row=`<tr style="background:${bg}"><td style="${tdSm};text-align:left;font-weight:${bold?'bold':'normal'};min-width:80px">${nm}</td>`;
-    snapCols.forEach(col=>{
-      fourYears.forEach(y=>{
-        const isPY=y===primaryYear;
-        const val=getSnap(r,y,col.key);
-        const pyVal=isPY?null:getSnap(r,primaryYear,col.key);
-        const chg=(!isPY&&!bold&&pyVal>0)
-          ? ` <span style="color:${val>=pyVal?'#15803d':'#dc2626'}">${pctFmt(val,pyVal)}</span>` : '';
-        row+=`<td style="${tdSm};color:${isPY?col.col:'#64748b'};font-weight:${isPY||bold?'bold':'normal'}">${fmtV(val)}${chg}</td>`;
-      });
-    });
-    return row+'</tr>';
-  };
-
-  H+=`<div style="padding:14px 24px 0">
-  <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">COUNTRY TABLE 2 \u2014 ${fourYears.length}-YEAR COMPARISON AT SAME WEEK (TOP 25)</div>
-  <div style="overflow-x:auto"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
-  <thead><tr><th style="${thSm};text-align:left;background:#1e293b;color:#e2e8f0" rowspan="2">Country</th>`;
-  snapCols.forEach(col=>{ H+=`<th colspan="${fourYears.length}" style="${thSm};text-align:center;background:#1e293b;color:${col.col}">${col.label}</th>`; });
-  H+=`</tr><tr>`;
-  snapCols.forEach(()=>{
-    fourYears.forEach(y=>{ H+=`<th style="${thSm};background:#0f172a;color:${y===primaryYear?'#fbbf24':'#64748b'}">MY${y}</th>`; });
-  });
-  H+='</tr></thead><tbody>';
-  top25.forEach((r,i)=>{ H+=rowT2(r,i%2===0?'#fff':'#f8fafc',false); });
-  if(othersRaw.length>0) H+=rowT2(othRow,'#f1f5f9',false);
-  H+=rowT2(totRow,'#fffbeb',true);
-  H+='</tbody></table></div></div>';
-
-  // Footer
-  H+=`<div style="background:#1e293b;padding:12px 24px;margin-top:16px">
-    <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td style="font-family:Courier New,monospace;font-size:10px;color:#64748b">USDA FAS ESR &nbsp;\u00b7&nbsp; ${commShort} &nbsp;\u00b7&nbsp; MY${primaryYear} &nbsp;\u00b7&nbsp; Week ${curWkNum} ending ${thisWeek}</td>
-      <td align="right" style="font-family:Courier New,monospace;font-size:10px;color:#64748b">Generated ${genDate} &nbsp;\u00b7&nbsp; ESR Analytics Dashboard</td>
-    </tr></table>
-  </div></div></body></html>`;
-
+})();
+<\/script>
+</body></html>`;
   return H;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// buildEmailReportHTML — renders live data + chart screenshots
+// into a fully static HTML email (no JS, no canvas).
+// Charts captured as compressed JPEG base64 inline images.
+// ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════
-// EMAIL SCHEDULER — Google Apps Script
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════════════
+function switchTab(name){
+  document.querySelectorAll('.main-tab').forEach((t,i)=>{
+    t.classList.toggle('active', ['dashboard','ai'][i]===name);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p=>{
+    p.classList.toggle('active', p.id==='tab-'+name);
+  });
+  if(name==='ai') updateAIDataContext();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TABLE 3 — 8-WEEK GROSS SALES + EXPORTS TREND
+// ═══════════════════════════════════════════════════════════════════════
+function renderTable3(commCode){
+  const c = document.getElementById('summaryTbl3');
+  const data = globalData[primaryYear];
+  if(!data){ c.innerHTML='<div class="empty">No data</div>'; return; }
+
+  // Get all weekly dates sorted descending — last 8 weeks
+  const allDates = [...new Set(data.map(r=>String(r.weekEndingDate||'').split('T')[0]).filter(Boolean))].sort().reverse();
+  const weeks8 = allDates.slice(0,8).reverse(); // oldest→newest
+  if(!weeks8.length){ c.innerHTML='<div class="empty">No weekly data</div>'; return; }
+
+  // Aggregate by country for each week
+  const byCountryWeek = {};
+  for(const r of data){
+    const cc = r.countryCode; if(!cc||cc===0) continue;
+    const dt = String(r.weekEndingDate||'').split('T')[0];
+    if(!weeks8.includes(dt)) continue;
+    if(!byCountryWeek[cc]) byCountryWeek[cc]={};
+    if(!byCountryWeek[cc][dt]) byCountryWeek[cc][dt]={gross:0,exports:0};
+    byCountryWeek[cc][dt].gross   += +(r.grossNewSales||0);
+    byCountryWeek[cc][dt].exports += +(r.weeklyExports||0);
+  }
+
+  // Get same country set as table 1/2 (sorted by current commitment)
+  const {byC} = aggregateByCountry(data);
+  const allRows = Object.values(byC)
+    .filter(r=>r.currentMYTotalCommitmentTW>0||r.accumulatedExportsTW>0)
+    .sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW);
+  const top15 = allRows.slice(0,15);
+  const others = allRows.slice(15);
+
+  // Short date labels MM/DD
+  const dateLbls = weeks8.map(d=>{ const p=d.split('-'); return p[1]+'/'+p[2]; });
+
+  let h = '<table><colgroup><col style="width:13%">';
+  for(let i=0;i<8;i++) h+=`<col style="width:${(44/8).toFixed(1)}%">`;
+  for(let i=0;i<8;i++) h+=`<col style="width:${(43/8).toFixed(1)}%">`;
+  h+='</colgroup>';
+
+  // Header
+  h+=`<thead><tr class="grp-row">
+    <th rowspan="2">Country</th>
+    <th colspan="8">── Gross New Sales (weekly RB) ──</th>
+    <th colspan="8">── Weekly Exports (RB) ──</th>
+  </tr><tr class="hd-row">`;
+  dateLbls.forEach(d=>h+=`<th>${d}</th>`);
+  dateLbls.forEach(d=>h+=`<th>${d}</th>`);
+  h+='</tr></thead><tbody>';
+
+  const rowHtml3 = (cobj, rowType) => {
+    const cc = cobj.code;
+    const isTot = rowType==='total', isOth = rowType==='others';
+    const nm = isTot?`<strong>${cobj.name}</strong>`:isOth?`<em style="color:var(--muted)">${cobj.name}</em>`:cobj.name;
+    let td=`<td>${nm}</td>`;
+    // Gross sales cells
+    weeks8.forEach(dt=>{
+      let v = isOth
+        ? others.reduce((s,r)=>(byCountryWeek[r.code]?.[dt]?.gross||0)+s,0)
+        : isTot
+        ? allRows.reduce((s,r)=>(byCountryWeek[r.code]?.[dt]?.gross||0)+s,0)
+        : (byCountryWeek[cc]?.[dt]?.gross||0);
+      td+=`<td>${fmt(v)}</td>`;
+    });
+    // Export cells
+    weeks8.forEach(dt=>{
+      let v = isOth
+        ? others.reduce((s,r)=>(byCountryWeek[r.code]?.[dt]?.exports||0)+s,0)
+        : isTot
+        ? allRows.reduce((s,r)=>(byCountryWeek[r.code]?.[dt]?.exports||0)+s,0)
+        : (byCountryWeek[cc]?.[dt]?.exports||0);
+      td+=`<td style="color:var(--green)">${fmt(v)}</td>`;
+    });
+    const cls = isTot?' class="total-row"':isOth?' class="others-row"':'';
+    return `<tr${cls}>${td}</tr>`;
+  };
+
+  top15.forEach(r=>{ h+=rowHtml3(r,'normal'); });
+  if(others.length>0){
+    const othObj={name:'Others',code:-99,...Object.fromEntries(Object.keys(byC[Object.keys(byC)[0]]||{}).map(k=>[k,0]))};
+    h+=rowHtml3(othObj,'others');
+  }
+  // Total row
+  const totObj={name:'TOTAL',code:-1};
+  h+=rowHtml3(totObj,'total');
+  h+='</tbody></table>';
+  c.innerHTML=h;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TABLE 4 — PERCENTILE RANGE BARS
+// ═══════════════════════════════════════════════════════════════════════
+function renderTable4(commCode){
+  const c = document.getElementById('summaryTbl4');
+  if(allLoadedYears.length<2){ c.innerHTML='<div class="empty">Load multiple years to see percentile ranges</div>'; return; }
+
+  const FIELDS=[
+    {key:'outstandingSales',     label:'Outstanding Sales'},
+    {key:'accumulatedExports',   label:'Accum Exports'},
+    {key:'currentMYTotalCommitment', label:'Total Commitment'},
+    {key:'nextMYOutstandingSales',label:'Next MY Outstanding'},
+  ];
+
+  // Gather per-field values across all loaded years at same week number
+  const {byC} = aggregateByCountry(globalData[primaryYear]);
+  const primaryWeeks = aggregateByWeek(globalData[primaryYear], commCode, primaryYear);
+  let curWkNum=0;
+  for(const w of primaryWeeks) if(w.accumulatedExports>0||w.weeklyExports>0) curWkNum=w.wkNum;
+
+  // For each prior year: get value at same week number
+  const histTotals={}; // field -> [{year, val}]
+  FIELDS.forEach(f=>{ histTotals[f.key]=[]; });
+
+  const priorYears = allLoadedYears.filter(y=>y!==primaryYear);
+  for(const y of priorYears){
+    if(!globalData[y]) continue;
+    const yWeeks = aggregateByWeek(globalData[y], commCode, y);
+    let snap=null;
+    for(const w of yWeeks) if(w.wkNum<=curWkNum) snap=w;
+    if(!snap) continue;
+    FIELDS.forEach(f=>{ histTotals[f.key].push({year:y, val:snap[f.key]||0}); });
+  }
+
+  // Current totals
+  const {byC:byCurrent} = aggregateByCountry(globalData[primaryYear]);
+  const allRows = Object.values(byCurrent)
+    .filter(r=>r.currentMYTotalCommitmentTW>0||r.accumulatedExportsTW>0)
+    .sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW);
+  const top15 = allRows.slice(0,15);
+  const others = allRows.slice(15);
+
+  // Build percentile bar HTML for one value given historical array
+  function pctBarHtml(curVal, histVals, label){
+    if(!histVals.length) return `<div style="font-family:'DM Mono',monospace;font-size:.55rem;color:var(--muted)">${fmt(curVal)}</div>`;
+    const sorted = [...histVals].sort((a,b)=>a-b);
+    const min5  = sorted.length>=5  ? Math.min(...sorted.slice(-5).map(v=>v))  : null;
+    const max5  = sorted.length>=5  ? Math.max(...sorted.slice(-5).map(v=>v))  : null;
+    const min10 = sorted.length>=10 ? Math.min(...sorted.slice(-10).map(v=>v)) : null;
+    const max10 = sorted.length>=10 ? Math.max(...sorted.slice(-10).map(v=>v)) : null;
+    const minA  = sorted[0], maxA = sorted[sorted.length-1];
+
+    // Percentile rank in all-history
+    const rank = sorted.filter(v=>v<=curVal).length / sorted.length * 100;
+
+    const bar = (min,max,cur,lbl,color) => {
+      if(min===null||max===null||max===min) return '';
+      const rangeL = Math.max(0,Math.min(100,((min-minA)/(maxA-minA||1))*100));
+      const rangeW = Math.max(0,Math.min(100-rangeL,((max-min)/(maxA-minA||1))*100));
+      const dotP   = Math.max(0,Math.min(100,((cur-minA)/(maxA-minA||1))*100));
+      return `<div class="pct-bar-row">
+        <span class="pct-bar-lbl" style="color:${color}">${lbl}</span>
+        <div class="pct-track">
+          <div class="pct-range" style="left:${rangeL.toFixed(1)}%;width:${rangeW.toFixed(1)}%;background:${color}33"></div>
+          <div class="pct-dot" style="left:${dotP.toFixed(1)}%;background:${color}"></div>
+        </div>
+        <span class="pct-val">${fmt(curVal)}</span>
+      </div>`;
+    };
+
+    return `<div class="pct-bar-wrap">
+      ${bar(min5,max5,curVal,'5y','#4fc3f7')}
+      ${bar(min10,max10,curVal,'10y','#6fcf97')}
+      ${bar(minA,maxA,curVal,'All','#e8c547')}
+      <div style="font-family:'DM Mono',monospace;font-size:.5rem;color:var(--muted);text-align:right;margin-top:1px">${rank.toFixed(0)}th %ile</div>
+    </div>`;
+  }
+
+  // Aggregate hist totals (TOTAL row only — computing by country requires all hist country data)
+  const histByCountry={}; // countryCode -> field -> [vals]
+  for(const y of priorYears){
+    if(!globalData[y]) continue;
+    const yWeeks = aggregateByWeek(globalData[y], commCode, y);
+    let snapDate=null;
+    for(const w of yWeeks) if(w.wkNum<=curWkNum) snapDate=w.date;
+    if(!snapDate) continue;
+    for(const r of globalData[y]){
+      const cc=r.countryCode; if(!cc||cc===0) continue;
+      const dt=String(r.weekEndingDate||'').split('T')[0];
+      if(dt!==snapDate) continue;
+      if(!histByCountry[cc]) histByCountry[cc]={};
+      FIELDS.forEach(f=>{
+        if(!histByCountry[cc][f.key]) histByCountry[cc][f.key]=[];
+        histByCountry[cc][f.key].push(+(r[f.key]||0));
+      });
+    }
+  }
+
+  // Build table
+  let h='<table><colgroup><col style="width:13%">';
+  FIELDS.forEach(()=>h+='<col style="width:21.75%">');
+  h+='</colgroup>';
+  h+=`<thead><tr class="grp-row"><th>Country</th>`;
+  FIELDS.forEach(f=>h+=`<th>${f.label}</th>`);
+  h+='</tr></thead><tbody>';
+
+  const rowHtml4=(r, rowType)=>{
+    const isTot=rowType==='total', isOth=rowType==='others';
+    const nm=isTot?`<strong>${r.name}</strong>`:isOth?`<em style="color:var(--muted)">${r.name}</em>`:r.name;
+    let td=`<td>${nm}</td>`;
+    FIELDS.forEach(f=>{
+      let curVal,histVals;
+      if(isTot){
+        curVal = allRows.reduce((s,row)=>(row[f.key+'TW']||0)+s,0);
+        histVals = histTotals[f.key].map(x=>x.val);
+      } else if(isOth){
+        curVal = others.reduce((s,row)=>(row[f.key+'TW']||0)+s,0);
+        histVals = priorYears.map(y=>{
+          if(!globalData[y]) return null;
+          // sum others countries
+          const sumO = others.reduce((s,row)=>{
+            return s+(histByCountry[row.code]?.[f.key]?.[priorYears.indexOf(y)]||0);
+          },0);
+          return sumO;
+        }).filter(v=>v!==null);
+      } else {
+        curVal = r[f.key+'TW']||0;
+        histVals = (histByCountry[r.code]?.[f.key]||[]);
+      }
+      td+=`<td>${pctBarHtml(curVal, histVals, f.label)}</td>`;
+    });
+    const cls=isTot?' class="total-row"':isOth?' class="others-row"':'';
+    return `<tr${cls}>${td}</tr>`;
+  };
+
+  top15.forEach(r=>h+=rowHtml4(r,'normal'));
+  if(others.length>0){
+    const othObj={name:'Others',code:-99,...Object.fromEntries(FIELDS.map(f=>[f.key+'TW', others.reduce((s,r)=>(r[f.key+'TW']||0)+s,0)]))};
+    h+=rowHtml4(othObj,'others');
+  }
+  const totObj={name:'TOTAL',code:-1,...Object.fromEntries(FIELDS.map(f=>[f.key+'TW', allRows.reduce((s,r)=>(r[f.key+'TW']||0)+s,0)]))};
+  h+=rowHtml4(totObj,'total');
+  h+='</tbody></table>';
+  c.innerHTML=h;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// EXPORT SALES SUMMARY — rule-based narrative
+// ═══════════════════════════════════════════════════════════════════════
+function renderSalesSummary(commCode, commName){
+  const card = document.getElementById('salesSummaryCard');
+  const data = globalData[primaryYear];
+  if(!data){ card.style.display='none'; return; }
+  card.style.display='';
+
+  const {byC, thisWeek} = aggregateByCountry(data);
+  const allC = Object.values(byC);
+  const primaryWeeks = aggregateByWeek(data, commCode, primaryYear);
+  let currWk=null;
+  for(const w of primaryWeeks) if(w.accumulatedExports>0||w.weeklyExports>0||w.grossNewSales>0) currWk=w;
+  if(!currWk && primaryWeeks.length) currWk=primaryWeeks[primaryWeeks.length-1];
+  if(!currWk){ card.style.display='none'; return; }
+
+  const priorYears = allLoadedYears.filter(y=>y!==primaryYear).sort((a,b)=>b-a);
+  const commShort = commName.split('·').slice(1).join('·').trim()||commName;
+
+  // Current totals
+  const totGross  = allC.reduce((s,r)=>s+(r.grossNewSalesTW||0),0);
+  const totShips  = allC.reduce((s,r)=>s+(r.weeklyExportsTW||0),0);
+  const totAccum  = allC.reduce((s,r)=>s+(r.accumulatedExportsTW||0),0);
+  const totOutst  = allC.reduce((s,r)=>s+(r.outstandingSalesTW||0),0);
+  const totCommit = allC.reduce((s,r)=>s+(r.currentMYTotalCommitmentTW||0),0);
+  const totNextOut= allC.reduce((s,r)=>s+(r.nextMYOutstandingSalesTW||0),0);
+
+  // Prior year at same week
+  let lyAccum=null,lyShips=null,lyGross=null,lyCommit=null,lyOutst=null,lyNext=null;
+  if(priorYears[0]&&globalData[priorYears[0]]){
+    const lyW = aggregateByWeek(globalData[priorYears[0]],commCode,priorYears[0]);
+    let snap=null; for(const w of lyW) if(w.wkNum<=currWk.wkNum) snap=w;
+    if(snap){ lyAccum=snap.accumulatedExports; lyShips=snap.weeklyExports;
+      lyGross=snap.grossNewSales; lyCommit=snap.currentMYTotalCommitment;
+      lyOutst=snap.outstandingSales; lyNext=snap.nextMYOutstandingSales; }
+  }
+
+  // Multi-year avg
+  const histVals={accum:[],ships:[],gross:[],commit:[],outst:[],next:[]};
+  for(const y of priorYears){
+    if(!globalData[y]) continue;
+    const yW=aggregateByWeek(globalData[y],commCode,y);
+    let snap=null; for(const w of yW) if(w.wkNum<=currWk.wkNum) snap=w;
+    if(!snap) continue;
+    histVals.accum.push(snap.accumulatedExports||0);
+    histVals.ships.push(snap.weeklyExports||0);
+    histVals.gross.push(snap.grossNewSales||0);
+    histVals.commit.push(snap.currentMYTotalCommitment||0);
+    histVals.outst.push(snap.outstandingSales||0);
+    histVals.next.push(snap.nextMYOutstandingSales||0);
+  }
+
+  const avg=arr=>arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;
+  const pctileRank=(val,arr)=>{
+    if(!arr.length) return null;
+    return (arr.filter(v=>v<=val).length/arr.length*100).toFixed(0);
+  };
+  const pct=(a,b)=>b&&b!==0?((a-b)/Math.abs(b)*100):null;
+  const fmtPct=v=>v===null?'—':`${v>=0?'+':''}${(+v).toFixed(1)}%`;
+  const hi=(v,cls)=>`<span class="${cls}">${v}</span>`;
+
+  // Accumulation comparison
+  const accumYoY = pct(totAccum,lyAccum);
+  const accumAvg = avg(histVals.accum);
+  const accumAvgPct = pct(totAccum,accumAvg);
+  const accumPctile = pctileRank(totAccum, histVals.accum);
+
+  // Shipment comparison
+  const shipsYoY = pct(totShips,lyShips);
+  const shipsAvgPct = pct(totShips,avg(histVals.ships));
+
+  // Outstanding
+  const outstYoY = pct(totOutst,lyOutst);
+  const outstPctile = pctileRank(totOutst, histVals.outst);
+
+  // Commitment
+  const commitYoY = pct(totCommit,lyCommit);
+  const commitPctile = pctileRank(totCommit, histVals.commit);
+
+  // Next MY
+  const nextYoY = pct(totNextOut,lyNext);
+  const nextPctile = pctileRank(totNextOut, histVals.next);
+
+  const nYears = priorYears.length;
+  const avgLabel = `${nYears}-year avg`;
+  const wkLabel  = `Week ${currWk.wkNum}`;
+  const avgPace  = currWk.wkNum>0?totAccum/currWk.wkNum:0;
+  const coverage = avgPace>0?(totOutst/avgPace).toFixed(1):'N/A';
+
+  // Build narrative paragraphs
+  const paras=[];
+
+  paras.push(`<p>Through <span class="summary-highlight">${wkLabel} of MY${primaryYear}</span> (week ending ${thisWeek}), 
+    <span class="summary-highlight">${commShort}</span> cumulative exports stand at 
+    <span class="summary-highlight">${fmt(totAccum)}</span> running bales — 
+    <span class="${accumYoY>=0?'summary-pos':'summary-neg'}">${fmtPct(accumYoY)} versus MY${priorYears[0]||'prior'}</span> at the same stage 
+    and <span class="${accumAvgPct>=0?'summary-pos':'summary-neg'}">${fmtPct(accumAvgPct)} versus the ${avgLabel}</span>. 
+    At ${accumPctile!==null?`the <span class="summary-highlight">${accumPctile}th percentile</span> of the historical range`:'a historically notable level'}, 
+    shipment pace is ${+accumPctile>=60?'<span class="summary-pos">above average</span>':+accumPctile>=40?'near the historical median':'<span class="summary-neg">below average</span>'} for this point in the marketing year.</p>`);
+
+  paras.push(`<p>This week's <span class="summary-highlight">gross new sales of ${fmt(totGross)}</span> 
+    (${hi(fmtPct(shipsYoY),'summary-'+(shipsYoY>=0?'pos':'neg'))} YoY) and 
+    <span class="summary-highlight">weekly exports of ${fmt(totShips)}</span> 
+    (${hi(fmtPct(shipsYoY),'summary-'+(shipsYoY>=0?'pos':'neg'))} YoY) 
+    ${totGross>totShips?'reflect a net <span class="summary-pos">positive booking balance</span> — new sales exceeded shipments, growing the forward pipeline':'show shipments outpacing new bookings, gradually <span class="summary-neg">drawing down the outstanding balance</span>'}. 
+    Outstanding sales of <span class="summary-highlight">${fmt(totOutst)}</span> 
+    represent approximately <span class="summary-highlight">${coverage} weeks</span> of shipment coverage at the current pace — 
+    ranked at the <span class="${+outstPctile>=50?'summary-pos':'summary-neg'}">${outstPctile||'—'}th percentile</span> historically.</p>`);
+
+  paras.push(`<p>Total MY${primaryYear} commitment of <span class="summary-highlight">${fmt(totCommit)}</span> 
+    is <span class="${commitYoY>=0?'summary-pos':'summary-neg'}">${fmtPct(commitYoY)}</span> versus MY${priorYears[0]||'prior'} 
+    and ranks at the <span class="summary-highlight">${commitPctile||'—'}th percentile</span> of the ${nYears}-year historical range at this week. 
+    ${+commitPctile>=70?'The strong commitment level indicates robust importer demand and well-supported price discovery.':
+      +commitPctile>=40?'Commitment is tracking near historical norms, suggesting balanced supply-demand fundamentals.':
+      'Below-average commitment warrants monitoring as a potential headwind for year-end export pace.'}</p>`);
+
+  if(totNextOut>0){
+    paras.push(`<p>Forward demand for the next marketing year is <span class="summary-highlight">${fmt(totNextOut)}</span> in outstanding sales — 
+      ${hi(fmtPct(nextYoY), 'summary-'+(nextYoY>=0?'pos':'neg'))} versus the same point last year and at the 
+      <span class="summary-highlight">${nextPctile||'—'}th percentile</span> historically. 
+      ${+nextPctile>=70?'Early-season forward buying is notably elevated, a constructive demand signal for the coming crop year.':
+        +nextPctile>=40?'Next marketing year interest is within the normal seasonal range.':
+        'Limited forward interest in the next crop year may reflect importer caution or ample domestic supply in key markets.'}</p>`);
+  }
+
+  document.getElementById('summaryNarrative').innerHTML = paras.join('');
+  document.getElementById('summaryCardSub').textContent =
+    `${commShort} · MY${primaryYear} through ${wkLabel} · ${nYears}-year context`;
+  document.getElementById('summaryChip').textContent = `WK ${currWk.wkNum}`;
+
+  // Country chips — top 15
+  const topRows = Object.values(byC)
+    .filter(r=>r.accumulatedExportsTW>0)
+    .sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW)
+    .slice(0,15);
+
+  const grid = document.getElementById('summaryCountryGrid');
+  grid.innerHTML = topRows.map(r=>{
+    const yoy = lyAccum!==null ? null : null; // per-country YoY needs hist data
+    const chgColor = r.grossNewSalesTW>0?'var(--green)':r.grossNewSalesTW<0?'var(--red)':'var(--muted)';
+    const chgTxt   = r.grossNewSalesTW!==0?`${r.grossNewSalesTW>0?'+':''}${fmt(r.grossNewSalesTW)} gross TW`:'No sales TW';
+    return `<div class="summary-country-chip">
+      <div class="summary-country-name">${r.name}</div>
+      <div class="summary-country-val">${fmt(r.accumulatedExportsTW)}</div>
+      <div class="summary-country-chg" style="color:${chgColor}">${chgTxt} · ${fmt(r.currentMYTotalCommitmentTW)} commit</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// HISTORICAL CSV DOWNLOAD
+// ═══════════════════════════════════════════════════════════════════════
+async function downloadHistoricalCSV(){
+  const commCode = +document.getElementById('selCommodity').value;
+  const prog = document.getElementById('csvProgress');
+  const START_YEAR = 1991;
+  const END_YEAR   = primaryYear||2026;
+  const years = [];
+  for(let y=END_YEAR;y>=START_YEAR;y--) years.push(y);
+
+  prog.textContent=`⟳ Fetching all years ${START_YEAR}–${END_YEAR} (${years.length} years)…`;
+  const rows=[];
+  const headers='weekEndingDate,marketYear,commodityCode,countryCode,countryName,grossNewSales,currentMYNetSales,weeklyExports,accumulatedExports,outstandingSales,currentMYTotalCommitment,nextMYNetSales,nextMYOutstandingSales';
+
+  let done=0;
+  for(const y of years){
+    try{
+      const data = globalData[y] || await usdaFetch(`exports/commodityCode/${commCode}/allCountries/marketYear/${y}`);
+      for(const r of data){
+        const cc=r.countryCode; if(!cc||cc===0) continue;
+        const dt=String(r.weekEndingDate||'').split('T')[0];
+        if(!dt) continue;
+        rows.push([
+          dt,y,commCode,cc,`"${(COUNTRIES[cc]||`Code ${cc}`).replace(/"/g,'""')}"`,
+          +(r.grossNewSales||0),+(r.currentMYNetSales||0),+(r.weeklyExports||0),
+          +(r.accumulatedExports||0),+(r.outstandingSales||0),
+          +(r.currentMYTotalCommitment||0),+(r.nextMYNetSales||0),+(r.nextMYOutstandingSales||0)
+        ].join(','));
+      }
+      done++;
+      prog.textContent=`⟳ Fetched ${done}/${years.length} years (${rows.length.toLocaleString()} rows so far)…`;
+    }catch(e){ prog.textContent+=`\n✗ MY${y}: ${e.message}`; }
+  }
+
+  const csv = headers+'\n'+rows.join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=`cotton_history_${commCode}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  prog.textContent=`✓ Downloaded ${rows.length.toLocaleString()} rows · ${(csv.length/1024/1024).toFixed(1)}MB`;
+}
+
+async function updateHistoricalCSV(){
+  // Download only the current and previous year (incremental update)
+  const commCode=+document.getElementById('selCommodity').value;
+  const prog=document.getElementById('csvProgress');
+  const updateYears=[primaryYear, primaryYear-1];
+  prog.textContent=`⟳ Fetching MY${updateYears.join(' and MY')} for update…`;
+  const rows=[];
+  const headers='weekEndingDate,marketYear,commodityCode,countryCode,countryName,grossNewSales,currentMYNetSales,weeklyExports,accumulatedExports,outstandingSales,currentMYTotalCommitment,nextMYNetSales,nextMYOutstandingSales';
+  for(const y of updateYears){
+    try{
+      const data=globalData[y]||await usdaFetch(`exports/commodityCode/${commCode}/allCountries/marketYear/${y}`);
+      for(const r of data){
+        const cc=r.countryCode; if(!cc||cc===0) continue;
+        const dt=String(r.weekEndingDate||'').split('T')[0]; if(!dt) continue;
+        rows.push([dt,y,commCode,cc,`"${(COUNTRIES[cc]||`Code ${cc}`).replace(/"/g,'""')}"`,
+          +(r.grossNewSales||0),+(r.currentMYNetSales||0),+(r.weeklyExports||0),
+          +(r.accumulatedExports||0),+(r.outstandingSales||0),+(r.currentMYTotalCommitment||0),
+          +(r.nextMYNetSales||0),+(r.nextMYOutstandingSales||0)].join(','));
+      }
+    }catch(e){ prog.textContent+=`\n✗ MY${y}: ${e.message}`; }
+  }
+  const csv=headers+'\n'+rows.join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url;
+  a.download=`cotton_update_${commCode}_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  prog.textContent=`✓ Update downloaded · ${rows.length.toLocaleString()} rows for MY${updateYears.join(' + MY')}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AI ASSISTANT — Groq integration
+// ═══════════════════════════════════════════════════════════════════════
+let aiHistory=[];
+let aiChartCount=0;
+
+function saveAIConfig(){
+  try{
+    localStorage.setItem('esr_ai_cfg', JSON.stringify({
+      key:   document.getElementById('groqApiKey').value,
+      model: document.getElementById('groqModel').value,
+    }));
+  }catch(e){}
+}
+function loadAIConfig(){
+  try{
+    const raw=localStorage.getItem('esr_ai_cfg');
+    if(!raw) return;
+    const cfg=JSON.parse(raw);
+    document.getElementById('groqApiKey').value=cfg.key||'';
+    document.getElementById('groqModel').value=cfg.model||'llama-3.3-70b-versatile';
+  }catch(e){}
+}
+
+async function testGroqKey(){
+  const key=document.getElementById('groqApiKey').value.trim();
+  const st =document.getElementById('aiStatus');
+  if(!key){st.textContent='Enter your Groq API key first';st.className='ai-status';return;}
+  st.textContent='⟳ Testing…';st.className='ai-status';
+  try{
+    const res=await fetch('https://api.groq.com/openai/v1/models',{
+      headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'}
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const d=await res.json();
+    st.textContent=`✓ Connected · ${d.data?.length||'?'} models available`;
+    st.className='ai-status ok';
+    saveAIConfig();
+  }catch(e){
+    st.textContent='✗ '+e.message;
+    st.className='ai-status err';
+  }
+}
+
+function updateAIDataContext(){
+  const el=document.getElementById('aiDataContext');
+  if(!allLoadedYears.length){ el.textContent='No data loaded — switch to Dashboard tab and load data first'; return; }
+  const {byC,thisWeek}=aggregateByCountry(globalData[primaryYear]);
+  const allC=Object.values(byC);
+  const totAccum=allC.reduce((s,r)=>s+(r.accumulatedExportsTW||0),0);
+  const totCommit=allC.reduce((s,r)=>s+(r.currentMYTotalCommitmentTW||0),0);
+  const commName=document.getElementById('selCommodity').selectedOptions[0].text;
+  el.innerHTML=`Commodity: ${commName}<br>Years: ${allLoadedYears.map(y=>'MY'+y).join(', ')}<br>`
+    +`Week ending: ${thisWeek}<br>Accum exports: ${fmt(totAccum)}<br>Total commit: ${fmt(totCommit)}<br>`
+    +`Countries: ${Object.keys(byC).length}`;
+}
+
+function buildAIContext(){
+  // Build a compact JSON context of current data for Groq
+  if(!allLoadedYears.length) return 'No export data loaded.';
+  const commCode=+document.getElementById('selCommodity').value;
+  const commName=document.getElementById('selCommodity').selectedOptions[0].text;
+  const {byC,thisWeek,lastWeek}=aggregateByCountry(globalData[primaryYear]);
+  const allC=Object.values(byC);
+
+  const totals={
+    grossSalesTW: allC.reduce((s,r)=>s+(r.grossNewSalesTW||0),0),
+    grossSalesLW: allC.reduce((s,r)=>s+(r.grossNewSalesLW||0),0),
+    weeklyExportsTW: allC.reduce((s,r)=>s+(r.weeklyExportsTW||0),0),
+    accumulatedExports: allC.reduce((s,r)=>s+(r.accumulatedExportsTW||0),0),
+    outstandingSales: allC.reduce((s,r)=>s+(r.outstandingSalesTW||0),0),
+    totalCommitment: allC.reduce((s,r)=>s+(r.currentMYTotalCommitmentTW||0),0),
+    nextMYOutstanding: allC.reduce((s,r)=>s+(r.nextMYOutstandingSalesTW||0),0),
+  };
+
+  const top10=allC.sort((a,b)=>b.accumulatedExportsTW-a.accumulatedExportsTW).slice(0,10)
+    .map(r=>({name:r.name,grossTW:r.grossNewSalesTW,exportsTW:r.weeklyExportsTW,
+      accum:r.accumulatedExportsTW,commit:r.currentMYTotalCommitmentTW}));
+
+  const primaryWeeks=aggregateByWeek(globalData[primaryYear],commCode,primaryYear);
+  const curWk=primaryWeeks[primaryWeeks.length-1];
+
+  return JSON.stringify({
+    commodity:commName, primaryYear, loadedYears:allLoadedYears,
+    weekEnding:thisWeek, marketingYearWeek:curWk?.wkNum,
+    totals, top10buyers:top10,
+    note:'Values in running bales (RB). Marketing year starts June 1 for cotton.'
+  },null,2);
+}
+
+function aiQuickAsk(q){ document.getElementById('aiInput').value=q; sendAIMessage(); }
+
+async function sendAIMessage(){
+  const input=document.getElementById('aiInput');
+  const q=input.value.trim(); if(!q) return;
+  const key=document.getElementById('groqApiKey').value.trim();
+  if(!key){ appendAIMsg('assistant','⚠️ Please enter your Groq API key in the sidebar first.'); return; }
+
+  appendAIMsg('user',q);
+  input.value='';
+  aiHistory.push({role:'user',content:q});
+
+  const thinkId=appendAIThinking();
+  const btn=document.getElementById('aiSendBtn');
+  btn.disabled=true;
+
+  // Detect chart request
+  const wantsChart=/\b(plot|chart|graph|draw|visuali[sz]e|bar chart|line chart)\b/i.test(q);
+
+  const systemPrompt=`You are an expert USDA Export Sales Reporting (ESR) analyst. 
+You have access to the following current export data:
+<data>
+${buildAIContext()}
+</data>
+
+Answer questions analytically. Use specific numbers from the data. 
+Format numbers with K/M suffixes (e.g. 1.2M, 450K running bales).
+
+${wantsChart?`
+CHART INSTRUCTIONS: The user wants a chart. Respond with a JSON block in this format:
+<chart>
+{"type":"bar|line|pie","title":"chart title","labels":["label1","label2"],"datasets":[{"label":"series name","data":[1,2,3],"backgroundColor":"#color","borderColor":"#color"}]}
+</chart>
+Then explain the chart in a sentence.`:''}
+
+Be concise, analytical, and data-driven. If data is not available for a question, say so clearly.`;
+
+  try{
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model: document.getElementById('groqModel').value,
+        messages:[{role:'system',content:systemPrompt},...aiHistory.slice(-10)],
+        temperature:0.3,
+        max_tokens:1024,
+      })
+    });
+    if(!res.ok){ const e=await res.json(); throw new Error(e.error?.message||'HTTP '+res.status); }
+    const d=await res.json();
+    const reply=d.choices[0].message.content;
+    aiHistory.push({role:'assistant',content:reply});
+
+    removeThinking(thinkId);
+
+    // Check for chart JSON
+    const chartMatch=reply.match(/<chart>([\s\S]*?)<\/chart>/);
+    if(chartMatch){
+      const textPart=reply.replace(/<chart>[\s\S]*?<\/chart>/,'').trim();
+      if(textPart) appendAIMsg('assistant',textPart);
+      try{
+        const chartDef=JSON.parse(chartMatch[1]);
+        renderAIChart(chartDef);
+      }catch(e){ appendAIMsg('assistant','(Chart data parse error: '+e.message+')'); }
+    } else {
+      appendAIMsg('assistant', reply);
+    }
+  }catch(e){
+    removeThinking(thinkId);
+    appendAIMsg('assistant','✗ Groq error: '+e.message);
+    document.getElementById('aiStatus').textContent='✗ '+e.message;
+    document.getElementById('aiStatus').className='ai-status err';
+  }
+  btn.disabled=false;
+}
+
+function appendAIMsg(role, text){
+  const msgs=document.getElementById('aiMessages');
+  const div=document.createElement('div');
+  div.className='ai-msg '+role;
+  div.innerHTML=`<div class="ai-msg-avatar">${role==='user'?'You':'AI'}</div>
+    <div class="ai-msg-bubble">${text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+function appendAIThinking(){
+  const msgs=document.getElementById('aiMessages');
+  const id='think-'+Date.now();
+  const div=document.createElement('div');
+  div.className='ai-msg assistant'; div.id=id;
+  div.innerHTML=`<div class="ai-msg-avatar">AI</div>
+    <div class="ai-msg-bubble"><div class="ai-thinking"><span></span><span></span><span></span></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  return id;
+}
+function removeThinking(id){
+  const el=document.getElementById(id); if(el) el.remove();
+}
+
+function renderAIChart(def){
+  const msgs=document.getElementById('aiMessages');
+  const wrap=document.createElement('div');
+  wrap.className='ai-msg assistant';
+  const chartId='ai-chart-'+aiChartCount++;
+  wrap.innerHTML=`<div class="ai-msg-avatar">AI</div>
+    <div class="ai-msg-bubble" style="max-width:90%;width:100%">
+      <div class="ai-chart-embed">
+        <canvas id="${chartId}" height="200"></canvas>
+      </div>
+    </div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop=msgs.scrollHeight;
+
+  // Give DOM a tick then render
+  setTimeout(()=>{
+    const canvas=document.getElementById(chartId);
+    if(!canvas) return;
+    // Apply dark theme colours
+    const ds=def.datasets.map((d,i)=>({
+      ...d,
+      backgroundColor: d.backgroundColor||YEAR_COLORS[i%YEAR_COLORS.length]+'99',
+      borderColor:     d.borderColor||YEAR_COLORS[i%YEAR_COLORS.length],
+      borderWidth:2,pointRadius:3,
+    }));
+    new Chart(canvas.getContext('2d'),{
+      type:def.type||'bar',
+      data:{labels:def.labels,datasets:ds},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{labels:{color:'#dde4f0',font:{family:'DM Mono',size:10}}},
+          title:{display:!!def.title,text:def.title,color:'#e8c547',font:{family:'DM Mono',size:11}}
+        },
+        scales: def.type!=='pie'?{
+          x:{ticks:{color:'#5a6882',font:{family:'DM Mono',size:9}},grid:{color:'#1e2530'}},
+          y:{ticks:{color:'#5a6882',font:{family:'DM Mono',size:9},callback:v=>fmt(v)},grid:{color:'#1e2530'}}
+        }:{}
+      }
+    });
+  },50);
+}
+
+
+function buildEmailReportHTML(){
+  if(!allLoadedYears.length) return null;
+
+  const commCode  = +document.getElementById('selCommodity').value;
+  const commName  = document.getElementById('selCommodity').selectedOptions[0].text;
+  const commShort = commName.split('·').slice(1).join('·').trim() || commName;
+  const genDate   = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // ── 1. Capture all 8 season charts as compressed JPEG base64 ──────────
+  // Render charts in print colours first so they're readable on white
+  prepChartsForPrint();
+  const chartImgs = {};
+  for(const m of ALL_METRICS_DEF){
+    const canvas = document.getElementById('sc_'+m.id);
+    if(canvas){
+      try{ chartImgs[m.id] = canvas.toDataURL('image/jpeg', 0.72); }
+      catch(e){ chartImgs[m.id] = null; }
+    }
+  }
+  restoreChartsAfterPrint();
+
+  // ── 2. Pull live KPI values from the rendered DOM ─────────────────────
+  const kpiCells = [...document.querySelectorAll('#intelKpis .kpi-cell')];
+  const kpiHtml  = kpiCells.map(cell=>{
+    const lbl = cell.querySelector('.kpi-label')?.textContent||'';
+    const val = cell.querySelector('.kpi-val')?.textContent||'—';
+    const badges = [...cell.querySelectorAll('.kpi-badge')].map(b=>
+      `<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:#f1f5f9;color:#475569;margin-left:4px">${b.textContent}</span>`
+    ).join('');
+    return `<td style="padding:8px 10px;background:#fff;border:1px solid #e2e8f0;vertical-align:top;min-width:90px">
+      <div style="font-family:'Courier New',monospace;font-size:9px;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">${lbl}</div>
+      <div style="font-family:'Courier New',monospace;font-size:20px;font-weight:700;color:#0f172a">${val}</div>
+      <div style="margin-top:3px">${badges}</div>
+    </td>`;
+  }).join('');
+
+  // ── 3. Pull intelligence panels ───────────────────────────────────────
+  const intelPanels = [...document.querySelectorAll('#intelBody .intel-panel')];
+  const intelHtml = intelPanels.map(panel=>{
+    const title = panel.querySelector('.intel-panel-title')?.textContent||'';
+    const rows  = [...panel.querySelectorAll('.intel-row,.signal-row')].map(row=>{
+      return `<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;font-family:'Courier New',monospace;font-size:11px;color:#1e293b">${row.textContent.trim()}</div>`;
+    }).join('');
+    return `<td style="padding:0;vertical-align:top;width:33%">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:8px 10px;margin:0 4px">
+        <div style="font-family:'Courier New',monospace;font-size:9px;font-weight:700;color:#334155;letter-spacing:1.5px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;padding-bottom:5px;margin-bottom:5px">${title}</div>
+        ${rows}
+      </div>
+    </td>`;
+  }).join('');
+
+  // ── 4. Pull projection panels ─────────────────────────────────────────
+  const projPanels = [...document.querySelectorAll('#projBody .proj-panel')];
+  const projHtml = projPanels.map(panel=>{
+    const title = panel.querySelector('.proj-panel-title')?.textContent||'';
+    // Get rows or table — just extract text content cleanly
+    const rows = [...panel.querySelectorAll('.proj-row')].map(row=>{
+      const name = row.querySelector('.proj-row-name')?.textContent||'';
+      const val  = row.querySelector('.proj-row-val')?.textContent||'';
+      const desc = row.querySelector('.proj-row-desc')?.textContent||'';
+      const isCon= row.classList.contains('consensus');
+      return `<div style="padding:3px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;${isCon?'background:#fffbeb;border-radius:2px;padding:3px 4px;':''}">
+        <div>
+          <div style="font-family:'Courier New',monospace;font-size:10px;color:${isCon?'#92400e':'#334155'}">${name}</div>
+          ${desc?`<div style="font-family:'Courier New',monospace;font-size:8px;color:#64748b">${desc}</div>`:''}
+        </div>
+        <div style="font-family:'Courier New',monospace;font-size:14px;font-weight:700;color:${isCon?'#92400e':'#0f172a'}">${val}</div>
+      </div>`;
+    }).join('');
+    // Also grab any table inside
+    const tbl = panel.querySelector('table');
+    let tblHtml = '';
+    if(tbl){
+      tblHtml = `<table style="width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:9px;margin-top:4px">`;
+      for(const tr of tbl.querySelectorAll('tr')){
+        tblHtml += '<tr>';
+        for(const cell of tr.querySelectorAll('th,td')){
+          const isHdr = cell.tagName==='TH';
+          tblHtml += `<${isHdr?'th':'td'} style="padding:2px 4px;border:1px solid #e2e8f0;${isHdr?'background:#f1f5f9;color:#475569;':'color:#334155;'}">${cell.textContent.trim()}</${isHdr?'th':'td'}>`;
+        }
+        tblHtml += '</tr>';
+      }
+      tblHtml += '</table>';
+    }
+    return `<td style="padding:0;vertical-align:top;width:33%">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:8px 10px;margin:0 4px">
+        <div style="font-family:'Courier New',monospace;font-size:9px;font-weight:700;color:#334155;letter-spacing:1.5px;text-transform:uppercase;border-bottom:1px solid #e2e8f0;padding-bottom:5px;margin-bottom:5px">${title}</div>
+        ${rows}${tblHtml}
+      </div>
+    </td>`;
+  }).join('');
+
+  // ── 5. Pull country summary tables from the DOM ───────────────────────
+  function domTableToEmailHtml(tblEl){
+    if(!tblEl) return '';
+    let h = '<table style="width:100%;border-collapse:collapse;font-family:\'Courier New\',monospace;font-size:9px">';
+    for(const tr of tblEl.querySelectorAll('tr')){
+      const isGrp = tr.classList.contains('grp-row');
+      const isHdr = tr.classList.contains('hd-row');
+      const isTot = tr.classList.contains('total-row');
+      const isOth = tr.classList.contains('others-row');
+      h += '<tr>';
+      for(const cell of tr.querySelectorAll('th,td')){
+        const isHdrCell = cell.tagName==='TH';
+        let bg = '#fff', col='#1e293b', fw='normal';
+        if(isGrp)  { bg='#1e293b'; col='#f1f5f9'; fw='600'; }
+        else if(isHdr){ bg='#f1f5f9'; col='#475569'; }
+        else if(isTot){ bg='#fffbeb'; col='#92400e'; fw='700'; }
+        else if(isOth){ bg='#f8fafc'; col='#64748b'; }
+        const rs = cell.getAttribute('rowspan')||'';
+        const cs = cell.getAttribute('colspan')||'';
+        h += `<${isHdrCell?'th':'td'} style="padding:2px 3px;border:1px solid ${isGrp?'#334155':'#e2e8f0'};background:${bg};color:${col};font-weight:${fw};white-space:nowrap;text-align:${isHdrCell&&!isGrp?'center':'left'}" ${rs?`rowspan="${rs}"`:''}  ${cs?`colspan="${cs}"`:''}>${cell.textContent.trim()}</${isHdrCell?'th':'td'}>`;
+      }
+      h += '</tr>';
+    }
+    h += '</table>';
+    return h;
+  }
+
+  const tbl1El = document.querySelector('#summaryTbl1 table');
+  const tbl2El = document.querySelector('#summaryTbl2 table');
+  const tbl1Html = domTableToEmailHtml(tbl1El);
+  const tbl2Html = domTableToEmailHtml(tbl2El);
+
+  // ── 6. Progress bar values ─────────────────────────────────────────────
+  const progPct  = document.getElementById('progPct')?.textContent||'';
+  const progLbl  = document.getElementById('progLabel')?.textContent||'';
+  const progWks  = document.getElementById('progWks')?.textContent||'';
+  const pctNum   = parseFloat(progPct)||0;
+
+  // ── 7. Section sub-labels ──────────────────────────────────────────────
+  const intelSub = document.getElementById('intelSub')?.textContent||'';
+  const tblSub   = document.getElementById('tblSub')?.textContent||'';
+
+  // ── 8. Build chart image rows (4 per row = 2 rows of 4) ──────────────
+  function chartRow(metricIds){
+    return `<tr>${metricIds.map(id=>{
+      const mDef = ALL_METRICS_DEF.find(m=>m.id===id);
+      const lbl  = mDef?.label||id;
+      const img  = chartImgs[id];
+      return `<td style="padding:4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:2px;text-align:center;width:25%">
+        <div style="font-family:'Courier New',monospace;font-size:9px;font-weight:700;color:#334155;letter-spacing:.5px;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid #e2e8f0;margin-bottom:4px">${lbl}</div>
+        ${img?`<img src="${img}" style="width:100%;height:auto;display:block" alt="${lbl}">`:'<div style="color:#94a3b8;font-size:10px;padding:20px">No data</div>'}
+      </td>`;
+    }).join('')}</tr>`;
+  }
+
+  const row1Ids = ALL_METRICS_DEF.slice(0,4).map(m=>m.id);
+  const row2Ids = ALL_METRICS_DEF.slice(4,8).map(m=>m.id);
+
+  // ── 9. Assemble full email HTML ────────────────────────────────────────
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:16px 0">
+<tr><td align="center">
+<table width="900" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:4px;overflow:hidden;border:1px solid #e2e8f0">
+
+  <!-- HEADER -->
+  <tr><td style="background:#1e293b;padding:16px 20px">
+    <table width="100%"><tr>
+      <td><div style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;color:#f1f5f9;letter-spacing:2px">ESR EXPORT ANALYTICS</div>
+        <div style="font-family:'Courier New',monospace;font-size:11px;color:#94a3b8;margin-top:3px">USDA Foreign Agricultural Service · Export Sales Reporting · ${commShort}</div></td>
+      <td align="right"><div style="font-family:'Courier New',monospace;font-size:11px;color:#fbbf24;font-weight:700">WEEKLY REPORT</div>
+        <div style="font-family:'Courier New',monospace;font-size:10px;color:#94a3b8;margin-top:3px">${genDate}</div>
+        <div style="font-family:'Courier New',monospace;font-size:10px;color:#94a3b8">${intelSub}</div></td>
+    </tr></table>
+  </td></tr>
+
+  <!-- KPI STRIP -->
+  <tr><td style="padding:12px 16px 0">
+    <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px">▸ Key Performance Indicators</div>
+    <table width="100%" cellpadding="0" cellspacing="1" style="background:#e2e8f0;border-radius:3px;overflow:hidden"><tr>${kpiHtml}</tr></table>
+  </td></tr>
+
+  <!-- PROGRESS BAR -->
+  <tr><td style="padding:8px 16px 0">
+    <table width="100%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:2px;padding:6px 10px" cellpadding="0" cellspacing="0"><tr>
+      <td style="font-family:'Courier New',monospace;font-size:9px;color:#475569;white-space:nowrap;padding-right:10px">${progLbl}</td>
+      <td width="100%"><div style="background:#e2e8f0;height:5px;border-radius:3px"><div style="background:#b45309;height:5px;border-radius:3px;width:${Math.min(100,pctNum).toFixed(1)}%"></div></div></td>
+      <td style="font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:#b45309;padding-left:10px;white-space:nowrap">${progPct}</td>
+      <td style="font-family:'Courier New',monospace;font-size:9px;color:#94a3b8;padding-left:10px;white-space:nowrap">${progWks}</td>
+    </tr></table>
+  </td></tr>
+
+  <!-- INTELLIGENCE -->
+  <tr><td style="padding:10px 16px 0">
+    <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px">▸ Weekly Market Intelligence</div>
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>${intelHtml}</tr></table>
+  </td></tr>
+
+  <!-- PROJECTION -->
+  <tr><td style="padding:10px 16px 0">
+    <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px">▸ End-of-Year Export Projection</div>
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>${projHtml}</tr></table>
+  </td></tr>
+
+  <!-- SEASONALITY CHARTS — ROW 1 -->
+  <tr><td style="padding:10px 16px 0">
+    <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px">▸ Seasonality — Multi-Year Comparison (Charts 1–4)</div>
+    <table width="100%" cellpadding="4" cellspacing="4" style="background:#f1f5f9;border-radius:3px">
+      ${chartRow(row1Ids)}
+    </table>
+  </td></tr>
+
+  <!-- SEASONALITY CHARTS — ROW 2 -->
+  <tr><td style="padding:8px 16px 0">
+    <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px">▸ Seasonality — Multi-Year Comparison (Charts 5–8)</div>
+    <table width="100%" cellpadding="4" cellspacing="4" style="background:#f1f5f9;border-radius:3px">
+      ${chartRow(row2Ids)}
+    </table>
+  </td></tr>
+
+  <!-- COUNTRY SUMMARY TABLE 1 -->
+  <tr><td style="padding:10px 16px 0">
+    <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:6px">▸ Country Summary — This Week / Last Week / Change</div>
+    <div style="overflow-x:auto">${tbl1Html}</div>
+  </td></tr>
+
+  <!-- COUNTRY SUMMARY TABLE 2 -->
+  <tr><td style="padding:8px 16px 16px">
+    <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:6px">▸ Country Summary — Accumulated / Outstanding / Commitment / Next MY</div>
+    <div style="overflow-x:auto">${tbl2Html}</div>
+  </td></tr>
+
+  <!-- FOOTER -->
+  <tr><td style="background:#1e293b;padding:10px 20px">
+    <div style="font-family:'Courier New',monospace;font-size:9px;color:#94a3b8;text-align:center">
+      USDA FAS Export Sales Reporting · ${commShort} · Generated ${genDate}
+    </div>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body></html>`;
+}
+
+</script>
+</body>
+</html>
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// EMAIL SCHEDULER — GitHub Actions / SMTP
 // ═══════════════════════════════════════════════════════════════════════
 
 let emailRecipients = [];
 
-const GAS_SOURCE_CODE = '// ════════════════════════════════════════════════════════════════\n// USDA ESR — Google Apps Script Email Sender\n// ════════════════════════════════════════════════════════════════\n// SETUP:\n//   1. Go to https://script.google.com  →  New project\n//   2. Replace ALL default code with this entire script\n//   3. Change SECRET_TOKEN below to any password you like\n//   4. Click Deploy → New deployment\n//      · Type: Web App\n//      · Execute as: Me\n//      · Who has access: Anyone\n//   5. Click Deploy → authorize → copy the Web App URL\n//   6. Paste URL + same token into the dashboard fields\n//   7. Click Test Connection — should say "Token accepted ✓"\n//\n// RE-DEPLOY AFTER ANY CODE CHANGE:\n//   Deploy → Manage deployments → edit (pencil) → New version → Deploy\n// ════════════════════════════════════════════════════════════════\n\n// ▶ CHANGE THIS — must exactly match the Secret Token field in the dashboard\nconst SECRET_TOKEN = \'CHANGE_ME_TO_YOUR_PASSWORD\';\n\nconst SHEET_NAME = \'ESR_SendLog\';\n\n// ── doGet handles test + saveConfig (GET avoids CORS redirect issues) ──\nfunction doGet(e) {\n  try {\n    const raw     = e.parameter.payload;\n    if (!raw) return jsonResponse({ ok: false, message: \'No payload\' });\n    const payload = JSON.parse(raw);\n\n    if (!payload.secret || payload.secret !== SECRET_TOKEN) {\n      return jsonResponse({ ok: false, message: \'Unauthorized: wrong token\' });\n    }\n\n    if (payload.action === \'test\') {\n      return jsonResponse({ ok: true, message: \'Connection successful! Token accepted \\u2713\' });\n    }\n\n    if (payload.action === \'saveConfig\') {\n      saveConfig(payload.config);\n      return jsonResponse({ ok: true });\n    }\n\n    return jsonResponse({ ok: false, message: \'Unknown action: \' + payload.action });\n  } catch(err) {\n    return jsonResponse({ ok: false, message: err.message });\n  }\n}\n\n// ── doPost handles report sending (large HTML body) ────────────────\nfunction doPost(e) {\n  try {\n    const payload = JSON.parse(e.postData.contents);\n\n    if (!payload.secret || payload.secret !== SECRET_TOKEN) {\n      return jsonResponse({ ok: false, message: \'Unauthorized: wrong token\' });\n    }\n\n    if (payload.action === \'send\') {\n      const { recipients, subject, reportHtml, commodity, weekDate } = payload;\n      if (!recipients || !recipients.length) throw new Error(\'No recipients\');\n\n      const finalSubject = subject ||\n        (\'USDA ESR Weekly Report \\u2014 \' + commodity + \' \\u2014 \' + weekDate);\n\n      const failed = [];\n      for (const email of recipients) {\n        try {\n          GmailApp.sendEmail(email, finalSubject, \'\', {\n            htmlBody: reportHtml,\n            name: \'USDA ESR Analytics\',\n          });\n        } catch(err) { failed.push(email + \': \' + err.message); }\n      }\n\n      if (failed.length) {\n        return jsonResponse({ ok: false, message: \'Partial failure: \' + failed.join(\'; \') });\n      }\n\n      logSend(commodity, weekDate, recipients.length);\n      return jsonResponse({ ok: true, message: \'Sent to \' + recipients.length + \' recipient(s)\' });\n    }\n\n    return jsonResponse({ ok: false, message: \'Unknown action\' });\n  } catch(err) {\n    return jsonResponse({ ok: false, message: err.message });\n  }\n}\n\n// ── Scheduled trigger (set via Triggers panel — no browser needed) ─\nfunction sendScheduledReport() {\n  const cfg = getConfig();\n  if (!cfg || !cfg.recipients || !cfg.recipients.length) return;\n\n  const ct   = Utilities.formatDate(new Date(), \'America/Chicago\', \'yyyy-MM-dd\');\n  if (PropertiesService.getScriptProperties().getProperty(\'sent_\' + ct)) return;\n\n  const now  = Utilities.formatDate(new Date(), \'America/Chicago\', \'MMMM d, yyyy\');\n  const subj = \'USDA ESR Scheduled Reminder \\u2014 \' + (cfg.commodity || \'Export Sales\') + \' \\u2014 \' + now;\n  const body = \'<div style="font-family:Arial,sans-serif;padding:20px;color:#1e293b">\'\n    + \'<h2 style="color:#b45309">USDA ESR Weekly Report Ready</h2>\'\n    + \'<p>Open the dashboard and click <strong>Send Now</strong> to send the full report.</p>\'\n    + \'<p style="color:#94a3b8;font-size:12px">Auto-sent by Google Apps Script \\u00b7 \' + now + \'</p>\'\n    + \'</div>\';\n\n  for (const email of cfg.recipients) {\n    try { GmailApp.sendEmail(email, subj, \'\', { htmlBody: body, name: \'USDA ESR Analytics\' }); }\n    catch(err) { Logger.log(\'Failed: \' + email + \' \' + err.message); }\n  }\n\n  PropertiesService.getScriptProperties().setProperty(\'sent_\' + ct, \'1\');\n  logSend(cfg.commodity, now, cfg.recipients.length);\n}\n\n// ── Helpers ───────────────────────────────────────────────────────\nfunction saveConfig(cfg) {\n  PropertiesService.getScriptProperties()\n    .setProperty(\'esr_config\', JSON.stringify(cfg));\n}\nfunction getConfig() {\n  const raw = PropertiesService.getScriptProperties().getProperty(\'esr_config\');\n  return raw ? JSON.parse(raw) : null;\n}\nfunction logSend(commodity, weekDate, count) {\n  try {\n    const ss    = SpreadsheetApp.getActiveSpreadsheet();\n    let sheet   = ss.getSheetByName(SHEET_NAME);\n    if (!sheet) {\n      sheet = ss.insertSheet(SHEET_NAME);\n      sheet.appendRow([\'Timestamp (CT)\', \'Commodity\', \'Week Date\', \'Recipients\']);\n    }\n    sheet.appendRow([\n      Utilities.formatDate(new Date(), \'America/Chicago\', \'yyyy-MM-dd HH:mm\'),\n      commodity, weekDate, count\n    ]);\n  } catch(e) { Logger.log(\'Log skipped: \' + e.message); }\n}\nfunction jsonResponse(obj) {\n  return ContentService\n    .createTextOutput(JSON.stringify(obj))\n    .setMimeType(ContentService.MimeType.JSON);\n}';
-
-function copyGASCode() {
-  navigator.clipboard.writeText(GAS_SOURCE_CODE).then(() => {
-    setEmailStatus('ok', '✓ Apps Script code copied — paste it at script.google.com, then change SECRET_TOKEN');
-  }).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = GAS_SOURCE_CODE;
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-    setEmailStatus('ok', '✓ Code copied — paste at script.google.com, then change SECRET_TOKEN');
-  });
-}
-
 // ── Persist config ────────────────────────────────────────────────────
-function saveEmailConfig() {
+function saveEmailConfig(){
   try {
-    localStorage.setItem('esr_gas_cfg', JSON.stringify({
+    localStorage.setItem('esr_smtp_cfg', JSON.stringify({
       recipients: emailRecipients,
       subject:    document.getElementById('emailSubject').value,
-      gasUrl:     document.getElementById('gasWebAppUrl').value,
-      gasSecret:  document.getElementById('gasSecret').value,
+      ghRepo:     document.getElementById('ghRepo').value,
+      ghToken:    document.getElementById('ghToken').value,
     }));
-  } catch(e) {}
+  } catch(e){}
 }
 
-function loadEmailConfig() {
+function loadEmailConfig(){
   try {
-    const raw = localStorage.getItem('esr_gas_cfg');
-    if (!raw) return;
+    const raw = localStorage.getItem('esr_smtp_cfg');
+    if(!raw) return;
     const cfg = JSON.parse(raw);
     emailRecipients = cfg.recipients || [];
-    document.getElementById('emailSubject').value = cfg.subject   || '';
-    document.getElementById('gasWebAppUrl').value  = cfg.gasUrl   || '';
-    document.getElementById('gasSecret').value     = cfg.gasSecret || '';
+    document.getElementById('emailSubject').value = cfg.subject  || '';
+    document.getElementById('ghRepo').value       = cfg.ghRepo   || 'BMR-Com/usd-export-sales-email';
+    document.getElementById('ghToken').value      = cfg.ghToken  || '';
     renderTags();
-  } catch(e) {}
+  } catch(e){}
 }
 
-// ── Tag input ─────────────────────────────────────────────────────────
-function handleEmailKey(e) {
-  if (e.key === 'Enter' || e.key === ',') {
+// ── Tag input ──────────────────────────────────────────────────────────
+function handleEmailKey(e){
+  if(e.key === 'Enter' || e.key === ','){
     e.preventDefault();
-    const val = document.getElementById('emailInput').value.trim().replace(/,$/, '');
-    if (val && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
-      if (!emailRecipients.includes(val)) { emailRecipients.push(val); renderTags(); saveEmailConfig(); }
+    const val = document.getElementById('emailInput').value.trim().replace(/,$/,'');
+    if(val && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)){
+      if(!emailRecipients.includes(val)){ emailRecipients.push(val); renderTags(); saveEmailConfig(); }
       document.getElementById('emailInput').value = '';
-    } else if (val) { setEmailStatus('err', '✗ Invalid email address'); }
+    } else if(val){ setEmailStatus('err','✗ Invalid email address'); }
   }
 }
-function removeTag(email) {
-  emailRecipients = emailRecipients.filter(e => e !== email);
+function removeTag(email){
+  emailRecipients = emailRecipients.filter(e=>e!==email);
   renderTags(); saveEmailConfig();
 }
-function renderTags() {
-  document.getElementById('emailTags').innerHTML = emailRecipients.map(e =>
+function renderTags(){
+  document.getElementById('emailTags').innerHTML = emailRecipients.map(e=>
     `<span class="email-tag">${e}<span class="email-tag-x" onclick="removeTag('${e}')">✕</span></span>`
   ).join('');
   updateScheduleBadge();
 }
 
-// ── Panel toggle ──────────────────────────────────────────────────────
-function toggleEmailPanel() {
+// ── Panel toggle ───────────────────────────────────────────────────────
+function toggleEmailPanel(){
   const body = document.getElementById('emailPanelBody');
   const chev = document.getElementById('emailChevron');
   chev.style.transform = body.classList.toggle('open') ? 'rotate(180deg)' : '';
 }
-
-function setEmailStatus(cls, msg) {
+function setEmailStatus(cls, msg){
   const el = document.getElementById('emailStatusBar');
-  el.className = 'email-status-bar ' + cls;
+  el.className = 'email-status-bar '+cls;
   el.textContent = msg;
 }
 
-// ── GAS fetch — attaches secret to every request ──────────────────────
-async function gasRequest(payload) {
-  const url    = document.getElementById('gasWebAppUrl').value.trim();
-  const secret = document.getElementById('gasSecret').value.trim();
-  if (!url)    throw new Error('Paste your Apps Script Web App URL first');
-  if (!secret) throw new Error('Enter a Secret Token — it must match the one in your Apps Script');
+// ── Trigger GitHub Actions workflow_dispatch ───────────────────────────
+async function triggerGitHubWorkflow(){
+  const repo  = document.getElementById('ghRepo').value.trim();
+  const token = document.getElementById('ghToken').value.trim();
+  if(!repo)  { setEmailStatus('err','✗ Enter your GitHub repo (owner/repo)'); return; }
+  if(!token) { setEmailStatus('err','✗ Enter your GitHub Personal Access Token'); return; }
 
-  const body = JSON.stringify({ ...payload, secret });
-
-  // Apps Script Web Apps redirect POST→GET via 302, which causes CORS failures.
-  // Solution: send as a GET request with the payload as a URL parameter.
-  // For large sends (report HTML) we fall back to POST with redirect:follow.
-  const isLargeSend = payload.action === 'send';
-
-  let res;
-  if (!isLargeSend) {
-    // Small requests: use GET with encoded payload — avoids all CORS/redirect issues
-    const getUrl = url + '?payload=' + encodeURIComponent(body);
-    res = await fetch(getUrl, { method: 'GET', redirect: 'follow' });
-  } else {
-    // Large sends: POST with redirect follow + text/plain to skip preflight
-    res = await fetch(url, {
-      method:   'POST',
-      redirect: 'follow',
-      headers:  { 'Content-Type': 'text/plain' },
-      body,
-    });
-  }
-
-  if (!res.ok) throw new Error(`HTTP ${res.status} — check your Web App URL`);
-  let data;
-  try { data = await res.json(); }
-  catch(e) { throw new Error('Invalid response from Apps Script — redeploy the Web App and try again'); }
-  if (!data.ok) throw new Error(data.message || 'Apps Script returned an error');
-  return data;
-}
-
-// ── Test connection ────────────────────────────────────────────────────
-async function testGASConfig() {
-  setEmailStatus('sending', '⟳ Testing connection and token…');
+  setEmailStatus('sending','⟳ Triggering GitHub Actions workflow…');
   try {
-    const data = await gasRequest({ action: 'test' });
-    setEmailStatus('ok', '✓ ' + data.message);
-  } catch(err) {
-    setEmailStatus('err', '✗ ' + err.message);
+    const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/send_esr_report.yml/dispatches`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept':        'application/vnd.github+json',
+        'Content-Type':  'application/json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      body: JSON.stringify({ ref: 'main', inputs: { force_send: 'true' } }),
+    });
+    if(res.status === 204){
+      setEmailStatus('ok','✓ Workflow triggered — check GitHub Actions tab for progress (~3 min)');
+      localStorage.setItem('esr_last_triggered', new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+      updateScheduleBadge();
+    } else {
+      const txt = await res.text();
+      throw new Error(`GitHub API ${res.status}: ${txt}`);
+    }
+  } catch(err){
+    setEmailStatus('err','✗ '+err.message);
   }
 }
 
-// ── Build rich HTML email from current data ────────────────────────────
-function buildEmailReportHTML(){
-  if(!allLoadedYears.length) return null;
-  const commCode = +document.getElementById('selCommodity').value;
-  const commName = document.getElementById('selCommodity').selectedOptions[0].text;
-  const commShort = commName.split('\u00b7').slice(1).join('\u00b7').trim() || commName;
-  const reportYears = [...allLoadedYears].sort((a,b)=>b-a).slice(0,5);
-  const weeklyAgg = {};
-  for(const y of reportYears) if(globalData[y]) weeklyAgg[y] = aggregateByWeek(globalData[y], commCode, y);
-  const {byC, thisWeek} = aggregateByCountry(globalData[primaryYear]);
-  const allC = Object.values(byC);
-  const primaryWeeks = weeklyAgg[primaryYear]||[];
-  let currWk=null;
-  for(const w of primaryWeeks) if(w.grossNewSales>0||w.weeklyExports>0||w.accumulatedExports>0) currWk=w;
-  if(!currWk&&primaryWeeks.length) currWk=primaryWeeks[primaryWeeks.length-1];
-  const curWkNum = currWk?.wkNum||0;
-  let latestWkNum = curWkNum;
-  const priorYears = reportYears.filter(y=>y!==primaryYear).sort((a,b)=>b-a);
-  const snapByYear={}, totSnapByYear={};
-  const snapFields4=['accumulatedExports','outstandingSales','currentMYTotalCommitment','nextMYOutstandingSales'];
-  for(const y of priorYears){
-    if(!globalData[y]) continue;
-    const yWeeks=weeklyAgg[y]||[]; let targetDate=null, targetEntry=null;
-    for(const w of yWeeks) if(w.wkNum<=latestWkNum){targetDate=w.date;targetEntry=w;}
-    totSnapByYear[y]=targetEntry||{};
-    snapByYear[y]={};
-    if(targetDate){
-      for(const r of globalData[y]){
-        const cc=r.countryCode; if(!cc||cc===0) continue;
-        const wk=String(r.weekEndingDate||'').split('T')[0]; if(wk!==targetDate) continue;
-        if(!snapByYear[y][cc]) snapByYear[y][cc]={};
-        for(const f of snapFields4) snapByYear[y][cc][f]=+(r[f]||0);
-      }
-    }
-  }
-  const summaryLines = buildPDFSummary(commCode,commName,weeklyAgg,allC,thisWeek,reportYears,primaryYear,latestWkNum,priorYears);
+// ── Check last workflow run status ─────────────────────────────────────
+async function checkWorkflowStatus(){
+  const repo  = document.getElementById('ghRepo').value.trim();
+  const token = document.getElementById('ghToken').value.trim();
+  if(!repo || !token){ setEmailStatus('err','✗ Enter repo and token first'); return; }
 
-  const fmtV=v=>{if(v==null||isNaN(+v))return'\u2014';const n=+v;if(Math.abs(n)>=1e6)return(n/1e6).toFixed(2)+'M';if(Math.abs(n)>=1e3)return(n/1e3).toFixed(1)+'K';return n.toLocaleString();};
-  const pctFmt=(a,b)=>{if(!b||b===0)return'';const v=(a-b)/Math.abs(b)*100;return(v>=0?'+':'')+v.toFixed(1)+'%';};
-  const pctColor=(a,b)=>{if(!b||b===0)return'#64748b';return((a-b)/Math.abs(b))>=0?'#15803d':'#dc2626';};
-
-  const totGross=allC.reduce((s,r)=>s+(r.grossNewSalesTW||0),0);
-  const totGrossLW=allC.reduce((s,r)=>s+(r.grossNewSalesLW||0),0);
-  const totShips=allC.reduce((s,r)=>s+(r.weeklyExportsTW||0),0);
-  const totShipsLW=allC.reduce((s,r)=>s+(r.weeklyExportsLW||0),0);
-  const totAccum=allC.reduce((s,r)=>s+(r.accumulatedExportsTW||0),0);
-  const totOutst=allC.reduce((s,r)=>s+(r.outstandingSalesTW||0),0);
-  const totCommit=allC.reduce((s,r)=>s+(r.currentMYTotalCommitmentTW||0),0);
-  const totNextOut=allC.reduce((s,r)=>s+(r.nextMYOutstandingSalesTW||0),0);
-  let lyAccum=null,lyCommit=null;
-  if(priorYears[0]&&weeklyAgg[priorYears[0]]){
-    const lyW=[...weeklyAgg[priorYears[0]]].filter(w=>w.wkNum<=curWkNum).pop();
-    if(lyW){lyAccum=lyW.accumulatedExports;lyCommit=lyW.currentMYTotalCommitment;}
-  }
-  const avgPace=curWkNum>0?totAccum/curWkNum:0;
-  const coverage=avgPace>0?(totOutst/avgPace).toFixed(1):'N/A';
-  const pctDone=(curWkNum/52*100).toFixed(0);
-  const topBuyers=[...allC].filter(r=>r.grossNewSalesTW>0).sort((a,b)=>b.grossNewSalesTW-a.grossNewSalesTW).slice(0,10);
-  const topShippers=[...allC].filter(r=>r.weeklyExportsTW>0).sort((a,b)=>b.weeklyExportsTW-a.weeklyExportsTW).slice(0,10);
-  const genDate=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-
-  const kpis=[
-    {l:'Gross Sales TW',    v:fmtV(totGross),   d:pctFmt(totGross,totGrossLW),   dc:pctColor(totGross,totGrossLW),   s:'vs prev week'},
-    {l:'Weekly Exports',    v:fmtV(totShips),   d:pctFmt(totShips,totShipsLW),   dc:pctColor(totShips,totShipsLW),   s:'vs prev week'},
-    {l:'Accum Exports',     v:fmtV(totAccum),   d:pctFmt(totAccum,lyAccum),      dc:pctColor(totAccum,lyAccum),      s:'vs LY same wk'},
-    {l:'Outstanding Sales', v:fmtV(totOutst),   d:coverage+' wks cov',           dc:'#64748b',                       s:'pipeline coverage'},
-    {l:'Total Commitment',  v:fmtV(totCommit),  d:pctFmt(totCommit,lyCommit),    dc:pctColor(totCommit,lyCommit),    s:'vs LY same wk'},
-    {l:'Next MY Outst',     v:fmtV(totNextOut), d:'fwd bookings',                dc:'#1d4ed8',                       s:'early indicator'},
-    {l:'MY Progress',       v:pctDone+'%',      d:'Wk '+curWkNum+'/52',          dc:'#b45309',                       s:(52-curWkNum)+' wks remain'},
-  ];
-
-  const thS='padding:6px 8px;border:1px solid #334155;font-size:10px;text-align:right;font-family:Courier New,monospace';
-  const tdS='padding:4px 8px;border:1px solid #e2e8f0;vertical-align:top';
-  const thSm='padding:5px 6px;border:1px solid #334155;font-size:9px;text-align:right;font-family:Courier New,monospace;white-space:nowrap';
-  const tdSm='padding:3px 5px;border:1px solid #e2e8f0;font-size:9px;text-align:right;font-family:Courier New,monospace;white-space:nowrap';
-
-  let H='<!DOCTYPE html><html><head><meta charset="UTF-8"></head>';
-  H+='<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">';
-  H+='<div style="max-width:900px;margin:0 auto;background:#fff">';
-
-  // Header
-  H+=`<div style="background:#1e293b;padding:18px 24px;border-bottom:4px solid #f59e0b">
-    <div style="font-family:Courier New,monospace;font-size:22px;font-weight:900;letter-spacing:2px;color:#fff">ESR EXPORT ANALYTICS</div>
-    <div style="font-family:Courier New,monospace;font-size:11px;color:#94a3b8;margin-top:4px">${commShort} &nbsp;\u00b7&nbsp; Week ${curWkNum} ending ${thisWeek} &nbsp;\u00b7&nbsp; MY${primaryYear} &nbsp;\u00b7&nbsp; ${genDate}</div>
-  </div>`;
-
-  // Executive Summary
-  H+=`<div style="padding:16px 24px 0">
-    <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">EXECUTIVE SUMMARY</div>
-    <div style="background:#fffbeb;border:1.5px solid #fbbf24;border-radius:4px;padding:14px 16px">`;
-  summaryLines.forEach((ln,i)=>{
-    H+=`<div style="font-size:13px;line-height:1.65;color:#1e293b;margin-bottom:${i<summaryLines.length-1?'8px':'0'};padding-bottom:${i<summaryLines.length-1?'8px':'0'};border-bottom:${i<summaryLines.length-1?'1px dotted #fde68a':'none'}">
-      <span style="font-family:Courier New,monospace;color:#b45309;font-weight:bold;margin-right:6px">[${i+1}]</span>${ln}</div>`;
-  });
-  H+=`</div></div>`;
-
-  // KPI grid
-  H+=`<div style="padding:14px 24px 0">
-    <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">KEY METRICS \u2014 WEEK ${curWkNum}</div>
-    <table width="100%" cellpadding="0" cellspacing="1" style="background:#e2e8f0;border-radius:4px"><tr>`;
-  kpis.forEach(k=>{
-    H+=`<td style="background:#fff;padding:8px 10px;vertical-align:top">
-      <div style="font-family:Courier New,monospace;font-size:9px;letter-spacing:1px;color:#64748b;margin-bottom:3px">${k.l}</div>
-      <div style="font-family:Courier New,monospace;font-size:17px;font-weight:bold;color:#1e293b;line-height:1">${k.v}</div>
-      <div style="font-size:10px;color:${k.dc};margin-top:3px;font-weight:bold">${k.d}</div>
-      <div style="font-size:9px;color:#94a3b8">${k.s}</div>
-    </td>`;
-  });
-  H+='</tr></table></div>';
-
-  // Top buyers / shippers
-  H+=`<div style="padding:14px 24px 0">
-  <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">WEEKLY TRADE ACTIVITY</div>
-  <table width="100%" cellpadding="0" cellspacing="10"><tr valign="top">
-  <td width="50%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:10px">
-    <div style="font-family:Courier New,monospace;font-size:9px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:5px;margin-bottom:8px">TOP BUYERS \u2014 GROSS SALES</div>`;
-  topBuyers.forEach((r,i)=>{
-    const wow=r.grossNewSalesLW>0?((r.grossNewSalesTW-r.grossNewSalesLW)/r.grossNewSalesLW*100):null;
-    H+=`<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:5px"><tr>
-      <td style="font-family:Courier New,monospace;font-size:9px;color:#94a3b8;width:16px">${i+1}</td>
-      <td style="font-family:Courier New,monospace;font-size:10px;color:#1e293b">${r.name}</td>
-      <td align="right" style="font-family:Courier New,monospace;font-size:10px;color:#b45309;white-space:nowrap">
-        ${fmtV(r.grossNewSalesTW)}${wow!==null?`<span style="color:${wow>=0?'#15803d':'#dc2626'};font-size:8px"> ${wow>=0?'+':''}${wow.toFixed(0)}%</span>`:''}
-      </td></tr></table>`;
-  });
-  H+=`</td><td width="50%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:10px">
-    <div style="font-family:Courier New,monospace;font-size:9px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:5px;margin-bottom:8px">TOP SHIPPERS \u2014 WEEKLY EXPORTS</div>`;
-  topShippers.forEach((r,i)=>{
-    H+=`<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:5px"><tr>
-      <td style="font-family:Courier New,monospace;font-size:9px;color:#94a3b8;width:16px">${i+1}</td>
-      <td style="font-family:Courier New,monospace;font-size:10px;color:#1e293b">${r.name}</td>
-      <td align="right" style="font-family:Courier New,monospace;font-size:10px;color:#15803d;white-space:nowrap">${fmtV(r.weeklyExportsTW)}</td>
-    </tr></table>`;
-  });
-  H+=`</td></tr></table></div>`;
-
-  // ── Country table data — exactly matching web page renderSummaryTable ────
-  const ctAllRows=Object.values(byC).filter(r=>
-    r.currentMYTotalCommitmentTW>0||r.accumulatedExportsTW>0||
-    r.grossNewSalesTW>0||r.outstandingSalesTW>0
-  ).sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW);
-
-  const ctTop25=ctAllRows.slice(0,25);
-  const othersRaw=ctAllRows.slice(25);
-
-  const emptyR={name:'',code:-1,
-    grossNewSalesTW:0,grossNewSalesLW:0,currentMYNetSalesTW:0,currentMYNetSalesLW:0,
-    weeklyExportsTW:0,weeklyExportsLW:0,nextMYNetSalesTW:0,nextMYNetSalesLW:0,
-    accumulatedExportsTW:0,outstandingSalesTW:0,currentMYTotalCommitmentTW:0,nextMYOutstandingSalesTW:0};
-
-  const othRow={...emptyR,name:'Others',code:-1};
-  for(const r of othersRaw)
-    for(const k of Object.keys(othRow))
-      if(k!=='name'&&k!=='code') othRow[k]=(othRow[k]||0)+(r[k]||0);
-
-  const othersSnap={};
-  for(const y of priorYears){
-    othersSnap[y]={};
-    for(const f of snapFields4) othersSnap[y][f]=0;
-    for(const r of othersRaw){
-      const ys=snapByYear[y]?.[r.code]||{};
-      for(const f of snapFields4) othersSnap[y][f]+=(ys[f]||0);
-    }
-  }
-
-  const ctDisplay=[...ctTop25,...(othersRaw.length>0?[othRow]:[])];
-  const totRow={...emptyR,name:'TOTAL',code:0};
-  for(const r of ctDisplay)
-    for(const k of Object.keys(totRow))
-      if(k!=='name'&&k!=='code') totRow[k]=(totRow[k]||0)+(r[k]||0);
-
-  const fourYears=[primaryYear,...priorYears.slice(0,3)];
-  const totSnap={};
-  for(const y of priorYears){
-    if(!globalData[y]){totSnap[y]={};continue;}
-    const yW=weeklyAgg[y]||[]; let te=null;
-    for(const w of yW) if(w.wkNum<=latestWkNum) te=w;
-    totSnap[y]=te||{};
-  }
-
-  const getSnap=(r,y,f)=>{
-    if(y===primaryYear) return r[f+'TW']||0;
-    if(r.name==='TOTAL') return totSnap[y]?.[f]||0;
-    if(r.name==='Others') return othersSnap[y]?.[f]||0;
-    return snapByYear[y]?.[r.code]?.[f]||0;
-  };
-
-  // TABLE 1: TW / LW / Δ
-  const twCols=[
-    {key:'grossNewSales',    label:'Gross Sales',   col:'#b45309'},
-    {key:'currentMYNetSales',label:'Net Sales',     col:'#475569'},
-    {key:'weeklyExports',    label:'Wkly Exports',  col:'#15803d'},
-    {key:'nextMYNetSales',   label:'Next MY Sales', col:'#1d4ed8'}
-  ];
-  const rowT1=(r,bg,bold)=>{
-    const isTot=r.name==='TOTAL',isOth=r.name==='Others';
-    const nm=isTot?`<strong>${r.name}</strong>`:isOth?`<em style="color:#64748b">${r.name}</em>`:r.name;
-    let row=`<tr style="background:${bg}"><td style="${tdSm};text-align:left;font-weight:${bold?'bold':'normal'};min-width:80px">${nm}</td>`;
-    twCols.forEach(col=>{
-      const tw=r[col.key+'TW']||0, lw=r[col.key+'LW']||0, d=tw-lw;
-      const dc=d>0?'#15803d':d<0?'#dc2626':'#64748b';
-      const dStr=bold?fmtV(d):(d===0?'\u2014':(d>0?'+':'')+fmtV(d));
-      row+=`<td style="${tdSm};color:${col.col};font-weight:${bold?'bold':'normal'}">${fmtV(tw)}</td>`;
-      row+=`<td style="${tdSm};color:#64748b">${fmtV(lw)}</td>`;
-      row+=`<td style="${tdSm};color:${bold?'#1e293b':dc};font-weight:${bold?'bold':'normal'}">${dStr}</td>`;
-    });
-    return row+'</tr>';
-  };
-
-  H+=`<div style="padding:14px 24px 0">
-  <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">COUNTRY TABLE 1 \u2014 THIS WEEK / LAST WEEK / CHANGE (TOP 25)</div>
-  <div style="overflow-x:auto"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
-  <thead><tr><th style="${thSm};text-align:left;background:#1e293b;color:#e2e8f0" rowspan="2">Country</th>`;
-  twCols.forEach(col=>{ H+=`<th colspan="3" style="${thSm};text-align:center;background:#1e293b;color:${col.col}">${col.label}</th>`; });
-  H+=`</tr><tr>`;
-  twCols.forEach(()=>{
-    H+=`<th style="${thSm};background:#0f172a;color:#94a3b8">TW</th>`;
-    H+=`<th style="${thSm};background:#0f172a;color:#64748b">LW</th>`;
-    H+=`<th style="${thSm};background:#0f172a;color:#64748b">\u0394</th>`;
-  });
-  H+='</tr></thead><tbody>';
-  ctTop25.forEach((r,i)=>{ H+=rowT1(r,i%2===0?'#fff':'#f8fafc',false); });
-  if(othersRaw.length>0) H+=rowT1(othRow,'#f1f5f9',false);
-  H+=rowT1(totRow,'#fffbeb',true);
-  H+='</tbody></table></div></div>';
-
-  // TABLE 2: 4-year snap
-  const snapCols=[
-    {key:'accumulatedExports',       label:'Accum Exports', col:'#166534'},
-    {key:'outstandingSales',         label:'Outstanding',   col:'#1d4ed8'},
-    {key:'currentMYTotalCommitment', label:'Total Commit',  col:'#dc2626'},
-    {key:'nextMYOutstandingSales',   label:'Next MY Outst', col:'#0e7490'}
-  ];
-  const rowT2=(r,bg,bold)=>{
-    const isTot=r.name==='TOTAL',isOth=r.name==='Others';
-    const nm=isTot?`<strong>${r.name}</strong>`:isOth?`<em style="color:#64748b">${r.name}</em>`:r.name;
-    let row=`<tr style="background:${bg}"><td style="${tdSm};text-align:left;font-weight:${bold?'bold':'normal'};min-width:80px">${nm}</td>`;
-    snapCols.forEach(col=>{
-      fourYears.forEach(y=>{
-        const isPY=y===primaryYear;
-        const val=getSnap(r,y,col.key);
-        const pyVal=isPY?null:getSnap(r,primaryYear,col.key);
-        row+=`<td style="${tdSm};color:${isPY?col.col:'#64748b'};font-weight:${isPY||bold?'bold':'normal'}">${fmtV(val)}</td>`;
-      });
-    });
-    return row+'</tr>';
-  };
-
-  H+=`<div style="padding:14px 24px 0">
-  <div style="font-family:Courier New,monospace;font-size:10px;letter-spacing:2px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px">COUNTRY TABLE 2 \u2014 ${fourYears.length}-YEAR COMPARISON AT SAME WEEK (TOP 25)</div>
-  <div style="overflow-x:auto"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
-  <thead><tr><th style="${thSm};text-align:left;background:#1e293b;color:#e2e8f0" rowspan="2">Country</th>`;
-  snapCols.forEach(col=>{ H+=`<th colspan="${fourYears.length}" style="${thSm};text-align:center;background:#1e293b;color:${col.col}">${col.label}</th>`; });
-  H+=`</tr><tr>`;
-  snapCols.forEach(()=>{
-    fourYears.forEach(y=>{ H+=`<th style="${thSm};background:#0f172a;color:${y===primaryYear?'#fbbf24':'#64748b'}">MY${y}</th>`; });
-  });
-  H+='</tr></thead><tbody>';
-  ctTop25.forEach((r,i)=>{ H+=rowT2(r,i%2===0?'#fff':'#f8fafc',false); });
-  if(othersRaw.length>0) H+=rowT2(othRow,'#f1f5f9',false);
-  H+=rowT2(totRow,'#fffbeb',true);
-  H+='</tbody></table></div></div>';
-
-  // Footer
-  H+=`<div style="background:#1e293b;padding:12px 24px;margin-top:16px">
-    <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td style="font-family:Courier New,monospace;font-size:10px;color:#64748b">USDA FAS ESR &nbsp;\u00b7&nbsp; ${commShort} &nbsp;\u00b7&nbsp; MY${primaryYear} &nbsp;\u00b7&nbsp; Week ${curWkNum} ending ${thisWeek}</td>
-      <td align="right" style="font-family:Courier New,monospace;font-size:10px;color:#64748b">Generated ${genDate} &nbsp;\u00b7&nbsp; ESR Analytics Dashboard</td>
-    </tr></table>
-  </div></div></body></html>`;
-
-  return H;
-}
-
-// ── Send report ────────────────────────────────────────────────────────
-async function sendReportNow() {
-  if (!allLoadedYears.length) { setEmailStatus('err', '\u2717 Load data first'); return; }
-  if (!emailRecipients.length) { setEmailStatus('err', '\u2717 Add at least one recipient'); return; }
-  setEmailStatus('sending', '\u27f3 Building report\u2026');
+  setEmailStatus('sending','⟳ Fetching workflow status…');
   try {
-    const html = buildEmailReportHTML();
-    if (!html) throw new Error('Failed to build report HTML');
-    const commName  = document.getElementById('selCommodity').selectedOptions[0].text;
-    const commShort = commName.split('\u00b7').slice(1).join('\u00b7').trim() || commName;
-    const weekDate  = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-    const subjectTmpl = document.getElementById('emailSubject').value.trim();
-    const subject = subjectTmpl
-      ? subjectTmpl.replace('{commodity}',commShort).replace('{date}',new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}))
-      : `USDA ESR Weekly Report \u2014 ${commShort} \u2014 ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
-    setEmailStatus('sending', '\u27f3 Sending via Gmail\u2026');
-    const data = await gasRequest({action:'send', recipients:emailRecipients, subject, reportHtml:html, commodity:commShort, weekDate});
-    const sentLabel = new Date().toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
-    localStorage.setItem('esr_last_sent_ct', sentLabel);
-    updateScheduleBadge();
-    setEmailStatus('ok', `\u2713 ${data.message} \u2014 ${sentLabel}`);
-    gasRequest({action:'saveConfig',config:{recipients:emailRecipients,commodity:commShort}}).catch(()=>{});
-  } catch(err) {
-    setEmailStatus('err', '\u2717 ' + err.message);
+    const res = await fetch(
+      `https://api.github.com/repos/${repo}/actions/workflows/send_esr_report.yml/runs?per_page=1`,
+      { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }}
+    );
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const run  = data.workflow_runs?.[0];
+    if(!run){ setEmailStatus('err','No runs found yet'); return; }
+    const when = new Date(run.created_at).toLocaleString('en-US',{timeZone:'America/New_York',
+      weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+    const icon = run.status==='completed' ? (run.conclusion==='success'?'✓':'✗') : '⟳';
+    const cls  = run.conclusion==='success'?'ok': run.status!=='completed'?'sending':'err';
+    setEmailStatus(cls,`${icon} ${run.status} · ${run.conclusion||'running'} · ${when}`);
+  } catch(err){
+    setEmailStatus('err','✗ '+err.message);
   }
 }
 
-// ── Schedule badge ─────────────────────────────────────────────────────
-function updateScheduleBadge() {
-  const now = new Date();
+// ── Schedule badge + next Thursday ─────────────────────────────────────
+function updateScheduleBadge(){
+  const now  = new Date();
   const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',weekday:'long'}).formatToParts(now);
-  const weekday = parts.find(p=>p.type==='weekday')?.value || '';
-  const dayIdx = days.indexOf(weekday);
-  const dToThu = (4 - dayIdx + 7) % 7 || 7;
-  const nextThu = new Date(now.getTime() + dToThu * 86400000);
-  const label = nextThu.toLocaleDateString('en-US',
-    { timeZone:'America/Chicago', weekday:'long', month:'short', day:'numeric' });
+  const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'long'}).formatToParts(now);
+  const weekday = parts.find(p=>p.type==='weekday')?.value||'';
+  const dayIdx  = days.indexOf(weekday);
+  const dToThu  = (4-dayIdx+7)%7||7;
+  const nextThu = new Date(now.getTime()+dToThu*86400000);
+  const label   = nextThu.toLocaleDateString('en-US',
+    {timeZone:'America/New_York',weekday:'long',month:'short',day:'numeric'});
 
   const el = document.getElementById('schedNext');
-  if (el) el.textContent = label + ' @ 7:30 AM CT';
-  const sub = document.getElementById('schedSub');
-  if (sub) sub.textContent = emailRecipients.length > 0
-    ? `${emailRecipients.length} recipient${emailRecipients.length>1?'s':''} · GAS trigger runs automatically`
-    : 'No recipients configured yet';
-  const last = document.getElementById('schedLast');
-  const lastSent = localStorage.getItem('esr_last_sent_ct');
-  if (last) last.textContent = lastSent ? 'Last sent: ' + lastSent : '';
+  if(el) el.textContent = label+' @ 8:31 AM ET';
 
-  const url = document.getElementById('gasWebAppUrl')?.value?.trim();
-  const secret = document.getElementById('gasSecret')?.value?.trim();
+  const sub = document.getElementById('schedSub');
+  if(sub) sub.textContent = 'Thursday 8:31 AM ET · Retries at 8:36 and 8:41 if needed';
+
+  const last = document.getElementById('schedLast');
+  const lastT = localStorage.getItem('esr_last_triggered');
+  if(last) last.textContent = lastT ? 'Last triggered: '+lastT : '';
+
+  const repo  = document.getElementById('ghRepo')?.value?.trim();
+  const token = document.getElementById('ghToken')?.value?.trim();
   const badge = document.getElementById('schedBadge');
-  if (badge) {
-    if (url && secret && emailRecipients.length > 0)
-      badge.innerHTML = `<span style="color:var(--green)">● GAS connected</span><br>${emailRecipients.length} recipient${emailRecipients.length>1?'s':''}`;
-    else if (emailRecipients.length > 0)
-      badge.innerHTML = `<span style="color:var(--gold)">${emailRecipients.length} recipient${emailRecipients.length>1?'s':''} · finish setup</span>`;
+  if(badge){
+    if(repo && token)
+      badge.innerHTML = `<span style="color:var(--green)">● GitHub connected</span><br>${repo.split('/')[1]||repo}`;
     else
-      badge.innerHTML = '<span style="color:var(--muted2)">Not configured</span>';
+      badge.innerHTML = '<span style="color:var(--muted2)">Add repo + token to enable</span>';
   }
 }
 
-(function initEmail() {
+// ── Init ───────────────────────────────────────────────────────────────
+(function initEmail(){
   loadEmailConfig();
   updateScheduleBadge();
   setInterval(updateScheduleBadge, 60000);
