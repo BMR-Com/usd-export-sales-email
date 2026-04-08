@@ -527,8 +527,8 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
       </optgroup>
     </select>
   </div>
-  <div class="ctrl"><label>Primary Year</label><select id="selYear"></select></div>
-  <div class="ctrl"><label>Compare Years (hold Ctrl)</label><select id="selCompareYears" multiple></select></div>
+  <div class="ctrl"><label>From Year</label><select id="selYearFrom"></select></div>
+  <div class="ctrl"><label>To Year</label><select id="selYearTo"></select></div>
   <div class="ctrl" style="align-self:flex-end"><button class="btn" id="btnLoad" onclick="loadAll()">⟳ Load Data</button></div>
   <div class="ctrl" style="align-self:flex-end">
     <button class="btn" id="btnPDF" style="background:var(--s2);color:var(--gold);border:1px solid rgba(232,197,71,.35)" onclick="generatePDFReport()">🖨 Print / PDF</button>
@@ -759,10 +759,18 @@ const COUNTRIES={1:"European Union",2:"Unknown",1010:"Greenland",1220:"Canada",1
 let globalData={},charts={},primaryYear=2026,allLoadedYears=[],debugLines=[];
 
 (function init(){
-  const yrSel=document.getElementById('selYear'),cmpSel=document.getElementById('selCompareYears');
-  for(let y=2026;y>=2000;y--){
-    const o1=document.createElement('option');o1.value=y;o1.textContent='MY '+y;if(y===2026)o1.selected=true;yrSel.appendChild(o1);
-    const o2=document.createElement('option');o2.value=y;o2.textContent='MY '+y;if(y>=2023&&y<=2025)o2.selected=true;cmpSel.appendChild(o2);
+  const fromSel = document.getElementById('selYearFrom');
+  const toSel   = document.getElementById('selYearTo');
+  for(let y=2026; y>=1991; y--){
+    const o1=document.createElement('option');
+    o1.value=y; o1.textContent='MY '+y;
+    if(y===2021) o1.selected=true;   // default From: MY2021
+    fromSel.appendChild(o1);
+
+    const o2=document.createElement('option');
+    o2.value=y; o2.textContent='MY '+y;
+    if(y===2026) o2.selected=true;   // default To: MY2026
+    toSel.appendChild(o2);
   }
 })();
 
@@ -819,18 +827,53 @@ function aggregateByCountry(data){
 }
 
 async function loadAll(){
-  const commCode=+document.getElementById('selCommodity').value;
-  const yr=+document.getElementById('selYear').value;
-  const cmpYears=[...document.getElementById('selCompareYears').selectedOptions].map(o=>+o.value).filter(y=>y!==yr);
-  const btn=document.getElementById('btnLoad');btn.disabled=true;setLive(false);debugLines=[];document.getElementById('debugBox').innerHTML='';
-  try{setStatus('loading',`⟳ Fetching MY${yr} data…`);const raw=await usdaFetch(`exports/commodityCode/${commCode}/allCountries/marketYear/${yr}`);if(!Array.isArray(raw)||!raw.length)throw new Error('Empty response');globalData={};globalData[yr]=raw;allLoadedYears=[yr];
-  for(const cy of cmpYears){try{setStatus('loading',`⟳ Fetching MY${cy}…`);const d=await usdaFetch(`exports/commodityCode/${commCode}/allCountries/marketYear/${cy}`);if(Array.isArray(d)&&d.length>0){globalData[cy]=d;allLoadedYears.push(cy);}}catch(e){dbg(`MY${cy}: ${e.message}`);}}
-  allLoadedYears.sort((a,b)=>b-a);primaryYear=yr;
-  const commName=document.getElementById('selCommodity').selectedOptions[0].text;
-  setStatus('ok',`✓ Loaded ${allLoadedYears.map(y=>'MY'+y).join(' · ')} · ${commName}`);
-  const footerEl=document.getElementById('footerTs');if(footerEl)footerEl.textContent=`Updated ${new Date().toLocaleString()}`;
-  renderAll(commCode,commName);
-  }catch(e){setStatus('err','✗ '+e.message);setLive(false);}finally{btn.disabled=false;}
+  const commCode = +document.getElementById('selCommodity').value;
+  const fromYr   = +document.getElementById('selYearFrom').value;
+  const toYr     = +document.getElementById('selYearTo').value;
+
+  if(fromYr > toYr){ setStatus('err','✗ "From" year must be earlier than "To" year'); return; }
+
+  // Build list newest first
+  const allYears = [];
+  for(let y = toYr; y >= fromYr; y--) allYears.push(y);
+
+  const btn = document.getElementById('btnLoad');
+  btn.disabled = true;
+  setLive(false);
+  debugLines = [];
+  document.getElementById('debugBox').innerHTML = '';
+  globalData = {};
+  allLoadedYears = [];
+
+  try{
+    for(let i=0; i<allYears.length; i++){
+      const y = allYears[i];
+      setStatus('loading',`⟳ Fetching MY${y}… (${i+1}/${allYears.length})`);
+      try{
+        const d = await usdaFetch(`exports/commodityCode/${commCode}/allCountries/marketYear/${y}`);
+        if(Array.isArray(d)&&d.length>0){
+          globalData[y]=d; allLoadedYears.push(y); dbg(`MY${y}: ${d.length} records`);
+          if(i===0) setLive(true);
+        } else { dbg(`MY${y}: empty`); }
+      }catch(e){ dbg(`MY${y}: ${e.message}`); }
+    }
+
+    if(!allLoadedYears.length) throw new Error('No data loaded for any year in range');
+    allLoadedYears.sort((a,b)=>b-a);
+    primaryYear = globalData[toYr] ? toYr : allLoadedYears[0];
+
+    const commName = document.getElementById('selCommodity').selectedOptions[0].text;
+    setStatus('ok',`✓ Loaded ${allLoadedYears.length} years (MY${fromYr}–MY${toYr}) · ${commName}`);
+    const footerEl=document.getElementById('footerTs');
+    if(footerEl) footerEl.textContent=`Updated ${new Date().toLocaleString()}`;
+    renderAll(commCode, commName);
+
+  }catch(e){
+    setStatus('err','✗ '+e.message);
+    setLive(false);
+  }finally{
+    btn.disabled=false;
+  }
 }
 
 function renderAll(commCode,commName){populateSeasonCountries(commCode);renderSeasonality(commCode,commName);renderIntelligence(commCode,commName);renderProjections(commCode,commName);renderSummaryTable(commCode,commName);renderTable3(commCode);renderTable4(commCode);renderSalesSummary(commCode,commName);loadAIConfig();updateAIDataContext();}
@@ -1647,7 +1690,7 @@ function switchTab(name){
   document.querySelectorAll('.tab-pane').forEach(p=>{
     p.classList.toggle('active', p.id==='tab-'+name);
   });
-  if(name==='ai') updateAIDataContext();
+  if(name==='ai'){ updateAIDataContext(); if(!aiCSVData) autoLoadCSV(); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2202,8 +2245,60 @@ function updateAIDataContext(){
 // Store CSV data for AI context
 let aiCSVData = null;
 
+function parseAndStoreCSV(text, filename){
+  try{
+    const rows = text.split('\n').filter(r=>r.trim());
+    const headers = rows[0].split(',').map(h=>h.trim());
+    const data = rows.slice(1).map(r=>{
+      const vals = r.split(',');
+      const obj = {};
+      headers.forEach((h,i)=>{ obj[h]=vals[i]?.trim()||''; });
+      return obj;
+    }).filter(r=>r.weekEndingDate);
+    aiCSVData = data;
+    const years  = [...new Set(data.map(r=>r.marketYear))].sort();
+    const commCodes = [...new Set(data.map(r=>r.commodityCode))];
+    const msg = `✓ ${filename}: ${data.length.toLocaleString()} rows · MY${years[0]}–MY${years[years.length-1]} · ${commCodes.length} commodity`;
+    document.getElementById('aiStatus').textContent  = msg;
+    document.getElementById('aiStatus').className    = 'ai-status ok';
+    updateAIDataContext();
+    appendAIMsg('assistant',
+      `✓ Historical CSV loaded automatically! **${data.length.toLocaleString()} rows** · MY${years[0]}–MY${years[years.length-1]}\n\nYou can now ask me historical questions like:\n• How does this year compare to the 10-year average?\n• Which year had the highest exports at this week?\n• Plot accumulated exports for all years`
+    );
+  }catch(err){
+    document.getElementById('aiStatus').textContent = '✗ CSV parse error: '+err.message;
+    document.getElementById('aiStatus').className   = 'ai-status err';
+  }
+}
+
+// Auto-fetch CSV from repo (works when served from GitHub Pages or localhost)
+// Falls back to relative path attempts, then file picker
+async function autoLoadCSV(){
+  const candidates = [
+    'cotton_history_1404.csv',
+    './cotton_history_1404.csv',
+    '../cotton_history_1404.csv',
+    'data/cotton_history_1404.csv',
+  ];
+  for(const path of candidates){
+    try{
+      const res = await fetch(path);
+      if(res.ok){
+        const text = await res.text();
+        if(text.includes('weekEndingDate')){
+          parseAndStoreCSV(text, path);
+          return;
+        }
+      }
+    }catch(e){}
+  }
+  // Couldn't auto-fetch — show a note but don't show error
+  document.getElementById('aiStatus').textContent =
+    'CSV not auto-loaded (file:// mode). Click "Load CSV" to browse for it.';
+}
+
 function loadCSVForAI(){
-  // Create a file input, let user pick their cotton_history CSV
+  // Manual file picker fallback
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.csv';
@@ -2212,36 +2307,13 @@ function loadCSVForAI(){
     if(!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
-      try{
-        const rows = ev.target.result.split('
-').filter(r=>r.trim());
-        const headers = rows[0].split(',');
-        const data = rows.slice(1).map(r=>{
-          const vals = r.split(',');
-          const obj = {};
-          headers.forEach((h,i)=>{ obj[h.trim()]=vals[i]?.trim()||''; });
-          return obj;
-        });
-        aiCSVData = data;
-        // Build summary stats from CSV
-        const years = [...new Set(data.map(r=>r.marketYear))].sort().reverse();
-        const commCodes = [...new Set(data.map(r=>r.commodityCode))];
-        document.getElementById('aiStatus').textContent =
-          `✓ CSV loaded: ${data.length.toLocaleString()} rows · ${years.length} years (${years[years.length-1]}–${years[0]}) · ${commCodes.length} commodity code(s)`;
-        document.getElementById('aiStatus').className = 'ai-status ok';
-        appendAIMsg('assistant',
-          `✓ CSV data loaded! I now have access to **${data.length.toLocaleString()} rows** covering **${years.length} years** (MY${years[years.length-1]}–MY${years[0]}).\n\nYou can now ask me:\n• Historical comparisons across any year\n• Average sales/exports at any week number\n• Country-level trends over time\n• Percentile rankings vs history`
-        );
-        updateAIDataContext();
-      }catch(err){
-        document.getElementById('aiStatus').textContent = '✗ CSV parse error: '+err.message;
-        document.getElementById('aiStatus').className = 'ai-status err';
-      }
+      parseAndStoreCSV(ev.target.result, file.name);
     };
     reader.readAsText(file);
   };
   input.click();
 }
+
 
 function buildCSVSummary(){
   if(!aiCSVData || !aiCSVData.length) return '';
@@ -2700,8 +2772,12 @@ function buildEmailReportHTML(){
 </body></html>`;
 }
 
+
+// Auto-load CSV when page loads
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadAIConfig();
+  setTimeout(autoLoadCSV, 1000);
+});
 </script>
-</body>
-</html>
 </body>
 </html>
