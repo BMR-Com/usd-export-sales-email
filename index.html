@@ -200,10 +200,6 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
 .sc-label{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--border)}
 .sc-wrap{position:relative;aspect-ratio:1/1}
 
-/* CRITICAL FIX: Tab visibility */
-.tab-pane{display:none !important}
-.tab-pane.active{display:block !important}
-
 @media print{
 
   /* PAGE SETUP */
@@ -492,7 +488,6 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
 
 }
 </style>
-<base target="_blank">
 </head>
 <body>
 <header>
@@ -707,11 +702,10 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
       <div class="ai-key-row">
         <label>Model</label>
         <select class="ai-model-sel" id="groqModel" onchange="saveAIConfig()">
-          <!-- FIXED: llama-3.3-70b-versatile is current production model (NOT deprecated) -->
-          <option value="llama-3.3-70b-versatile" selected>Llama 3.3 70B Versatile (recommended)</option>
+          <option value="llama-3.3-70b-versatile">Llama 3.3 70B (recommended)</option>
           <option value="llama-3.1-8b-instant">Llama 3.1 8B (fast)</option>
-          <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B (latest)</option>
-          <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 Distill 70B (reasoning)</option>
+          <option value="mixtral-8x7b-32768">Mixtral 8x7B (long context)</option>
+          <option value="gemma2-9b-it">Gemma 2 9B</option>
         </select>
       </div>
       <button class="btn" style="font-size:.58rem;padding:6px 12px" onclick="testGroqKey()">✓ Test Connection</button>
@@ -791,35 +785,21 @@ const COUNTRIES={1:"European Union",2:"Unknown",1010:"Greenland",1220:"Canada",1
 
 let globalData={},charts={},primaryYear=2026,allLoadedYears=[],debugLines=[];
 
-// FIXED: Wrap in DOMContentLoaded to ensure DOM is ready
-document.addEventListener('DOMContentLoaded', function(){
-  console.log('Initializing year dropdowns...');
+(function init(){
   const fromSel = document.getElementById('selYearFrom');
   const toSel   = document.getElementById('selYearTo');
-
-  if(!fromSel || !toSel){
-    console.error('ERROR: Year select elements not found');
-    setStatus('err', 'Initialization error: dropdown elements missing');
-    return;
-  }
-
-  // Clear existing options first
-  fromSel.innerHTML = '';
-  toSel.innerHTML = '';
-
   for(let y=2026; y>=1991; y--){
     const o1=document.createElement('option');
     o1.value=y; o1.textContent='MY '+y;
-    if(y===2021) o1.selected=true;
+    if(y===2021) o1.selected=true;   // default From: MY2021
     fromSel.appendChild(o1);
 
     const o2=document.createElement('option');
     o2.value=y; o2.textContent='MY '+y;
-    if(y===2026) o2.selected=true;
+    if(y===2026) o2.selected=true;   // default To: MY2026
     toSel.appendChild(o2);
   }
-  console.log('Year dropdowns initialized: 1991-2026');
-});
+})();
 
 function fmt(v){if(v==null||v===''||isNaN(v))return '—';const n=+v;if(Math.abs(n)>=1e6)return(n/1e6).toFixed(2)+'M';if(Math.abs(n)>=1e3)return(n/1e3).toFixed(1)+'K';return n.toLocaleString();}
 function fmtD(v){if(v==null||isNaN(v))return '—';const n=+v;const s=n>=0?'+':'-';if(Math.abs(n)>=1e6)return s+(Math.abs(n)/1e6).toFixed(2)+'M';if(Math.abs(n)>=1e3)return s+(Math.abs(n)/1e3).toFixed(1)+'K';return(n>=0?'+':'')+n.toLocaleString();}
@@ -827,28 +807,7 @@ function dbg(msg){debugLines.push(msg);const box=document.getElementById('debugB
 function toggleDebug(){document.getElementById('debugBox').classList.toggle('show');}
 function setStatus(cls,msg){const el=document.getElementById('statusBar');el.className='status '+cls;el.textContent=msg;}
 function setLive(on){document.getElementById('liveDot').className='live-dot'+(on?' on':'');document.getElementById('liveLabel').textContent=on?'Live':'Offline';}
-function destroyChart(id){if(charts[id]){try{charts[id].stop();charts[id].destroy();}catch(e){}delete charts[id];}}
-
-// FIXED: Properly destroy all charts to prevent memory leaks
-function destroyAllCharts(){
-  // Destroy seasonality charts
-  for(const m of ALL_METRICS_DEF){
-    const id='sc_'+m.id;
-    if(charts[id]){
-      try{charts[id].stop();charts[id].destroy();}catch(e){console.warn('Chart destroy error:',id,e);}
-      delete charts[id];
-    }
-  }
-  // Destroy AI charts
-  for(let i=0; i<aiChartCount; i++){
-    const id='ai-chart-'+i;
-    if(charts[id]){
-      try{charts[id].destroy();}catch(e){}
-      delete charts[id];
-    }
-  }
-  aiChartCount=0;
-}
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 
 function getMYStart(commCode,myYear){const m=MY_START_MONTH[commCode]||1;return new Date(m===1?myYear:myYear-1,m-1,1);}
 function getWeekInMY(dateStr,commCode,myYear){const myStart=getMYStart(commCode,myYear);const wkDate=new Date(String(dateStr).split('T')[0]+'T00:00:00');return Math.round((wkDate-myStart)/(7*24*3600*1000))+1;}
@@ -969,8 +928,8 @@ const ALL_METRICS_DEF=[
 ];
 
 function renderSeasonality(commCode,commName){
-  // FIXED: Destroy all previous charts properly
-  destroyAllCharts();
+  // Destroy all previous season charts
+  for(const m of ALL_METRICS_DEF){if(charts['sc_'+m.id]){charts['sc_'+m.id].destroy();delete charts['sc_'+m.id];}}
   const filterCodes=getSeasonCountryCodes();
   seasonalityWeekData={};
   const yearsSorted=[...allLoadedYears].sort((a,b)=>b-a);
@@ -1706,31 +1665,13 @@ body{font-family:Georgia,'Times New Roman',serif;background:white;color:#1e293b;
 // TAB SWITCHING
 // ═══════════════════════════════════════════════════════════════════════
 function switchTab(name){
-  console.log('Switching to tab:', name);
-
-  // Update tab buttons
-  const tabNames = ['dashboard', 'ai'];
-  document.querySelectorAll('.main-tab').forEach((t, i) => {
-    t.classList.toggle('active', tabNames[i] === name);
+  document.querySelectorAll('.main-tab').forEach((t,i)=>{
+    t.classList.toggle('active', ['dashboard','ai'][i]===name);
   });
-
-  // Update panes with explicit display control - CRITICAL FIX
-  document.querySelectorAll('.tab-pane').forEach(p => {
-    const isActive = p.id === 'tab-' + name;
-    p.classList.toggle('active', isActive);
-    // Force display property for reliability
-    p.style.display = isActive ? 'block' : 'none';
+  document.querySelectorAll('.tab-pane').forEach(p=>{
+    p.classList.toggle('active', p.id==='tab-'+name);
   });
-
-  if(name === 'ai'){
-    updateAIDataContext();
-    if(!aiCSVData) setTimeout(autoLoadCSV, 100);
-    // Ensure chat scrolls to bottom
-    setTimeout(() => {
-      const msgs = document.getElementById('aiMessages');
-      if(msgs) msgs.scrollTop = msgs.scrollHeight;
-    }, 50);
-  }
+  if(name==='ai'){ updateAIDataContext(); if(!aiCSVData) autoLoadCSV(); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2515,36 +2456,30 @@ async function sendAIMessage(){
 
   const ctx = buildAIContext();
   const csvLoaded = !!aiCSVData && aiCSVData.length > 0;
-  const systemPrompt=`You are an expert USDA Export Sales Reporting (ESR) analyst.
+  const csvNote = csvLoaded
+    ? ('FULL HISTORICAL DATABASE: ' + aiCSVData.length.toLocaleString() + ' rows loaded from CSV.\n'
+       + 'csvData field has year-by-year summaries (accumExports, totalCommit, outstanding, nextMYOutst in thousands RB).\n'
+       + 'Use this for ALL historical comparisons, averages, percentile rankings, and trend analysis.')
+    : 'No CSV loaded. Historical context limited to loaded years only. User can click Load CSV.';
 
-CURRENT WEEK DATA (from USDA API — live):
-<data>
-${ctx}
-</data>
+  const chartNote = wantsChart
+    ? ('\nCHART: Respond with ONLY a <chart>JSON</chart> block then one sentence.\n'
+       + 'Format: {"type":"bar","title":"...","labels":[...],"datasets":[{"label":"...","data":[...],"backgroundColor":"#4fc3f7"}]}\n'
+       + 'NO comments, NO trailing commas in JSON.')
+    : '';
 
-${csvLoaded ? `FULL HISTORICAL DATABASE: ${aiCSVData.length.toLocaleString()} rows loaded from CSV covering all years.
-The csvData field in the JSON above has year-by-year summaries (accumExports, totalCommit, outstanding, nextMYOutst — all in thousands of running bales).
-Use this for ALL historical comparisons, averages, percentile rankings, and trend analysis.` : 
-'Note: Full CSV not loaded. Historical context limited to loaded years only. User can click Load CSV button.'}
-
-RULES:
-1. ALWAYS answer using the actual numbers — never say data is unavailable if it is in the JSON.
-2. For historical comparisons use csvData.data[year] values (in thousands RB — multiply by 1000 for exact).
-3. For current week use currentWeekTotals.
-4. Format: use K for thousands, M for millions (e.g. 1.2M RB, 450K RB).
-5. Marketing year for cotton: starts August 1. MY2026 = Aug 2025 – Jul 2026.
-6. For chart requests: respond ONLY with a <chart>JSON</chart> block then one sentence explanation.
-   Chart JSON format: {"type":"bar","title":"...","labels":[...],"datasets":[{"label":"...","data":[...],"backgroundColor":"#color"}]}
-   Use plain numeric arrays — NO comments, NO trailing commas in JSON.`
-
-${wantsChart?`
-CHART INSTRUCTIONS: The user wants a chart. Respond with a JSON block in this format:
-<chart>
-{"type":"bar|line|pie","title":"chart title","labels":["label1","label2"],"datasets":[{"label":"series name","data":[1,2,3],"backgroundColor":"#color","borderColor":"#color"}]}
-</chart>
-Then explain the chart in a sentence.`:''}
-
-Be concise, analytical, and data-driven. If data is not available for a question, say so clearly.`;
+  const systemPrompt = (
+    'You are an expert USDA ESR cotton export analyst.\n\n'
+    + 'CURRENT WEEK DATA:\n<data>\n' + ctx + '\n</data>\n\n'
+    + csvNote + '\n\n'
+    + 'RULES:\n'
+    + '1. ALWAYS use actual numbers from the data. Never say unavailable if it is there.\n'
+    + '2. For history: use csvData.data[year] (values in thousands RB, multiply by 1000 for exact).\n'
+    + '3. Format numbers: K for thousands, M for millions (e.g. 1.2M RB).\n'
+    + '4. Cotton marketing year starts August 1. MY2026 = Aug 2025 - Jul 2026.\n'
+    + '5. Be concise and analytical with specific numbers.'
+    + chartNote
+  );
 
   try{
     const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
