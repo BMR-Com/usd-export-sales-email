@@ -3,11 +3,11 @@ name: ESR Weekly Email Report
 on:
   schedule:
     # Thursday 8:31, 8:36, 8:41 AM ET
-    # EDT (summer UTC-4): 12:31, 12:36, 12:41 UTC
+    # EDT (summer, UTC-4): 12:31, 12:36, 12:41 UTC
     - cron: '31 12 * * 4'
     - cron: '36 12 * * 4'
     - cron: '41 12 * * 4'
-    # EST (winter UTC-5): 13:31, 13:36, 13:41 UTC
+    # EST (winter, UTC-5): 13:31, 13:36, 13:41 UTC
     - cron: '31 13 * * 4'
     - cron: '36 13 * * 4'
     - cron: '41 13 * * 4'
@@ -20,8 +20,8 @@ on:
 
 jobs:
   send-report:
-    runs-on: ubuntu-22.04      # ← 22.04 (Jammy) — avoids libasound2 rename in 24.04
-    timeout-minutes: 20
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
@@ -35,6 +35,13 @@ jobs:
           TODAY=$(TZ="America/New_York" date +%Y-%m-%d)
           echo "today=$TODAY" >> $GITHUB_OUTPUT
           FORCE="${{ github.event.inputs.force_send }}"
+          echo "Date (ET): $TODAY"
+          echo "Force send: $FORCE"
+          if [ -f data/last_sent.txt ]; then
+            echo "last_sent.txt contents: $(cat data/last_sent.txt)"
+          else
+            echo "last_sent.txt does not exist yet"
+          fi
           if [ -f data/last_sent.txt ] && grep -q "$TODAY" data/last_sent.txt && [ "$FORCE" != "true" ]; then
             echo "already_sent=true" >> $GITHUB_OUTPUT
             echo "Already sent today ($TODAY) — skipping"
@@ -54,17 +61,27 @@ jobs:
         if: steps.check_sent.outputs.already_sent == 'false'
         run: pip install -r scripts/requirements.txt
 
-      - name: Install Playwright Chromium + system dependencies
+      - name: Install Playwright Chromium + system deps
         if: steps.check_sent.outputs.already_sent == 'false'
         run: |
           playwright install chromium
-          # Install system deps manually to avoid Ubuntu 24 libasound2 rename issue
-          sudo apt-get update
+          sudo apt-get update -qq
           sudo apt-get install -y \
             libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
             libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
             libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 \
             libpango-1.0-0 libcairo2 libatspi2.0-0
+
+      - name: Verify secrets are set
+        if: steps.check_sent.outputs.already_sent == 'false'
+        run: |
+          echo "Checking required secrets..."
+          [ -n "${{ secrets.SMTP_HOST }}" ] && echo "✓ SMTP_HOST set" || echo "✗ SMTP_HOST missing"
+          [ -n "${{ secrets.SMTP_PORT }}" ] && echo "✓ SMTP_PORT set" || echo "✗ SMTP_PORT missing"
+          [ -n "${{ secrets.SMTP_USER }}" ] && echo "✓ SMTP_USER set" || echo "✗ SMTP_USER missing"
+          [ -n "${{ secrets.SMTP_PASS }}" ] && echo "✓ SMTP_PASS set" || echo "✗ SMTP_PASS missing"
+          [ -n "${{ secrets.EMAIL_FROM }}" ] && echo "✓ EMAIL_FROM set" || echo "✗ EMAIL_FROM missing"
+          [ -n "${{ secrets.EMAIL_TO }}" ]   && echo "✓ EMAIL_TO set"   || echo "✗ EMAIL_TO missing"
 
       - name: Generate and send report
         if: steps.check_sent.outputs.already_sent == 'false'
