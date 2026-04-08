@@ -410,25 +410,39 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
   .bar-cell{ display:flex!important;align-items:center!important;gap:2pt!important }
   .mini-bar{ background:#b45309!important;height:3px!important;border-radius:1px!important;flex-shrink:0!important;max-width:18px!important }
 
-  /* ════ PAGE 5: 8-WEEK TREND + PERCENTILE (on ONE page, no overflow) ════
-     These live inside #countrySummaryCard in the HTML.
-     We reveal them and start a new page for them.
+  /* ════ PAGE 5: 8-WEEK TREND + PERCENTILE TABLES ════
+     #tblLbl3 and #tblLbl4 are the section labels for tables 3 and 4.
+     tblLbl3 triggers the page break — everything from there stays together.
   */
-  /* Use a pseudo-break by making the tbl-section-label for tbl3 force a new page.
-     Since we can't target nth-of-type reliably, we use the label's margin-top style */
-  /* The tbl-section-label that has margin-top:6px is the one before tbl4 */
   #summaryTbl3{ display:block!important }
   #summaryTbl4{ display:block!important }
 
-  /* Force the section label immediately before summaryTbl3 to start a new page */
-  /* We target it via adjacent sibling: the .tbl-section-label right before #summaryTbl3's parent */
-  #countrySummaryCard > .tbl-section-label:nth-of-type(3){
+  /* Start fresh page at the label before table 3 */
+  #tblLbl3{
     break-before:page!important;
-    page-break-before:always!important
+    page-break-before:always!important;
+    break-after:avoid!important;
+    page-break-after:avoid!important
   }
-  /* No break between tbl3 and tbl4 — they share the page */
-  #summaryTbl3{ break-after:avoid!important }
-  #summaryTbl4{ break-before:avoid!important;break-after:avoid!important }
+  /* Keep tbl3 on same page as its label, no break after */
+  #summaryTbl3{
+    break-before:avoid!important;
+    page-break-before:avoid!important;
+    break-after:avoid!important;
+    page-break-after:avoid!important
+  }
+  /* tbl4 label and tbl4 stay glued to tbl3 — no new page */
+  #tblLbl4{
+    break-before:avoid!important;
+    page-break-before:avoid!important;
+    break-after:avoid!important;
+    page-break-after:avoid!important
+  }
+  #summaryTbl4{
+    break-before:avoid!important;
+    page-break-before:avoid!important;
+    break-inside:auto!important
+  }
 
   /* Compact styling for tbl3 */
   #summaryTbl3 table{ font-size:4pt!important;border-collapse:collapse!important;width:100%!important;table-layout:fixed!important }
@@ -639,13 +653,13 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
     </div>
 
     <!-- ── TABLE 3: 8-WEEK TREND ── -->
-    <div class="tbl-section-label">── Gross Sales &amp; Exports — Recent 8 Weeks ──</div>
+    <div class="tbl-section-label" id="tblLbl3">── Gross Sales &amp; Exports — Recent 8 Weeks ──</div>
     <div style="padding:0 18px 0">
       <div id="summaryTbl3" class="tbl-outer"><div class="empty">Load data to view 8-week table</div></div>
     </div>
 
     <!-- ── TABLE 4: PERCENTILE BARS ── -->
-    <div class="tbl-section-label" style="margin-top:6px">── Historical Percentile Ranges — Outstanding / Accum / Commitment / Next MY ──</div>
+    <div class="tbl-section-label" id="tblLbl4" style="margin-top:2px">── Historical Percentile Ranges — Outstanding / Accum / Commitment / Next MY ──</div>
     <div style="padding:0 18px 0">
       <div id="summaryTbl4" class="tbl-outer"><div class="empty">Load data to view percentile table</div></div>
     </div>
@@ -1163,62 +1177,35 @@ function renderSummaryTable(commCode,commName){
 
 function generatePDFReport(){
   if(!allLoadedYears.length){ alert('Please load data first then print.'); return; }
-  // Resize + recolour all charts for print, then wait 1.5s for
-  // Chart.js to finish re-rendering at the new dimensions before printing
+  // Switch chart colors to print-friendly (black on white), wait 800ms for update
   prepChartsForPrint();
   setTimeout(()=>{
     window.print();
     // Restore dark theme after print dialog closes
-    setTimeout(restoreChartsAfterPrint, 800);
-  }, 1500);
+    setTimeout(restoreChartsAfterPrint, 600);
+  }, 800);
 }
 
 // ── Swap chart legend/tick colors for print, then restore ────────────────
 function prepChartsForPrint(){
-  // A4 landscape: each chart cell ~135mm×100mm at 96dpi ≈ 510×378px
-  // We render at 2× for crisp output: 1020×756
-  const PRINT_W = 1020;
-  const PRINT_H = 756;
-
+  // Only change colours/fonts for print — do NOT resize canvas or disable responsive.
+  // CSS handles sizing. Resizing canvas permanently breaks the web page charts.
   for(const [id,ch] of Object.entries(charts)){
     if(!id.startsWith('sc_')) continue;
     try{
-      const canvas = ch.canvas;
-      const opts   = ch.options;
-
-      // ── Resize canvas to explicit print dimensions ──
-      // Store original so we can restore later
-      if(!canvas._origWidth){
-        canvas._origWidth  = canvas.width;
-        canvas._origHeight = canvas.height;
-        canvas._origStyleW = canvas.style.width;
-        canvas._origStyleH = canvas.style.height;
-      }
-      canvas.width        = PRINT_W;
-      canvas.height       = PRINT_H;
-      canvas.style.width  = PRINT_W+'px';
-      canvas.style.height = PRINT_H+'px';
-
-      // ── Switch to print colour scheme ──
-      opts.plugins.legend.labels.color   = '#000';
-      opts.plugins.legend.labels.font    = {family:'DM Mono',size:11};
-      opts.plugins.legend.labels.boxWidth= 20;
-      opts.plugins.legend.labels.padding = 8;
-
+      const opts = ch.options;
+      opts.plugins.legend.labels.color    = '#000';
+      opts.plugins.legend.labels.font     = {family:'DM Mono', size:9};
+      opts.plugins.legend.labels.boxWidth = 16;
+      opts.plugins.legend.labels.padding  = 6;
       opts.scales.x.ticks.color = '#111';
-      opts.scales.x.ticks.font  = {family:'DM Mono',size:8};
+      opts.scales.x.ticks.font  = {family:'DM Mono', size:7};
       opts.scales.y.ticks.color = '#111';
-      opts.scales.y.ticks.font  = {family:'DM Mono',size:8};
+      opts.scales.y.ticks.font  = {family:'DM Mono', size:7};
       opts.scales.x.grid.color  = '#ccc';
       opts.scales.y.grid.color  = '#ccc';
-
-      // disable animation so update is synchronous
-      opts.animation = false;
-      opts.responsive = false;
-
-      ch.resize(PRINT_W, PRINT_H);
-      ch.update();
-    }catch(err){ console.warn('prepChartsForPrint error:', id, err); }
+      ch.update('none'); // 'none' = no animation, immediate
+    }catch(err){}
   }
 }
 
@@ -1226,38 +1213,19 @@ function restoreChartsAfterPrint(){
   for(const [id,ch] of Object.entries(charts)){
     if(!id.startsWith('sc_')) continue;
     try{
-      const canvas = ch.canvas;
-      const opts   = ch.options;
-
-      // ── Restore original canvas dimensions ──
-      if(canvas._origWidth){
-        canvas.width        = canvas._origWidth;
-        canvas.height       = canvas._origHeight;
-        canvas.style.width  = canvas._origStyleW;
-        canvas.style.height = canvas._origStyleH;
-        delete canvas._origWidth; delete canvas._origHeight;
-        delete canvas._origStyleW; delete canvas._origStyleH;
-      }
-
-      // ── Restore dark theme colours ──
-      opts.plugins.legend.labels.color   = '#dde4f0';
-      opts.plugins.legend.labels.font    = {family:'DM Mono',size:9};
-      opts.plugins.legend.labels.boxWidth= 14;
-      opts.plugins.legend.labels.padding = 8;
-
+      const opts = ch.options;
+      opts.plugins.legend.labels.color    = '#dde4f0';
+      opts.plugins.legend.labels.font     = {family:'DM Mono', size:9};
+      opts.plugins.legend.labels.boxWidth = 14;
+      opts.plugins.legend.labels.padding  = 8;
       opts.scales.x.ticks.color = '#5a6882';
-      opts.scales.x.ticks.font  = {family:'DM Mono',size:8};
+      opts.scales.x.ticks.font  = {family:'DM Mono', size:8};
       opts.scales.y.ticks.color = '#5a6882';
-      opts.scales.y.ticks.font  = {family:'DM Mono',size:8};
+      opts.scales.y.ticks.font  = {family:'DM Mono', size:8};
       opts.scales.x.grid.color  = '#1e2530';
       opts.scales.y.grid.color  = '#1e2530';
-
-      opts.animation  = {duration:400};
-      opts.responsive = true;
-
-      ch.resize();
-      ch.update();
-    }catch(err){ console.warn('restoreChartsAfterPrint error:', id, err); }
+      ch.update('none');
+    }catch(err){}
   }
 }
 
@@ -2351,8 +2319,9 @@ function buildCSVSummary(){
 }
 
 function buildAIContext(){
-  // Build a compact JSON context of current data for Groq
-  if(!allLoadedYears.length) return 'No export data loaded.';
+  // Build comprehensive context from globalData already in memory
+  // This works without any CSV file — uses whatever years are loaded
+  if(!allLoadedYears.length) return 'No export data loaded. Please load data in the Dashboard tab first.';
   const commCode=+document.getElementById('selCommodity').value;
   const commName=document.getElementById('selCommodity').selectedOptions[0].text;
   const {byC,thisWeek,lastWeek}=aggregateByCountry(globalData[primaryYear]);
@@ -2375,15 +2344,62 @@ function buildAIContext(){
   const primaryWeeks=aggregateByWeek(globalData[primaryYear],commCode,primaryYear);
   const curWk=primaryWeeks[primaryWeeks.length-1];
 
+  // Build per-year historical summary from globalData (all loaded years)
+  const yearSummaries = {};
+  for(const y of allLoadedYears){
+    if(!globalData[y]) continue;
+    const yWeeks = aggregateByWeek(globalData[y], commCode, y);
+    let snap = null;
+    for(const w of yWeeks) if(w.accumulatedExports>0||w.weeklyExports>0) snap=w;
+    if(!snap && yWeeks.length) snap = yWeeks[yWeeks.length-1];
+    if(snap){
+      yearSummaries[y] = {
+        weekNum:       snap.wkNum,
+        accumExports:  snap.accumulatedExports,
+        outstanding:   snap.outstandingSales,
+        totalCommit:   snap.currentMYTotalCommitment,
+        grossSales:    snap.grossNewSales,
+        weeklyExports: snap.weeklyExports,
+        nextMYOutst:   snap.nextMYOutstandingSales,
+      };
+    }
+  }
+
+  // Build percentile context for key metrics vs all loaded years
+  const metricsForPctile = ['accumExports','totalCommit','outstanding','nextMYOutst'];
+  const pctileCtx = {};
+  if(yearSummaries[primaryYear]){
+    const curVals = yearSummaries[primaryYear];
+    metricsForPctile.forEach(m=>{
+      const hist = allLoadedYears
+        .filter(y=>y!==primaryYear && yearSummaries[y]?.[m]!=null)
+        .map(y=>yearSummaries[y][m])
+        .sort((a,b)=>a-b);
+      if(hist.length>=2){
+        const cur = curVals[m]||0;
+        const below = hist.filter(v=>v<cur).length;
+        const pct = Math.round((below/hist.length)*100);
+        const avg = Math.round(hist.reduce((a,b)=>a+b,0)/hist.length);
+        const min = hist[0], max = hist[hist.length-1];
+        pctileCtx[m] = {current:cur, avg, min, max, percentile:pct, yearsCompared:hist.length};
+      }
+    });
+  }
+
   const csvSummary = buildCSVSummary();
   return JSON.stringify({
-    commodity:commName, primaryYear, loadedYears:allLoadedYears,
-    weekEnding:thisWeek, marketingYearWeek:curWk?.wkNum,
-    totals, top10buyers:top10,
-    historicalCSV: csvSummary || 'No CSV loaded — user can load cotton_history.csv for full historical context',
-    csvRowCount: aiCSVData?.length || 0,
-    note:'Values in running bales (RB). Marketing year starts June 1 for cotton.'
-  },null,2);
+    commodity: commName,
+    primaryYear,
+    loadedYears: allLoadedYears,
+    weekEnding: thisWeek,
+    marketingYearWeek: curWk?.wkNum,
+    currentWeekTotals: totals,
+    top10buyers: top10,
+    historicalYearSummaries: yearSummaries,
+    percentileRankings: pctileCtx,
+    csvData: csvSummary || null,
+    note: 'Values in running bales (RB). Marketing year for cotton starts June 1. Use historicalYearSummaries for year-over-year comparisons and percentileRankings for statistical context.'
+  }, null, 2);
 }
 
 function aiQuickAsk(q){ document.getElementById('aiInput').value=q; sendAIMessage(); }
@@ -2405,14 +2421,21 @@ async function sendAIMessage(){
   // Detect chart request
   const wantsChart=/\b(plot|chart|graph|draw|visuali[sz]e|bar chart|line chart)\b/i.test(q);
 
-  const systemPrompt=`You are an expert USDA Export Sales Reporting (ESR) analyst. 
-You have access to the following current export data:
+  const ctx = buildAIContext();
+  const systemPrompt=`You are an expert USDA Export Sales Reporting (ESR) analyst with deep knowledge of cotton export markets.
+
+You have access to LIVE export data loaded from the USDA FAS API:
 <data>
-${buildAIContext()}
+${ctx}
 </data>
 
-Answer questions analytically. Use specific numbers from the data. 
-Format numbers with K/M suffixes (e.g. 1.2M, 450K running bales).
+IMPORTANT INSTRUCTIONS:
+- ALWAYS use the actual numbers from the data above. Never say data is unavailable if it is in the JSON above.
+- Use historicalYearSummaries to answer any year-over-year comparison questions.
+- Use percentileRankings to answer questions about how current values compare historically.
+- Format numbers with K/M suffixes (e.g. 1.2M, 450K running bales).
+- Marketing year (MY) for cotton starts June 1. MY2026 = June 2025 - May 2026.
+- Be specific and analytical. Give concrete numbers and comparisons.
 
 ${wantsChart?`
 CHART INSTRUCTIONS: The user wants a chart. Respond with a JSON block in this format:
