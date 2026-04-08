@@ -487,9 +487,78 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
   .summary-country-chg{ font-size:5pt!important }
 
 }
+
+/* ── PLATFORM NAV ── */
+.platform-nav{
+  background:#060a0e;
+  border-bottom:2px solid var(--gold);
+  padding:8px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0
+}
+.platform-brand{display:flex;flex-direction:column;gap:1px}
+.platform-name{
+  font-family:"DM Mono",monospace;
+  font-size:.75rem;
+  font-weight:700;
+  letter-spacing:3px;
+  color:var(--gold);
+  text-transform:uppercase
+}
+.platform-tagline{
+  font-family:"DM Mono",monospace;
+  font-size:.5rem;
+  letter-spacing:2px;
+  color:var(--muted)
+}
+.platform-tabs{display:flex;gap:0;border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.platform-tab{
+  font-family:"DM Mono",monospace;
+  font-size:.6rem;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  padding:7px 16px;
+  background:var(--s2);
+  color:var(--muted);
+  text-decoration:none;
+  border-right:1px solid var(--border);
+  transition:all .15s;
+  display:flex;
+  align-items:center;
+  gap:5px
+}
+.platform-tab:last-child{border-right:none}
+.platform-tab:hover{background:var(--s1);color:var(--text)}
+.platform-tab.active{background:var(--gold);color:#1a1400;font-weight:700}
+.nav-icon{font-size:.75rem}
+
+/* ── PLATFORM NAV ── */
+.platform-nav{background:#060a0e;border-bottom:2px solid var(--gold);padding:8px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.platform-brand{display:flex;flex-direction:column;gap:1px}
+.platform-name{font-family:"DM Mono",monospace;font-size:.75rem;font-weight:700;letter-spacing:3px;color:var(--gold);text-transform:uppercase}
+.platform-tagline{font-family:"DM Mono",monospace;font-size:.5rem;letter-spacing:2px;color:var(--muted)}
+.platform-tabs{display:flex;gap:0;border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.platform-tab{font-family:"DM Mono",monospace;font-size:.6rem;letter-spacing:1px;text-transform:uppercase;padding:7px 16px;background:var(--s2);color:var(--muted);text-decoration:none;border-right:1px solid var(--border);transition:all .15s;display:flex;align-items:center;gap:5px}
+.platform-tab:last-child{border-right:none}
+.platform-tab:hover{background:var(--s1);color:var(--text)}
+.platform-tab.active{background:var(--gold);color:#1a1400;font-weight:700}
+.nav-icon{font-size:.75rem}
 </style>
 </head>
 <body>
+<nav class="platform-nav">
+  <div class="platform-brand">
+    <div class="platform-name">Cotton Analytics</div>
+    <div class="platform-tagline">BMR Research</div>
+  </div>
+  <div class="platform-tabs">
+    <a class="platform-tab active" href="index.html"><span class="nav-icon">📊</span> ESR Export Sales</a>
+    <a class="platform-tab" href="cotton_options/index.html"><span class="nav-icon">📈</span> Options Analytics</a>
+  </div>
+  <div style="font-family:'DM Mono',monospace;font-size:.52rem;color:var(--muted)">USDA FAS · BVOL</div>
+</nav>
 <header>
   <div class="logo-block">
     <div class="eyebrow">USDA FAS · Export Sales Reporting · Live Weekly Data</div>
