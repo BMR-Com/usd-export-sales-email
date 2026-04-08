@@ -548,13 +548,150 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
     page-break-inside:auto!important
   }
 
-  /* Hide the new tables 3, 4 and CSV panel on this page —
-     they get their own pages below */
-  #summaryTbl3, #summaryTbl4,
-  .csv-panel,
-  #salesSummaryCard{
-    display:none!important
+  /* csv panel always hidden in print */
+  .csv-panel{ display:none!important }
+
+  /* ── Page 5: Tables 3 + 4 on one page ── */
+  /* Tables 3/4 are inside countrySummaryCard but need own page.
+     We use a wrapper trick — the tbl-section-labels for tbl3/4
+     force a page break when encountered. */
+  #summaryTbl3,
+  #summaryTbl4{ display:block!important }
+
+  /* The section label before tbl3 starts a new page */
+  #countrySummaryCard .tbl-section-label:nth-of-type(3){
+    break-before:page!important;
+    page-break-before:always!important
   }
+
+  /* Keep tbl3 + tbl4 together on that page — no break between them */
+  #summaryTbl3{ break-after:avoid!important }
+  #summaryTbl4{ break-before:avoid!important }
+
+  /* Table 3 styling */
+  #summaryTbl3 table{
+    font-size:4.5pt!important;
+    border-collapse:collapse!important;
+    width:100%!important;
+    table-layout:fixed!important
+  }
+  #summaryTbl3 th{
+    font-size:4pt!important;
+    padding:2pt 1.5pt!important;
+    white-space:normal!important;
+    word-break:break-word!important;
+    line-height:1.2!important;
+    text-align:center!important;
+    border:1px solid #334155!important
+  }
+  #summaryTbl3 thead tr.grp-row th{
+    background:#1e293b!important;
+    color:#fff!important
+  }
+  #summaryTbl3 thead tr.hd-row th{
+    background:#f1f5f9!important;
+    color:#334155!important;
+    border:1px solid #cbd5e1!important
+  }
+  #summaryTbl3 td{
+    font-size:4.5pt!important;
+    padding:1pt 1.5pt!important;
+    border:1px solid #e2e8f0!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    color:#000!important;
+    background:#fff!important
+  }
+  #summaryTbl3 td:first-child{
+    white-space:normal!important;
+    word-break:break-word!important
+  }
+  #summaryTbl3 tr:nth-child(even) td{ background:#f8fafc!important }
+  #summaryTbl3 tr.total-row td{
+    background:#fffbeb!important;
+    color:#92400e!important;
+    border-top:1.5px solid #d97706!important;
+    font-weight:700!important
+  }
+  #summaryTbl3 tr.others-row td{ background:#f1f5f9!important; color:#475569!important }
+
+  /* Table 4 percentile styling */
+  #summaryTbl4 table{
+    font-size:4.5pt!important;
+    border-collapse:collapse!important;
+    width:100%!important;
+    table-layout:fixed!important
+  }
+  #summaryTbl4 th{
+    font-size:4pt!important;
+    padding:2pt 2pt!important;
+    white-space:normal!important;
+    word-break:break-word!important;
+    line-height:1.2!important;
+    text-align:center!important;
+    border:1px solid #334155!important
+  }
+  #summaryTbl4 thead tr.grp-row th{
+    background:#1e293b!important;
+    color:#fff!important
+  }
+  #summaryTbl4 thead tr.hd-row th{
+    background:#f1f5f9!important;
+    color:#334155!important;
+    border:1px solid #cbd5e1!important
+  }
+  #summaryTbl4 td{
+    font-size:4.5pt!important;
+    padding:1.5pt 2pt!important;
+    border:1px solid #e2e8f0!important;
+    white-space:nowrap!important;
+    color:#000!important;
+    background:#fff!important
+  }
+  #summaryTbl4 td:first-child{ white-space:normal!important; word-break:break-word!important }
+  #summaryTbl4 tr:nth-child(even) td{ background:#f8fafc!important }
+  #summaryTbl4 tr.total-row td{
+    background:#fffbeb!important;
+    color:#92400e!important;
+    border-top:1.5px solid #d97706!important;
+    font-weight:700!important
+  }
+  #summaryTbl4 tr.others-row td{ background:#f1f5f9!important; color:#475569!important }
+  /* Percentile badge colours in print */
+  #summaryTbl4 td span[style*='var(--green)']{ color:#166534!important }
+  #summaryTbl4 td span[style*='var(--red)']  { color:#991b1b!important }
+  #summaryTbl4 td span[style*='var(--muted)']{ color:#475569!important }
+  .pct-bar-wrap{ display:none!important } /* hide bars in print, show numbers only */
+
+  /* ── Page 6: Export Sales Summary ── */
+  #salesSummaryCard{
+    display:block!important;
+    break-before:page!important;
+    page-break-before:always!important;
+    break-inside:auto!important
+  }
+  .summary-narrative{
+    font-size:8pt!important;
+    line-height:1.65!important;
+    color:#000!important
+  }
+  .summary-highlight{ color:#92400e!important; font-weight:700!important }
+  .summary-pos{ color:#166534!important; font-weight:600!important }
+  .summary-neg{ color:#991b1b!important; font-weight:600!important }
+  .summary-country-grid{
+    grid-template-columns:repeat(5,1fr)!important;
+    gap:5pt!important;
+    padding:0 12pt 10pt!important
+  }
+  .summary-country-chip{
+    background:#f8fafc!important;
+    border:1px solid #e2e8f0!important;
+    padding:5pt 6pt!important
+  }
+  .summary-country-name{ color:#475569!important; font-size:5.5pt!important }
+  .summary-country-val{  color:#000!important;    font-size:9pt!important; font-weight:700!important }
+  .summary-country-chg{  font-size:5pt!important }
 
   .tbl-section-label{
     font-size:5pt!important;
@@ -1295,31 +1432,62 @@ function renderSummaryTable(commCode,commName){
 
 function generatePDFReport(){
   if(!allLoadedYears.length){ alert('Please load data first then print.'); return; }
+  // Resize + recolour all charts for print, then wait 1.5s for
+  // Chart.js to finish re-rendering at the new dimensions before printing
   prepChartsForPrint();
-  setTimeout(()=>{ window.print(); setTimeout(restoreChartsAfterPrint,500); },300);
+  setTimeout(()=>{
+    window.print();
+    // Restore dark theme after print dialog closes
+    setTimeout(restoreChartsAfterPrint, 800);
+  }, 1500);
 }
 
 // ── Swap chart legend/tick colors for print, then restore ────────────────
 function prepChartsForPrint(){
+  // A4 landscape: each chart cell ~135mm×100mm at 96dpi ≈ 510×378px
+  // We render at 2× for crisp output: 1020×756
+  const PRINT_W = 1020;
+  const PRINT_H = 756;
+
   for(const [id,ch] of Object.entries(charts)){
     if(!id.startsWith('sc_')) continue;
     try{
-      const opts=ch.options;
-      // Legend text → black, bigger
-      opts.plugins.legend.labels.color='#000';
-      opts.plugins.legend.labels.font={family:'DM Mono',size:9};
-      opts.plugins.legend.labels.boxWidth=18;
-      opts.plugins.legend.labels.padding=6;
-      // Axis ticks → black
-      opts.scales.x.ticks.color='#000';
-      opts.scales.x.ticks.font={family:'DM Mono',size:7};
-      opts.scales.y.ticks.color='#000';
-      opts.scales.y.ticks.font={family:'DM Mono',size:7};
-      // Grid → light grey (readable on white)
-      opts.scales.x.grid.color='#ddd';
-      opts.scales.y.grid.color='#ddd';
-      ch.update('none');
-    }catch(err){}
+      const canvas = ch.canvas;
+      const opts   = ch.options;
+
+      // ── Resize canvas to explicit print dimensions ──
+      // Store original so we can restore later
+      if(!canvas._origWidth){
+        canvas._origWidth  = canvas.width;
+        canvas._origHeight = canvas.height;
+        canvas._origStyleW = canvas.style.width;
+        canvas._origStyleH = canvas.style.height;
+      }
+      canvas.width        = PRINT_W;
+      canvas.height       = PRINT_H;
+      canvas.style.width  = PRINT_W+'px';
+      canvas.style.height = PRINT_H+'px';
+
+      // ── Switch to print colour scheme ──
+      opts.plugins.legend.labels.color   = '#000';
+      opts.plugins.legend.labels.font    = {family:'DM Mono',size:11};
+      opts.plugins.legend.labels.boxWidth= 20;
+      opts.plugins.legend.labels.padding = 8;
+
+      opts.scales.x.ticks.color = '#111';
+      opts.scales.x.ticks.font  = {family:'DM Mono',size:8};
+      opts.scales.y.ticks.color = '#111';
+      opts.scales.y.ticks.font  = {family:'DM Mono',size:8};
+      opts.scales.x.grid.color  = '#ccc';
+      opts.scales.y.grid.color  = '#ccc';
+
+      // disable animation so update is synchronous
+      opts.animation = false;
+      opts.responsive = false;
+
+      ch.resize(PRINT_W, PRINT_H);
+      ch.update();
+    }catch(err){ console.warn('prepChartsForPrint error:', id, err); }
   }
 }
 
@@ -1327,25 +1495,44 @@ function restoreChartsAfterPrint(){
   for(const [id,ch] of Object.entries(charts)){
     if(!id.startsWith('sc_')) continue;
     try{
-      const opts=ch.options;
-      opts.plugins.legend.labels.color='#dde4f0';
-      opts.plugins.legend.labels.font={family:'DM Mono',size:9};
-      opts.plugins.legend.labels.boxWidth=14;
-      opts.plugins.legend.labels.padding=8;
-      opts.scales.x.ticks.color='#5a6882';
-      opts.scales.x.ticks.font={family:'DM Mono',size:8};
-      opts.scales.y.ticks.color='#5a6882';
-      opts.scales.y.ticks.font={family:'DM Mono',size:8};
-      opts.scales.x.grid.color='#1e2530';
-      opts.scales.y.grid.color='#1e2530';
-      ch.update('none');
-    }catch(err){}
+      const canvas = ch.canvas;
+      const opts   = ch.options;
+
+      // ── Restore original canvas dimensions ──
+      if(canvas._origWidth){
+        canvas.width        = canvas._origWidth;
+        canvas.height       = canvas._origHeight;
+        canvas.style.width  = canvas._origStyleW;
+        canvas.style.height = canvas._origStyleH;
+        delete canvas._origWidth; delete canvas._origHeight;
+        delete canvas._origStyleW; delete canvas._origStyleH;
+      }
+
+      // ── Restore dark theme colours ──
+      opts.plugins.legend.labels.color   = '#dde4f0';
+      opts.plugins.legend.labels.font    = {family:'DM Mono',size:9};
+      opts.plugins.legend.labels.boxWidth= 14;
+      opts.plugins.legend.labels.padding = 8;
+
+      opts.scales.x.ticks.color = '#5a6882';
+      opts.scales.x.ticks.font  = {family:'DM Mono',size:8};
+      opts.scales.y.ticks.color = '#5a6882';
+      opts.scales.y.ticks.font  = {family:'DM Mono',size:8};
+      opts.scales.x.grid.color  = '#1e2530';
+      opts.scales.y.grid.color  = '#1e2530';
+
+      opts.animation  = {duration:400};
+      opts.responsive = true;
+
+      ch.resize();
+      ch.update();
+    }catch(err){ console.warn('restoreChartsAfterPrint error:', id, err); }
   }
 }
 
 // Also hook native beforeprint/afterprint for browser print shortcut (Ctrl+P)
 window.addEventListener('beforeprint',()=>{ if(allLoadedYears.length) prepChartsForPrint(); });
-window.addEventListener('afterprint',()=>{ restoreChartsAfterPrint(); });
+window.addEventListener('afterprint', ()=>{ setTimeout(restoreChartsAfterPrint, 300); });
 
 function buildPDFSummary(commCode,commName,weeklyAgg,allC,thisWeek,reportYears,primaryYear,latestWkNum,priorYears){
   const primaryWeeks=weeklyAgg[primaryYear]||[];
