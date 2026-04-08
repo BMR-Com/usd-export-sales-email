@@ -190,140 +190,107 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
 
 
 /* ── Print / PDF Layout ─────────────────────────────────────────── */
+
+/* ── Seasonality grid (screen only) ── */
+.season-grid-wrap{padding:0 16px 16px}
+.season-page-wrap{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:14px;margin-bottom:14px}
+.sc-cell{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:10px 12px}
+.sc-label{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.sc-wrap{position:relative;aspect-ratio:1/1}
+
 @media print{
 
-  /* ══════════════════════════════════════════════════════
-     PAGE SETUP — A4 landscape, tight margins
-  ══════════════════════════════════════════════════════ */
-  @page{
-    size:A4 landscape;
-    margin:8mm 8mm 8mm 8mm
-  }
+  /* PAGE SETUP */
+  @page{ size:A4 landscape; margin:7mm 8mm 7mm 8mm }
 
-  /* ══════════════════════════════════════════════════════
-     HIDE EVERYTHING EXCEPT DASHBOARD CONTENT
-  ══════════════════════════════════════════════════════ */
+  /* HIDE UI CHROME */
   header,.controls,.status,.debug-box,footer,
   #btnLoad,#btnPDF,.ctrl,button,
-  .main-tabs,.csv-panel,
-  #tab-ai,
-  #seasonCard > div:nth-child(2){   /* country filter */
-    display:none!important
-  }
+  .main-tabs,.csv-panel,#tab-ai,
+  #seasonCard > div:nth-child(2){ display:none!important }
 
-  /* ══════════════════════════════════════════════════════
-     GLOBAL RESET TO WHITE
-  ══════════════════════════════════════════════════════ */
-  html,body{
-    background:#fff!important;
-    color:#000!important;
-    font-size:7pt!important;
-    -webkit-print-color-adjust:exact!important;
-    print-color-adjust:exact!important
-  }
-  *{
-    -webkit-print-color-adjust:exact!important;
-    print-color-adjust:exact!important
-  }
-
-  /* Show dashboard tab content even though it uses display:none on screen */
+  /* WHITE BACKGROUND */
+  html,body{ background:#fff!important;color:#000!important;font-size:7pt!important }
+  *{ -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important }
   .tab-pane{ display:block!important }
   #tab-ai{   display:none!important  }
+  .section{  padding:0!important;margin:0!important;gap:0!important;display:block!important }
 
-  .section{
-    padding:0!important;
-    margin:0!important;
-    gap:0!important;
-    display:block!important
-  }
+  /* ─── CARDS ─── */
+  .card{ background:#fff!important;border:1px solid #334155!important;border-radius:2px!important;box-shadow:none!important;margin:0!important;padding:0!important;break-inside:avoid }
+  .card-head{ background:#1e293b!important;color:#fff!important;padding:4pt 8pt!important;break-after:avoid!important }
+  .card-title{ font-size:9pt!important;color:#fff!important;letter-spacing:.5px!important }
+  .card-sub{   font-size:6pt!important;color:#94a3b8!important }
+  .chip{ background:#334155!important;color:#fbbf24!important;border:none!important;font-size:5.5pt!important }
 
-  /* ══════════════════════════════════════════════════════
-     CARDS — white background, dark border
-  ══════════════════════════════════════════════════════ */
-  .card{
-    background:#fff!important;
-    border:1px solid #334155!important;
-    border-radius:2px!important;
-    box-shadow:none!important;
-    margin:0!important;
-    padding:0!important;
-    /* override break-inside:avoid globally — page breaks set per-card below */
-    break-inside:avoid
-  }
-  .card-head{
-    background:#1e293b!important;
-    color:#fff!important;
-    padding:4pt 8pt!important;
-    break-after:avoid!important;
-    page-break-after:avoid!important
-  }
-  .card-title{ font-size:9pt!important; color:#fff!important }
-  .card-sub{   font-size:6pt!important; color:#94a3b8!important }
-  .chip{
-    background:#334155!important;
-    color:#fbbf24!important;
-    border:none!important;
-    font-size:5.5pt!important
-  }
-
-  /* ══════════════════════════════════════════════════════
-     PAGE 1 — SEASONALITY CHARTS (first 4)
-     PAGE 2 — SEASONALITY CHARTS (last 4)
-     Both pages: charts fill the entire page height
-  ══════════════════════════════════════════════════════ */
-
-  /* Season card must allow internal page breaks */
+  /* ════ PAGE 1 & 2: SEASONALITY CHARTS ════
+     Season card splits across 2 pages.
+     Card header stays on page 1 with first 4 charts.
+     Each .season-page-wrap = exactly one A4 landscape page.
+  */
   #seasonCard{
     break-inside:auto!important;
     page-break-inside:auto!important;
-    border:none!important
+    border:none!important;
+    margin:0!important;
+    padding:0!important
   }
-  /* Card head sticks with first chart group */
   #seasonCard .card-head{
+    /* Keep header glued to first chart group */
     break-after:avoid!important;
-    page-break-after:avoid!important
+    page-break-after:avoid!important;
+    /* Make header compact */
+    padding:3pt 8pt!important
   }
-
   .season-grid-wrap{
     padding:0!important;
     margin:0!important;
     background:#fff!important;
     display:block!important
   }
+  /* Override screen aspect-ratio so charts can fill height */
+  .sc-wrap{ aspect-ratio:unset!important }
 
-  /*
-   * Each .season-page-wrap = one printed page.
-   * Height = A4 landscape printable area minus card-head (~18pt) and margins.
-   * Using 175mm gives reliable 2×2 grid without overflow.
-   */
+  /* Each group of 4 charts: fixed height = printable A4 height minus header */
   .season-page-wrap{
     display:grid!important;
     grid-template-columns:1fr 1fr!important;
     grid-template-rows:1fr 1fr!important;
     gap:4pt!important;
-    /* fixed height forces exactly 2 rows of 2 charts per page */
-    height:175mm!important;
-    max-height:175mm!important;
+    /* 
+      A4 landscape printable height with 7mm margins = 210mm - 14mm = 196mm
+      Minus card-head ~18pt ≈ 6mm → 190mm for page 1
+      Page 2 has no header → 196mm
+      Using 183mm works safely for both
+    */
+    height:183mm!important;
+    max-height:183mm!important;
     width:100%!important;
     box-sizing:border-box!important;
     overflow:hidden!important;
-    /* must not break inside */
     break-inside:avoid!important;
     page-break-inside:avoid!important;
-    /* must not break between card-head and first chart group */
+    /* Keep page 1 wrap glued to the card header above it */
     break-before:avoid!important;
+    page-break-before:avoid!important;
     padding:2pt!important;
     background:#fff!important;
     margin-bottom:0!important
   }
-
-  /* First group of 4 → force page break AFTER so group 2 starts fresh */
+  /* Force page break after first 4 charts */
   .season-page-wrap:first-child{
     break-after:page!important;
     page-break-after:always!important
   }
+  /* Second group starts fresh at top */
+  .season-page-wrap:last-child{
+    break-before:auto!important;
+    page-break-before:auto!important;
+    height:190mm!important;
+    max-height:190mm!important
+  }
 
-  /* Individual chart cell */
+  /* Chart cells: flex column, canvas fills remaining height */
   .sc-cell{
     background:#f8fafc!important;
     border:1px solid #334155!important;
@@ -335,8 +302,6 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
     min-height:0!important;
     box-sizing:border-box!important
   }
-
-  /* Chart label */
   .sc-label{
     font-size:6.5pt!important;
     font-weight:700!important;
@@ -344,29 +309,23 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
     letter-spacing:.5px!important;
     text-transform:uppercase!important;
     flex-shrink:0!important;
-    border-bottom:1px solid #334155!important;
+    border-bottom:1.5px solid #334155!important;
     padding-bottom:2pt!important;
     margin-bottom:2pt!important
   }
-
-  /* Canvas wrapper — fills remaining height */
   .sc-wrap{
     flex:1!important;
     min-height:0!important;
-    aspect-ratio:unset!important;
     position:relative!important;
     overflow:hidden!important
   }
   .sc-wrap canvas{
     position:absolute!important;
-    top:0!important; left:0!important;
-    width:100%!important; height:100%!important
+    top:0!important;left:0!important;
+    width:100%!important;height:100%!important
   }
 
-  /* ══════════════════════════════════════════════════════
-     PAGE 3 — MARKET INTELLIGENCE + PROJECTION
-     Both cards fit on one page; projection never breaks away
-  ══════════════════════════════════════════════════════ */
+  /* ════ PAGE 3: INTELLIGENCE + PROJECTION ════ */
   #intelligenceCard{
     break-before:page!important;
     page-break-before:always!important;
@@ -379,411 +338,137 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
     margin-top:3pt!important
   }
 
-  /* KPI grid */
-  .kpi-grid{
-    background:#e2e8f0!important;
-    gap:1px!important;
-    display:flex!important;
-    flex-wrap:nowrap!important
-  }
-  .kpi-cell{
-    background:#fff!important;
-    padding:3pt 4pt!important;
-    flex:1!important
-  }
-  .kpi-label{
-    color:#555!important;
-    font-size:4.5pt!important;
-    letter-spacing:.3px!important
-  }
-  .kpi-val{
-    color:#000!important;
-    font-size:9pt!important;
-    line-height:1.1!important
-  }
-  .kpi-badge{
-    font-size:4pt!important;
-    padding:1px 2px!important;
-    border:1px solid #ccc!important;
-    background:#f1f5f9!important;
-    color:#555!important;
-    white-space:nowrap!important
-  }
-  .kpi-badge.pos{ background:#dcfce7!important; color:#166534!important; border-color:#86efac!important }
-  .kpi-badge.neg{ background:#fee2e2!important; color:#991b1b!important; border-color:#fca5a5!important }
+  .kpi-grid{ background:#e2e8f0!important;gap:1px!important;display:flex!important;flex-wrap:nowrap!important }
+  .kpi-cell{ background:#fff!important;padding:3pt 4pt!important;flex:1!important }
+  .kpi-label{ color:#555!important;font-size:4.5pt!important }
+  .kpi-val{   color:#000!important;font-size:9pt!important;line-height:1.1!important }
+  .kpi-badge{ font-size:4pt!important;padding:1px 2px!important;border:1px solid #ccc!important;background:#f1f5f9!important;color:#555!important;white-space:nowrap!important }
+  .kpi-badge.pos{ background:#dcfce7!important;color:#166534!important;border-color:#86efac!important }
+  .kpi-badge.neg{ background:#fee2e2!important;color:#991b1b!important;border-color:#fca5a5!important }
 
-  /* Progress bar */
-  .prog-wrap{
-    background:#f8fafc!important;
-    border:1px solid #e2e8f0!important;
-    padding:2pt 6pt!important;
-    margin:2pt 0!important;
-    display:flex!important;
-    align-items:center!important;
-    gap:5pt!important
-  }
-  .prog-track{ background:#ddd!important; height:4px!important; flex:1!important }
+  .prog-wrap{ background:#f8fafc!important;border:1px solid #e2e8f0!important;padding:2pt 6pt!important;margin:2pt 0!important;display:flex!important;align-items:center!important;gap:5pt!important }
+  .prog-track{ background:#ddd!important;height:4px!important;flex:1!important }
   .prog-fill{  background:#b45309!important }
-  .prog-pct{   color:#b45309!important; font-size:9pt!important; white-space:nowrap!important }
-  .prog-label{ color:#475569!important; font-size:5pt!important; white-space:nowrap!important }
+  .prog-pct{   color:#b45309!important;font-size:9pt!important;white-space:nowrap!important }
+  .prog-label{ color:#475569!important;font-size:5pt!important;white-space:nowrap!important }
 
-  /* Intel panels — 3 columns */
-  .intel-body{
-    display:grid!important;
-    grid-template-columns:1fr 1fr 1fr!important;
-    gap:4pt!important;
-    padding:3pt 6pt!important;
-    background:#fff!important
-  }
-  .intel-panel{
-    background:#f8fafc!important;
-    border:1px solid #e2e8f0!important;
-    border-radius:2px!important;
-    padding:3pt 4pt!important
-  }
-  .intel-panel-title{
-    color:#000!important;
-    font-size:5pt!important;
-    font-weight:700!important;
-    letter-spacing:.5px!important;
-    text-transform:uppercase!important;
-    border-bottom:1px solid #cbd5e1!important;
-    padding-bottom:2pt!important;
-    margin-bottom:3pt!important
-  }
-  .intel-row{
-    display:flex!important;
-    align-items:center!important;
-    gap:4pt!important;
-    padding:1.5pt 0!important;
-    border-bottom:1px solid #f1f5f9!important
-  }
-  .intel-rank{   color:#94a3b8!important; font-size:5pt!important; width:10pt!important }
-  .intel-country{ color:#000!important; font-size:5pt!important; flex:1!important }
-  .intel-val{    color:#92400e!important; font-size:5pt!important }
+  .intel-body{ display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:4pt!important;padding:3pt 6pt!important;background:#fff!important }
+  .intel-panel{ background:#f8fafc!important;border:1px solid #e2e8f0!important;border-radius:2px!important;padding:3pt 4pt!important }
+  .intel-panel-title{ color:#000!important;font-size:5pt!important;font-weight:700!important;letter-spacing:.5px!important;text-transform:uppercase!important;border-bottom:1px solid #cbd5e1!important;padding-bottom:2pt!important;margin-bottom:3pt!important }
+  .intel-row{ display:flex!important;align-items:center!important;gap:4pt!important;padding:1.5pt 0!important;border-bottom:1px solid #f1f5f9!important }
+  .intel-rank{   color:#94a3b8!important;font-size:5pt!important;width:10pt!important }
+  .intel-country{ color:#000!important;font-size:5pt!important;flex:1!important }
+  .intel-val{    color:#92400e!important;font-size:5pt!important }
   .intel-chg{    font-size:4.5pt!important }
-  .intel-bar-bg{ background:#e2e8f0!important; height:3px!important }
+  .intel-bar-bg{ background:#e2e8f0!important;height:3px!important }
   .intel-bar-fill{ background:#b45309!important }
-  .signal-row{
-    display:flex!important;
-    align-items:flex-start!important;
-    gap:4pt!important;
-    padding:1.5pt 0!important;
-    border-bottom:1px solid #f1f5f9!important
-  }
-  .sig-txt{ color:#000!important; font-size:5pt!important; line-height:1.4!important }
-  .sig-dot{
-    width:5px!important; height:5px!important;
-    border-radius:50%!important;
-    flex-shrink:0!important;
-    margin-top:1pt!important
-  }
+  .signal-row{ display:flex!important;align-items:flex-start!important;gap:4pt!important;padding:1.5pt 0!important;border-bottom:1px solid #f1f5f9!important }
+  .sig-txt{ color:#000!important;font-size:5pt!important;line-height:1.4!important }
+  .sig-dot{ width:5px!important;height:5px!important;border-radius:50%!important;flex-shrink:0!important;margin-top:1pt!important }
 
-  /* Projection panels — 3 columns */
-  .proj-body{
-    display:grid!important;
-    grid-template-columns:1fr 1fr 1fr!important;
-    gap:4pt!important;
-    padding:3pt 6pt!important;
-    background:#fff!important
-  }
-  .proj-panel{
-    background:#f8fafc!important;
-    border:1px solid #e2e8f0!important;
-    border-radius:2px!important;
-    padding:3pt 4pt!important
-  }
-  .proj-panel-title{
-    color:#000!important;
-    font-size:5pt!important;
-    font-weight:700!important;
-    letter-spacing:.5px!important;
-    text-transform:uppercase!important;
-    border-bottom:1px solid #cbd5e1!important;
-    padding-bottom:2pt!important;
-    margin-bottom:3pt!important
-  }
-  .proj-row{
-    padding:1.5pt 0!important;
-    border-bottom:1px solid #f1f5f9!important;
-    display:flex!important;
-    justify-content:space-between!important;
-    align-items:center!important
-  }
-  .proj-row-name{ color:#334155!important; font-size:5pt!important }
-  .proj-row-desc{ color:#64748b!important; font-size:4pt!important }
-  .proj-row-val{  color:#000!important; font-size:8pt!important; font-weight:700!important }
-  .proj-row.consensus{
-    background:#fffbeb!important;
-    padding:2pt 3pt!important;
-    border-radius:2px!important
-  }
+  .proj-body{ display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:4pt!important;padding:3pt 6pt!important;background:#fff!important }
+  .proj-panel{ background:#f8fafc!important;border:1px solid #e2e8f0!important;border-radius:2px!important;padding:3pt 4pt!important }
+  .proj-panel-title{ color:#000!important;font-size:5pt!important;font-weight:700!important;letter-spacing:.5px!important;text-transform:uppercase!important;border-bottom:1px solid #cbd5e1!important;padding-bottom:2pt!important;margin-bottom:3pt!important }
+  .proj-row{ padding:1.5pt 0!important;border-bottom:1px solid #f1f5f9!important;display:flex!important;justify-content:space-between!important;align-items:center!important }
+  .proj-row-name{ color:#334155!important;font-size:5pt!important }
+  .proj-row-desc{ color:#64748b!important;font-size:4pt!important }
+  .proj-row-val{  color:#000!important;font-size:8pt!important;font-weight:700!important }
+  .proj-row.consensus{ background:#fffbeb!important;padding:2pt 3pt!important;border-radius:2px!important }
   .proj-row.consensus .proj-row-name{ color:#92400e!important }
-  .proj-row.consensus .proj-row-val{  color:#92400e!important; font-size:10pt!important }
-  .proj-tbl{ width:100%!important; border-collapse:collapse!important }
-  .proj-tbl th{
-    background:#f1f5f9!important;
-    color:#334155!important;
-    padding:1.5pt 3pt!important;
-    border:1px solid #cbd5e1!important;
-    font-size:4.5pt!important
-  }
-  .proj-tbl td{
-    padding:1.5pt 3pt!important;
-    border:1px solid #e2e8f0!important;
-    font-size:5pt!important;
-    color:#334155!important
-  }
-  .proj-tbl td.hl{ color:#92400e!important; font-weight:700!important }
-  .pos{ color:#166534!important }
-  .neg{ color:#991b1b!important }
+  .proj-row.consensus .proj-row-val{  color:#92400e!important;font-size:10pt!important }
+  .proj-tbl{ width:100%!important;border-collapse:collapse!important }
+  .proj-tbl th{ background:#f1f5f9!important;color:#334155!important;padding:1.5pt 3pt!important;border:1px solid #cbd5e1!important;font-size:4.5pt!important }
+  .proj-tbl td{ padding:1.5pt 3pt!important;border:1px solid #e2e8f0!important;font-size:5pt!important;color:#334155!important }
+  .proj-tbl td.hl{ color:#92400e!important;font-weight:700!important }
+  .pos{color:#166534!important}.neg{color:#991b1b!important}
 
-  /* ══════════════════════════════════════════════════════
-     PAGE 4 — COUNTRY SUMMARY (tables 1 + 2)
-  ══════════════════════════════════════════════════════ */
+  /* ════ PAGE 4: COUNTRY SUMMARY (Tables 1 + 2 only) ════ */
   #countrySummaryCard{
     break-before:page!important;
     page-break-before:always!important;
-    break-inside:auto!important;
-    page-break-inside:auto!important
+    break-inside:auto!important
   }
-
-  /* csv panel always hidden in print */
+  /* csv panel & new tables hidden on this page */
   .csv-panel{ display:none!important }
+  #summaryTbl3,#summaryTbl4{ display:none!important }
+  /* salesSummaryCard is outside countrySummaryCard, handled below */
+  #salesSummaryCard{ display:none!important }
 
-  /* ── Page 5: Tables 3 + 4 on one page ── */
-  /* Tables 3/4 are inside countrySummaryCard but need own page.
-     We use a wrapper trick — the tbl-section-labels for tbl3/4
-     force a page break when encountered. */
-  #summaryTbl3,
+  .tbl-section-label{ font-size:5pt!important;letter-spacing:.5px!important;color:#334155!important;border-top:1px solid #cbd5e1!important;padding:3pt 8pt 2pt!important;background:#f8fafc!important;font-weight:700!important;break-after:avoid!important }
+  .tbl-outer{ max-height:none!important;overflow:visible!important;padding:0 6pt!important }
+
+  /* Table 1 + 2 compact */
+  #summaryTbl1 table,#summaryTbl2 table{ font-size:5pt!important;border-collapse:collapse!important;width:100%!important;table-layout:fixed!important }
+  #summaryTbl1 th,#summaryTbl2 th{ font-size:4.5pt!important;padding:2pt 2pt!important;white-space:normal!important;word-break:break-word!important;line-height:1.2!important;text-align:center!important;border:1px solid #334155!important }
+  #summaryTbl1 thead tr.grp-row th,#summaryTbl2 thead tr.grp-row th{ background:#1e293b!important;color:#fff!important }
+  #summaryTbl1 thead tr.hd-row th,#summaryTbl2 thead tr.hd-row th{ background:#f1f5f9!important;color:#334155!important;border:1px solid #cbd5e1!important }
+  #summaryTbl1 td,#summaryTbl2 td{ font-size:5pt!important;padding:1.5pt 2pt!important;border:1px solid #e2e8f0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#000!important;background:#fff!important }
+  #summaryTbl1 td:first-child,#summaryTbl2 td:first-child{ white-space:normal!important;word-break:break-word!important }
+  #summaryTbl1 tr:nth-child(even) td,#summaryTbl2 tr:nth-child(even) td{ background:#f8fafc!important }
+  #summaryTbl1 tr.total-row td,#summaryTbl2 tr.total-row td{ background:#fffbeb!important;color:#92400e!important;border-top:1.5px solid #d97706!important;font-weight:700!important }
+  #summaryTbl1 tr.others-row td,#summaryTbl2 tr.others-row td{ background:#f1f5f9!important;color:#475569!important }
+  .bar-cell{ display:flex!important;align-items:center!important;gap:2pt!important }
+  .mini-bar{ background:#b45309!important;height:3px!important;border-radius:1px!important;flex-shrink:0!important;max-width:18px!important }
+
+  /* ════ PAGE 5: 8-WEEK TREND + PERCENTILE (on ONE page, no overflow) ════
+     These live inside #countrySummaryCard in the HTML.
+     We reveal them and start a new page for them.
+  */
+  /* Use a pseudo-break by making the tbl-section-label for tbl3 force a new page.
+     Since we can't target nth-of-type reliably, we use the label's margin-top style */
+  /* The tbl-section-label that has margin-top:6px is the one before tbl4 */
+  #summaryTbl3{ display:block!important }
   #summaryTbl4{ display:block!important }
 
-  /* The section label before tbl3 starts a new page */
-  #countrySummaryCard .tbl-section-label:nth-of-type(3){
+  /* Force the section label immediately before summaryTbl3 to start a new page */
+  /* We target it via adjacent sibling: the .tbl-section-label right before #summaryTbl3's parent */
+  #countrySummaryCard > .tbl-section-label:nth-of-type(3){
     break-before:page!important;
     page-break-before:always!important
   }
-
-  /* Keep tbl3 + tbl4 together on that page — no break between them */
+  /* No break between tbl3 and tbl4 — they share the page */
   #summaryTbl3{ break-after:avoid!important }
-  #summaryTbl4{ break-before:avoid!important }
+  #summaryTbl4{ break-before:avoid!important;break-after:avoid!important }
 
-  /* Table 3 styling */
-  #summaryTbl3 table{
-    font-size:4.5pt!important;
-    border-collapse:collapse!important;
-    width:100%!important;
-    table-layout:fixed!important
-  }
-  #summaryTbl3 th{
-    font-size:4pt!important;
-    padding:2pt 1.5pt!important;
-    white-space:normal!important;
-    word-break:break-word!important;
-    line-height:1.2!important;
-    text-align:center!important;
-    border:1px solid #334155!important
-  }
-  #summaryTbl3 thead tr.grp-row th{
-    background:#1e293b!important;
-    color:#fff!important
-  }
-  #summaryTbl3 thead tr.hd-row th{
-    background:#f1f5f9!important;
-    color:#334155!important;
-    border:1px solid #cbd5e1!important
-  }
-  #summaryTbl3 td{
-    font-size:4.5pt!important;
-    padding:1pt 1.5pt!important;
-    border:1px solid #e2e8f0!important;
-    white-space:nowrap!important;
-    overflow:hidden!important;
-    text-overflow:ellipsis!important;
-    color:#000!important;
-    background:#fff!important
-  }
-  #summaryTbl3 td:first-child{
-    white-space:normal!important;
-    word-break:break-word!important
-  }
+  /* Compact styling for tbl3 */
+  #summaryTbl3 table{ font-size:4pt!important;border-collapse:collapse!important;width:100%!important;table-layout:fixed!important }
+  #summaryTbl3 th{ font-size:3.5pt!important;padding:1.5pt 1pt!important;white-space:normal!important;word-break:break-word!important;line-height:1.1!important;text-align:center!important;border:1px solid #334155!important }
+  #summaryTbl3 thead tr.grp-row th{ background:#1e293b!important;color:#fff!important }
+  #summaryTbl3 thead tr.hd-row th{ background:#f1f5f9!important;color:#334155!important;border:1px solid #cbd5e1!important }
+  #summaryTbl3 td{ font-size:4pt!important;padding:1pt 1pt!important;border:1px solid #e2e8f0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#000!important;background:#fff!important }
+  #summaryTbl3 td:first-child{ white-space:normal!important;word-break:break-word!important;font-size:3.5pt!important }
   #summaryTbl3 tr:nth-child(even) td{ background:#f8fafc!important }
-  #summaryTbl3 tr.total-row td{
-    background:#fffbeb!important;
-    color:#92400e!important;
-    border-top:1.5px solid #d97706!important;
-    font-weight:700!important
-  }
-  #summaryTbl3 tr.others-row td{ background:#f1f5f9!important; color:#475569!important }
+  #summaryTbl3 tr.total-row td{ background:#fffbeb!important;color:#92400e!important;border-top:1.5px solid #d97706!important;font-weight:700!important }
+  #summaryTbl3 tr.others-row td{ background:#f1f5f9!important;color:#475569!important }
 
-  /* Table 4 percentile styling */
-  #summaryTbl4 table{
-    font-size:4.5pt!important;
-    border-collapse:collapse!important;
-    width:100%!important;
-    table-layout:fixed!important
-  }
-  #summaryTbl4 th{
-    font-size:4pt!important;
-    padding:2pt 2pt!important;
-    white-space:normal!important;
-    word-break:break-word!important;
-    line-height:1.2!important;
-    text-align:center!important;
-    border:1px solid #334155!important
-  }
-  #summaryTbl4 thead tr.grp-row th{
-    background:#1e293b!important;
-    color:#fff!important
-  }
-  #summaryTbl4 thead tr.hd-row th{
-    background:#f1f5f9!important;
-    color:#334155!important;
-    border:1px solid #cbd5e1!important
-  }
-  #summaryTbl4 td{
-    font-size:4.5pt!important;
-    padding:1.5pt 2pt!important;
-    border:1px solid #e2e8f0!important;
-    white-space:nowrap!important;
-    color:#000!important;
-    background:#fff!important
-  }
-  #summaryTbl4 td:first-child{ white-space:normal!important; word-break:break-word!important }
+  /* Compact styling for tbl4 */
+  .pct-bar-wrap{ display:none!important }  /* hide thermometer bars, show numbers */
+  #summaryTbl4 table{ font-size:4pt!important;border-collapse:collapse!important;width:100%!important;table-layout:fixed!important }
+  #summaryTbl4 th{ font-size:3.5pt!important;padding:1.5pt 1.5pt!important;white-space:normal!important;word-break:break-word!important;line-height:1.1!important;text-align:center!important;border:1px solid #334155!important }
+  #summaryTbl4 thead tr.grp-row th{ background:#1e293b!important;color:#fff!important }
+  #summaryTbl4 thead tr.hd-row th{ background:#f1f5f9!important;color:#334155!important;border:1px solid #cbd5e1!important }
+  #summaryTbl4 td{ font-size:4pt!important;padding:1.5pt 2pt!important;border:1px solid #e2e8f0!important;white-space:nowrap!important;color:#000!important;background:#fff!important;text-align:center!important }
+  #summaryTbl4 td:first-child{ white-space:normal!important;word-break:break-word!important;text-align:left!important }
   #summaryTbl4 tr:nth-child(even) td{ background:#f8fafc!important }
-  #summaryTbl4 tr.total-row td{
-    background:#fffbeb!important;
-    color:#92400e!important;
-    border-top:1.5px solid #d97706!important;
-    font-weight:700!important
-  }
-  #summaryTbl4 tr.others-row td{ background:#f1f5f9!important; color:#475569!important }
-  /* Percentile badge colours in print */
-  #summaryTbl4 td span[style*='var(--green)']{ color:#166534!important }
-  #summaryTbl4 td span[style*='var(--red)']  { color:#991b1b!important }
-  #summaryTbl4 td span[style*='var(--muted)']{ color:#475569!important }
-  .pct-bar-wrap{ display:none!important } /* hide bars in print, show numbers only */
+  #summaryTbl4 tr.total-row td{ background:#fffbeb!important;color:#92400e!important;border-top:1.5px solid #d97706!important;font-weight:700!important }
+  #summaryTbl4 tr.others-row td{ background:#f1f5f9!important;color:#475569!important }
 
-  /* ── Page 6: Export Sales Summary ── */
+  /* ════ PAGE 6: EXPORT SALES SUMMARY ════ */
   #salesSummaryCard{
     display:block!important;
     break-before:page!important;
     page-break-before:always!important;
     break-inside:auto!important
   }
-  .summary-narrative{
-    font-size:8pt!important;
-    line-height:1.65!important;
-    color:#000!important
-  }
-  .summary-highlight{ color:#92400e!important; font-weight:700!important }
-  .summary-pos{ color:#166534!important; font-weight:600!important }
-  .summary-neg{ color:#991b1b!important; font-weight:600!important }
-  .summary-country-grid{
-    grid-template-columns:repeat(5,1fr)!important;
-    gap:5pt!important;
-    padding:0 12pt 10pt!important
-  }
-  .summary-country-chip{
-    background:#f8fafc!important;
-    border:1px solid #e2e8f0!important;
-    padding:5pt 6pt!important
-  }
-  .summary-country-name{ color:#475569!important; font-size:5.5pt!important }
-  .summary-country-val{  color:#000!important;    font-size:9pt!important; font-weight:700!important }
-  .summary-country-chg{  font-size:5pt!important }
-
-  .tbl-section-label{
-    font-size:5pt!important;
-    letter-spacing:.5px!important;
-    color:#334155!important;
-    border-top:1px solid #cbd5e1!important;
-    padding:3pt 8pt 2pt!important;
-    background:#f8fafc!important;
-    font-weight:700!important;
-    break-after:avoid!important
-  }
-  .tbl-outer{
-    max-height:none!important;
-    overflow:visible!important;
-    padding:0 6pt!important
-  }
-
-  /* Compact table styling — fits A4 landscape */
-  #summaryTbl1 table,
-  #summaryTbl2 table{
-    font-size:5pt!important;
-    border-collapse:collapse!important;
-    width:100%!important;
-    table-layout:fixed!important
-  }
-  #summaryTbl1 th,
-  #summaryTbl2 th{
-    font-size:4.5pt!important;
-    padding:2pt 2pt!important;
-    white-space:normal!important;
-    word-break:break-word!important;
-    line-height:1.2!important;
-    text-align:center!important;
-    border:1px solid #334155!important
-  }
-  #summaryTbl1 thead tr.grp-row th,
-  #summaryTbl2 thead tr.grp-row th{
-    background:#1e293b!important;
-    color:#fff!important;
-    font-size:5pt!important;
-    padding:2pt 3pt!important
-  }
-  #summaryTbl1 thead tr.hd-row th,
-  #summaryTbl2 thead tr.hd-row th{
-    background:#f1f5f9!important;
-    color:#334155!important;
-    border:1px solid #cbd5e1!important
-  }
-  #summaryTbl1 td,
-  #summaryTbl2 td{
-    font-size:5pt!important;
-    padding:1.5pt 2pt!important;
-    border:1px solid #e2e8f0!important;
-    white-space:nowrap!important;
-    overflow:hidden!important;
-    text-overflow:ellipsis!important;
-    color:#000!important;
-    background:#fff!important
-  }
-  #summaryTbl1 td:first-child,
-  #summaryTbl2 td:first-child{
-    white-space:normal!important;
-    word-break:break-word!important
-  }
-  #summaryTbl1 tr:nth-child(even) td,
-  #summaryTbl2 tr:nth-child(even) td{
-    background:#f8fafc!important
-  }
-  #summaryTbl1 tr.total-row td,
-  #summaryTbl2 tr.total-row td{
-    background:#fffbeb!important;
-    color:#92400e!important;
-    border-top:1.5px solid #d97706!important;
-    font-weight:700!important
-  }
-  #summaryTbl1 tr.others-row td,
-  #summaryTbl2 tr.others-row td{
-    background:#f1f5f9!important;
-    color:#475569!important
-  }
-  .bar-cell{
-    display:flex!important;
-    align-items:center!important;
-    gap:2pt!important
-  }
-  .mini-bar{
-    background:#b45309!important;
-    height:3px!important;
-    border-radius:1px!important;
-    flex-shrink:0!important;
-    max-width:18px!important
-  }
+  .summary-narrative{ font-size:8pt!important;line-height:1.65!important;color:#000!important }
+  .summary-highlight{ color:#92400e!important;font-weight:700!important }
+  .summary-pos{ color:#166534!important;font-weight:600!important }
+  .summary-neg{ color:#991b1b!important;font-weight:600!important }
+  .summary-country-grid{ grid-template-columns:repeat(5,1fr)!important;gap:5pt!important;padding:0 12pt 10pt!important }
+  .summary-country-chip{ background:#f8fafc!important;border:1px solid #e2e8f0!important;padding:5pt 6pt!important }
+  .summary-country-name{ color:#475569!important;font-size:5.5pt!important }
+  .summary-country-val{ color:#000!important;font-size:9pt!important;font-weight:700!important }
+  .summary-country-chg{ font-size:5pt!important }
 
 }
 </style>
@@ -1008,6 +693,7 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
         </select>
       </div>
       <button class="btn" style="font-size:.58rem;padding:6px 12px" onclick="testGroqKey()">✓ Test Connection</button>
+      <button class="btn" style="font-size:.58rem;padding:6px 12px;background:var(--s2);color:var(--blue);border:1px solid rgba(79,195,247,.3)" onclick="loadCSVForAI()">📂 Load History CSV</button>
       <div class="ai-status" id="aiStatus">Enter your Groq API key to start</div>
 
       <div style="border-top:1px solid var(--border);padding-top:10px">
@@ -1020,6 +706,8 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
           <button class="ai-quick-btn" onclick="aiQuickAsk('What is the year-end export projection and how confident are the models?')">🎯 Year-End Projection</button>
           <button class="ai-quick-btn" onclick="aiQuickAsk('Summarize the key market signals and any cancellations this week')">⚡ Market Signals</button>
           <button class="ai-quick-btn" onclick="aiQuickAsk('Plot accumulated exports for all loaded years as a line chart by week')">📐 Plot Seasonality</button>
+          <button class="ai-quick-btn" onclick="aiQuickAsk('Using the historical CSV data, what is the 10-year average accumulated exports at this same week number, and what percentile is the current year?')">📊 Historical %ile vs CSV</button>
+          <button class="ai-quick-btn" onclick="aiQuickAsk('Based on the historical CSV data, which marketing years had the highest total commitment at this same point in the season?')">🏆 Best Years vs Now</button>
         </div>
       </div>
 
@@ -2511,6 +2199,85 @@ function updateAIDataContext(){
     +`Countries: ${Object.keys(byC).length}`;
 }
 
+// Store CSV data for AI context
+let aiCSVData = null;
+
+function loadCSVForAI(){
+  // Create a file input, let user pick their cotton_history CSV
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.csv';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try{
+        const rows = ev.target.result.split('
+').filter(r=>r.trim());
+        const headers = rows[0].split(',');
+        const data = rows.slice(1).map(r=>{
+          const vals = r.split(',');
+          const obj = {};
+          headers.forEach((h,i)=>{ obj[h.trim()]=vals[i]?.trim()||''; });
+          return obj;
+        });
+        aiCSVData = data;
+        // Build summary stats from CSV
+        const years = [...new Set(data.map(r=>r.marketYear))].sort().reverse();
+        const commCodes = [...new Set(data.map(r=>r.commodityCode))];
+        document.getElementById('aiStatus').textContent =
+          `✓ CSV loaded: ${data.length.toLocaleString()} rows · ${years.length} years (${years[years.length-1]}–${years[0]}) · ${commCodes.length} commodity code(s)`;
+        document.getElementById('aiStatus').className = 'ai-status ok';
+        appendAIMsg('assistant',
+          `✓ CSV data loaded! I now have access to **${data.length.toLocaleString()} rows** covering **${years.length} years** (MY${years[years.length-1]}–MY${years[0]}).\n\nYou can now ask me:\n• Historical comparisons across any year\n• Average sales/exports at any week number\n• Country-level trends over time\n• Percentile rankings vs history`
+        );
+        updateAIDataContext();
+      }catch(err){
+        document.getElementById('aiStatus').textContent = '✗ CSV parse error: '+err.message;
+        document.getElementById('aiStatus').className = 'ai-status err';
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function buildCSVSummary(){
+  if(!aiCSVData || !aiCSVData.length) return '';
+  // Build compact historical summary from CSV for AI context
+  // Aggregate total exports by year at each week number
+  const byYearWeek = {};
+  for(const r of aiCSVData){
+    const y = r.marketYear, dt = r.weekEndingDate;
+    if(!y||!dt) continue;
+    if(!byYearWeek[y]) byYearWeek[y]={};
+    // We sum across countries for total
+    const key = dt;
+    if(!byYearWeek[y][key]) byYearWeek[y][key]={
+      grossNewSales:0,weeklyExports:0,accumulatedExports:0,
+      outstandingSales:0,currentMYTotalCommitment:0
+    };
+    const w = byYearWeek[y][key];
+    w.grossNewSales          += +(r.grossNewSales||0);
+    w.weeklyExports          += +(r.weeklyExports||0);
+    w.accumulatedExports     += +(r.accumulatedExports||0);
+    w.outstandingSales       += +(r.outstandingSales||0);
+    w.currentMYTotalCommitment += +(r.currentMYTotalCommitment||0);
+  }
+  // Get last week per year (max accumulated exports)
+  const yearSummary = {};
+  for(const [y, weeks] of Object.entries(byYearWeek)){
+    let best = null;
+    for(const w of Object.values(weeks))
+      if(!best || w.accumulatedExports > best.accumulatedExports) best = w;
+    if(best) yearSummary[y] = best;
+  }
+  const years = Object.keys(yearSummary).sort().reverse().slice(0,15);
+  return 'Historical annual final exports (running bales): '+
+    years.map(y=>`MY${y}: accum=${Math.round(yearSummary[y].accumulatedExports/1000)}K, commit=${Math.round(yearSummary[y].currentMYTotalCommitment/1000)}K`).join(' | ');
+}
+
 function buildAIContext(){
   // Build a compact JSON context of current data for Groq
   if(!allLoadedYears.length) return 'No export data loaded.';
@@ -2536,10 +2303,13 @@ function buildAIContext(){
   const primaryWeeks=aggregateByWeek(globalData[primaryYear],commCode,primaryYear);
   const curWk=primaryWeeks[primaryWeeks.length-1];
 
+  const csvSummary = buildCSVSummary();
   return JSON.stringify({
     commodity:commName, primaryYear, loadedYears:allLoadedYears,
     weekEnding:thisWeek, marketingYearWeek:curWk?.wkNum,
     totals, top10buyers:top10,
+    historicalCSV: csvSummary || 'No CSV loaded — user can load cotton_history.csv for full historical context',
+    csvRowCount: aiCSVData?.length || 0,
     note:'Values in running bales (RB). Marketing year starts June 1 for cotton.'
   },null,2);
 }
