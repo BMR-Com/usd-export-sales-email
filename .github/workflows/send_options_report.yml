@@ -1,0 +1,116 @@
+name: Options Analytics Weekly Report
+
+on:
+  schedule:
+    # Friday 4:31 PM ET (after market close, after COT release)
+    # EDT (summer, UTC-4): 20:31 UTC
+    - cron: '31 20 * * 5'
+    # EST (winter, UTC-5): 21:31 UTC
+    - cron: '31 21 * * 5'
+  workflow_dispatch:
+    inputs:
+      force_send:
+        description: 'Force send even if already sent today (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  send-options-report:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if already sent today
+        id: check_sent
+        run: |
+          TODAY=$(TZ="America/New_York" date +%Y-%m-%d)
+          echo "today=$TODAY" >> $GITHUB_OUTPUT
+          FORCE="${{ github.event.inputs.force_send }}"
+          echo "Date (ET): $TODAY  |  Force: $FORCE"
+          FLAGFILE="data/options_last_sent.txt"
+          if [ -f "$FLAGFILE" ]; then
+            echo "last_sent: $(cat $FLAGFILE)"
+          fi
+          if [ -f "$FLAGFILE" ] && grep -q "$TODAY" "$FLAGFILE" && [ "$FORCE" != "true" ]; then
+            echo "already_sent=true" >> $GITHUB_OUTPUT
+            echo "SKIPPING — already sent today. Use force_send=true to override."
+          else
+            echo "already_sent=false" >> $GITHUB_OUTPUT
+            echo "PROCEEDING — will send options report for $TODAY"
+          fi
+
+      - name: Set up Python 3.11
+        if: steps.check_sent.outputs.already_sent == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        if: steps.check_sent.outputs.already_sent == 'false'
+        run: pip install -r scripts/requirements.txt
+
+      - name: Install Playwright Chromium + system dependencies
+        if: steps.check_sent.outputs.already_sent == 'false'
+        run: |
+          playwright install chromium
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+            libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 \
+            libpango-1.0-0 libcairo2 libatspi2.0-0
+
+      - name: Verify secrets
+        if: steps.check_sent.outputs.already_sent == 'false'
+        run: |
+          MISSING=0
+          [ -n "${{ secrets.SMTP_HOST }}" ] && echo "OK SMTP_HOST"  || { echo "MISSING SMTP_HOST";  MISSING=1; }
+          [ -n "${{ secrets.SMTP_PORT }}" ] && echo "OK SMTP_PORT"  || { echo "MISSING SMTP_PORT";  MISSING=1; }
+          [ -n "${{ secrets.SMTP_USER }}" ] && echo "OK SMTP_USER"  || { echo "MISSING SMTP_USER";  MISSING=1; }
+          [ -n "${{ secrets.SMTP_PASS }}" ] && echo "OK SMTP_PASS"  || { echo "MISSING SMTP_PASS";  MISSING=1; }
+          [ -n "${{ secrets.EMAIL_FROM }}" ] && echo "OK EMAIL_FROM" || { echo "MISSING EMAIL_FROM"; MISSING=1; }
+          [ -n "${{ secrets.EMAIL_TO }}" ]   && echo "OK EMAIL_TO"   || { echo "MISSING EMAIL_TO";   MISSING=1; }
+          [ $MISSING -eq 1 ] && echo "One or more secrets missing" && exit 1 || echo "All secrets OK"
+
+      - name: Build cotton_options_data.js from CSV
+        if: steps.check_sent.outputs.already_sent == 'false'
+        run: |
+          if [ -f data/cotton_options_history.csv ]; then
+            python scripts/build_options_data.py
+            echo "✓ cotton_options_data.js built"
+          else
+            echo "data/cotton_options_history.csv not found — skipping data build"
+            echo "Upload your vol history CSV to data/cotton_options_history.csv"
+          fi
+
+      - name: Generate PDF and send options report
+        if: steps.check_sent.outputs.already_sent == 'false'
+        env:
+          SMTP_HOST:   ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:   ${{ secrets.SMTP_PORT }}
+          SMTP_USER:   ${{ secrets.SMTP_USER }}
+          SMTP_PASS:   ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM:  ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:    ${{ secrets.EMAIL_TO }}
+          HTML_FILE:   ${{ github.workspace }}/cotton_options/index.html
+          REPORT_DATE: ${{ steps.check_sent.outputs.today }}
+        run: python scripts/send_options_report.py
+
+      - name: Commit sent flag and updated data
+        if: steps.check_sent.outputs.already_sent == 'false' && success()
+        run: |
+          TODAY=${{ steps.check_sent.outputs.today }}
+          mkdir -p data
+          echo "$TODAY" > data/options_last_sent.txt
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/options_last_sent.txt
+          [ -f cotton_options/cotton_options_data.js ] && git add cotton_options/cotton_options_data.js
+          git commit -m "chore: options report sent $TODAY [skip ci]" || echo "Nothing to commit"
+          git push
