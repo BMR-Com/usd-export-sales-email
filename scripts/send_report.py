@@ -32,7 +32,8 @@ HTML_FILE    = os.environ.get('HTML_FILE',
 REPORT_DATE  = os.environ.get('REPORT_DATE', datetime.now().strftime('%Y-%m-%d'))
 
 DEFAULT_COMMODITY = '1404'
-COMPARE_YEARS     = [2025, 2024, 2023, 2022]
+FROM_YEAR         = '2020'   # From year for chart range
+TO_YEAR           = '2026'   # To year (most recent = primary)
 
 def log(msg):
     print(f'[{datetime.now():%H:%M:%S}] {msg}', flush=True)
@@ -60,13 +61,15 @@ def render_to_pdf():
         # Select commodity 1404 + compare years
         log('Configuring commodity 1404 and compare years…')
         page.evaluate(f"""() => {{
+            // Set commodity
             const s = document.getElementById('selCommodity');
             if (s) s.value = '{DEFAULT_COMMODITY}';
-            const y = document.getElementById('selYear');
-            if (y && y.options.length) y.value = y.options[0].value;
-            const c = document.getElementById('selCompareYears');
-            if (c) for (const o of c.options)
-                o.selected = {json.dumps(COMPARE_YEARS)}.includes(+o.value);
+            // Set From year
+            const fromSel = document.getElementById('selYearFrom');
+            if (fromSel) fromSel.value = '{FROM_YEAR}';
+            // Set To year (most recent = primary)
+            const toSel = document.getElementById('selYearTo');
+            if (toSel) toSel.value = '{TO_YEAR}';
         }}""")
 
         # Click Load Data
