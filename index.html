@@ -1747,145 +1747,177 @@ function renderTable3(commCode){
 // ═══════════════════════════════════════════════════════════════════════
 function renderTable4(commCode){
   const c = document.getElementById('summaryTbl4');
-  if(allLoadedYears.length<2){ c.innerHTML='<div class="empty">Load multiple years to see percentile ranges</div>'; return; }
+  if(allLoadedYears.length < 2){
+    c.innerHTML='<div class="empty">Load multiple years to see percentile data</div>'; return;
+  }
 
-  const FIELDS=[
-    {key:'outstandingSales',     label:'Outstanding Sales'},
-    {key:'accumulatedExports',   label:'Accum Exports'},
-    {key:'currentMYTotalCommitment', label:'Total Commitment'},
-    {key:'nextMYOutstandingSales',label:'Next MY Outstanding'},
+  const FIELDS = [
+    {key:'outstandingSales',          label:'Outstanding Sales'},
+    {key:'accumulatedExports',        label:'Accum Exports'},
+    {key:'currentMYTotalCommitment',  label:'Total Commitment'},
+    {key:'nextMYOutstandingSales',    label:'Next MY Outstanding'},
   ];
 
-  // Gather per-field values across all loaded years at same week number
-  const {byC} = aggregateByCountry(globalData[primaryYear]);
+  // ── Get current week number ───────────────────────────────────────────────
   const primaryWeeks = aggregateByWeek(globalData[primaryYear], commCode, primaryYear);
-  let curWkNum=0;
-  for(const w of primaryWeeks) if(w.accumulatedExports>0||w.weeklyExports>0) curWkNum=w.wkNum;
+  let curWkNum = 0;
+  for(const w of primaryWeeks) if(w.accumulatedExports>0||w.weeklyExports>0) curWkNum = w.wkNum;
+  if(!curWkNum && primaryWeeks.length) curWkNum = primaryWeeks[primaryWeeks.length-1].wkNum;
 
-  // For each prior year: get value at same week number
-  const histTotals={}; // field -> [{year, val}]
+  // ── Build historical country-level snap: histByCountry[cc][fieldKey] = [val_yr1, val_yr2, …] ──
+  // Values are sorted oldest→newest, matching priorYears order
+  const {byC} = aggregateByCountry(globalData[primaryYear]);
+  const priorYears = allLoadedYears.filter(y=>y!==primaryYear).sort((a,b)=>a-b); // asc for consistent indexing
+
+  const histByCountry = {}; // cc -> field -> [vals per prior year]
+  const histTotals    = {}; // field -> [vals per prior year]  (total across all countries)
   FIELDS.forEach(f=>{ histTotals[f.key]=[]; });
 
-  const priorYears = allLoadedYears.filter(y=>y!==primaryYear);
-  for(const y of priorYears){
+  for(let yi=0; yi<priorYears.length; yi++){
+    const y = priorYears[yi];
     if(!globalData[y]) continue;
     const yWeeks = aggregateByWeek(globalData[y], commCode, y);
-    let snap=null;
-    for(const w of yWeeks) if(w.wkNum<=curWkNum) snap=w;
-    if(!snap) continue;
-    FIELDS.forEach(f=>{ histTotals[f.key].push({year:y, val:snap[f.key]||0}); });
-  }
-
-  // Current totals
-  const {byC:byCurrent} = aggregateByCountry(globalData[primaryYear]);
-  const allRows = Object.values(byCurrent)
-    .filter(r=>r.currentMYTotalCommitmentTW>0||r.accumulatedExportsTW>0)
-    .sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW);
-  const top15 = allRows.slice(0,15);
-  const others = allRows.slice(15);
-
-  // Build percentile bar HTML for one value given historical array
-  function pctBarHtml(curVal, histVals, label){
-    if(!histVals.length) return `<div style="font-family:'DM Mono',monospace;font-size:.55rem;color:var(--muted)">${fmt(curVal)}</div>`;
-    const sorted = [...histVals].sort((a,b)=>a-b);
-    const min5  = sorted.length>=5  ? Math.min(...sorted.slice(-5).map(v=>v))  : null;
-    const max5  = sorted.length>=5  ? Math.max(...sorted.slice(-5).map(v=>v))  : null;
-    const min10 = sorted.length>=10 ? Math.min(...sorted.slice(-10).map(v=>v)) : null;
-    const max10 = sorted.length>=10 ? Math.max(...sorted.slice(-10).map(v=>v)) : null;
-    const minA  = sorted[0], maxA = sorted[sorted.length-1];
-
-    // Percentile rank in all-history
-    const rank = sorted.filter(v=>v<=curVal).length / sorted.length * 100;
-
-    const bar = (min,max,cur,lbl,color) => {
-      if(min===null||max===null||max===min) return '';
-      const rangeL = Math.max(0,Math.min(100,((min-minA)/(maxA-minA||1))*100));
-      const rangeW = Math.max(0,Math.min(100-rangeL,((max-min)/(maxA-minA||1))*100));
-      const dotP   = Math.max(0,Math.min(100,((cur-minA)/(maxA-minA||1))*100));
-      return `<div class="pct-bar-row">
-        <span class="pct-bar-lbl" style="color:${color}">${lbl}</span>
-        <div class="pct-track">
-          <div class="pct-range" style="left:${rangeL.toFixed(1)}%;width:${rangeW.toFixed(1)}%;background:${color}33"></div>
-          <div class="pct-dot" style="left:${dotP.toFixed(1)}%;background:${color}"></div>
-        </div>
-        <span class="pct-val">${fmt(curVal)}</span>
-      </div>`;
-    };
-
-    return `<div class="pct-bar-wrap">
-      ${bar(min5,max5,curVal,'5y','#4fc3f7')}
-      ${bar(min10,max10,curVal,'10y','#6fcf97')}
-      ${bar(minA,maxA,curVal,'All','#e8c547')}
-      <div style="font-family:'DM Mono',monospace;font-size:.5rem;color:var(--muted);text-align:right;margin-top:1px">${rank.toFixed(0)}th %ile</div>
-    </div>`;
-  }
-
-  // Aggregate hist totals (TOTAL row only — computing by country requires all hist country data)
-  const histByCountry={}; // countryCode -> field -> [vals]
-  for(const y of priorYears){
-    if(!globalData[y]) continue;
-    const yWeeks = aggregateByWeek(globalData[y], commCode, y);
-    let snapDate=null;
-    for(const w of yWeeks) if(w.wkNum<=curWkNum) snapDate=w.date;
+    let snapDate = null;
+    for(const w of yWeeks) if(w.wkNum <= curWkNum) snapDate = w.date;
     if(!snapDate) continue;
+
+    // Total-level snap (from weekly aggregation)
+    let totSnap = null;
+    for(const w of yWeeks) if(w.date === snapDate) totSnap = w;
+    if(totSnap) FIELDS.forEach(f=>{ histTotals[f.key].push(totSnap[f.key]||0); });
+
+    // Country-level snap
     for(const r of globalData[y]){
-      const cc=r.countryCode; if(!cc||cc===0) continue;
-      const dt=String(r.weekEndingDate||'').split('T')[0];
-      if(dt!==snapDate) continue;
+      const cc = r.countryCode; if(!cc||cc===0) continue;
+      const dt = String(r.weekEndingDate||'').split('T')[0];
+      if(dt !== snapDate) continue;
       if(!histByCountry[cc]) histByCountry[cc]={};
       FIELDS.forEach(f=>{
         if(!histByCountry[cc][f.key]) histByCountry[cc][f.key]=[];
-        histByCountry[cc][f.key].push(+(r[f.key]||0));
+        // Pad array to correct year index
+        while(histByCountry[cc][f.key].length < yi) histByCountry[cc][f.key].push(0);
+        histByCountry[cc][f.key][yi] = +(r[f.key]||0);
       });
     }
   }
 
-  // Build table
-  let h='<table><colgroup><col style="width:13%">';
-  FIELDS.forEach(()=>h+='<col style="width:21.75%">');
-  h+='</colgroup>';
-  h+=`<thead><tr class="grp-row"><th>Country</th>`;
-  FIELDS.forEach(f=>h+=`<th>${f.label}</th>`);
-  h+='</tr></thead><tbody>';
+  // ── Helper: given array of historical vals, compute avg and pctile for 5yr/10yr/all ──
+  function stats(curVal, allHistVals){
+    // allHistVals is ordered oldest→newest
+    const n = allHistVals.length;
+    const last5  = allHistVals.slice(Math.max(0, n-5));
+    const last10 = allHistVals.slice(Math.max(0, n-10));
+    const all    = allHistVals;
 
-  const rowHtml4=(r, rowType)=>{
-    const isTot=rowType==='total', isOth=rowType==='others';
-    const nm=isTot?`<strong>${r.name}</strong>`:isOth?`<em style="color:var(--muted)">${r.name}</em>`:r.name;
-    let td=`<td>${nm}</td>`;
-    FIELDS.forEach(f=>{
-      let curVal,histVals;
-      if(isTot){
-        curVal = allRows.reduce((s,row)=>(row[f.key+'TW']||0)+s,0);
-        histVals = histTotals[f.key].map(x=>x.val);
-      } else if(isOth){
-        curVal = others.reduce((s,row)=>(row[f.key+'TW']||0)+s,0);
-        histVals = priorYears.map(y=>{
-          if(!globalData[y]) return null;
-          // sum others countries
-          const sumO = others.reduce((s,row)=>{
-            return s+(histByCountry[row.code]?.[f.key]?.[priorYears.indexOf(y)]||0);
-          },0);
-          return sumO;
-        }).filter(v=>v!==null);
-      } else {
-        curVal = r[f.key+'TW']||0;
-        histVals = (histByCountry[r.code]?.[f.key]||[]);
-      }
-      td+=`<td>${pctBarHtml(curVal, histVals, f.label)}</td>`;
-    });
-    const cls=isTot?' class="total-row"':isOth?' class="others-row"':'';
-    return `<tr${cls}>${td}</tr>`;
-  };
+    const avg5 = last5.length  ? last5.reduce((a,b)=>a+b,0)/last5.length   : null;
 
-  top15.forEach(r=>h+=rowHtml4(r,'normal'));
-  if(others.length>0){
-    const othObj={name:'Others',code:-99,...Object.fromEntries(FIELDS.map(f=>[f.key+'TW', others.reduce((s,r)=>(r[f.key+'TW']||0)+s,0)]))};
-    h+=rowHtml4(othObj,'others');
+    const pctile = (val, arr) => {
+      if(!arr.length) return null;
+      const below = arr.filter(v=>v < val).length;
+      const equal = arr.filter(v=>v === val).length;
+      return Math.round((below + 0.5*equal) / arr.length * 100);
+    };
+
+    return {
+      avg5:    avg5,
+      pct5:    last5.length  >= 2 ? pctile(curVal, last5)  : null,
+      pct10:   last10.length >= 2 ? pctile(curVal, last10) : null,
+      pctAll:  all.length    >= 2 ? pctile(curVal, all)    : null,
+    };
   }
-  const totObj={name:'TOTAL',code:-1,...Object.fromEntries(FIELDS.map(f=>[f.key+'TW', allRows.reduce((s,r)=>(r[f.key+'TW']||0)+s,0)]))};
-  h+=rowHtml4(totObj,'total');
-  h+='</tbody></table>';
-  c.innerHTML=h;
+
+  // ── Get hist vals for a given row + field ──
+  function getHistVals(rowObj, rowType, fieldKey){
+    if(rowType === 'total'){
+      return histTotals[fieldKey] || [];
+    }
+    if(rowType === 'others'){
+      // Sum others countries per year index
+      const maxLen = Math.max(...Object.values(histByCountry).map(h=>(h[fieldKey]||[]).length), 0);
+      const sums = Array(maxLen).fill(0);
+      for(const r of rowObj._others){
+        const vals = histByCountry[r.code]?.[fieldKey] || [];
+        vals.forEach((v,i)=>{ sums[i]=(sums[i]||0)+v; });
+      }
+      return sums;
+    }
+    return histByCountry[rowObj.code]?.[fieldKey] || [];
+  }
+
+  function getCurVal(rowObj, rowType, fieldKey){
+    if(rowType === 'total')  return rowObj._allRows.reduce((s,r)=>(r[fieldKey+'TW']||0)+s,0);
+    if(rowType === 'others') return rowObj._others.reduce((s,r)=>(r[fieldKey+'TW']||0)+s,0);
+    return rowObj[fieldKey+'TW'] || 0;
+  }
+
+  // ── Percentile colour badge ──
+  function pctBadge(v){
+    if(v===null) return '—';
+    const cls = v>=70?'pos':v<=30?'neg':'';
+    const color = v>=70?'var(--green)':v<=30?'var(--red)':'var(--muted)';
+    return `<span style="font-family:'DM Mono',monospace;font-size:.56rem;font-weight:700;color:${color}">${v}<sup style="font-size:.45rem">th</sup></span>`;
+  }
+
+  // ── Build rows ──────────────────────────────────────────────────────────────
+  const allRows = Object.values(byC)
+    .filter(r=>r.currentMYTotalCommitmentTW>0||r.accumulatedExportsTW>0)
+    .sort((a,b)=>b.currentMYTotalCommitmentTW-a.currentMYTotalCommitmentTW);
+  const top15  = allRows.slice(0,15);
+  const others = allRows.slice(15);
+  const totObj = {name:'TOTAL', code:-1, _allRows:allRows};
+  const othObj = {name:'Others', code:-99, _others:others};
+
+  // ── Build colgroup: Country + (5 cols × 4 fields) = 21 cols ───────────────
+  // Country=11%, each data col = (89/20) = 4.45%
+  let h = '<table><colgroup><col style="width:11%">';
+  for(let i=0;i<20;i++) h += '<col style="width:4.45%">';
+  h += '</colgroup>';
+
+  // ── Header rows ────────────────────────────────────────────────────────────
+  h += '<thead>';
+  // Group row
+  h += '<tr class="grp-row"><th rowspan="2">Country</th>';
+  FIELDS.forEach(f=>{
+    h += `<th colspan="5" style="text-align:center">${f.label}</th>`;
+  });
+  h += '</tr>';
+  // Sub-header row
+  h += '<tr class="hd-row">';
+  FIELDS.forEach(()=>{
+    h += '<th>Current</th><th>5yr Avg</th><th title="Percentile within 5-year range">%ile 5yr</th><th title="Percentile within 10-year range">%ile 10yr</th><th title="Percentile within all available history">%ile All</th>';
+  });
+  h += '</tr></thead><tbody>';
+
+  // ── Row renderer ──────────────────────────────────────────────────────────
+  function rowHtml(rowObj, rowType){
+    const isTot = rowType==='total', isOth = rowType==='others';
+    const nm = isTot ? `<strong>${rowObj.name}</strong>`
+             : isOth ? `<em style="color:var(--muted)">${rowObj.name}</em>`
+             : rowObj.name;
+    let td = `<td>${nm}</td>`;
+
+    FIELDS.forEach(f=>{
+      const curVal   = getCurVal(rowObj, rowType, f.key);
+      const histVals = getHistVals(rowObj, rowType, f.key);
+      const st       = stats(curVal, histVals);
+
+      td += `<td style="font-weight:600">${fmt(curVal)}</td>`;
+      td += `<td style="color:var(--muted)">${st.avg5!==null?fmt(st.avg5):'—'}</td>`;
+      td += `<td style="text-align:center">${pctBadge(st.pct5)}</td>`;
+      td += `<td style="text-align:center">${pctBadge(st.pct10)}</td>`;
+      td += `<td style="text-align:center">${pctBadge(st.pctAll)}</td>`;
+    });
+
+    const cls = isTot?' class="total-row"':isOth?' class="others-row"':'';
+    return `<tr${cls}>${td}</tr>`;
+  }
+
+  top15.forEach(r  => { h += rowHtml(r,      'normal'); });
+  if(others.length>0) h += rowHtml(othObj,  'others');
+  h += rowHtml(totObj, 'total');
+
+  h += '</tbody></table>';
+  c.innerHTML = h;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
