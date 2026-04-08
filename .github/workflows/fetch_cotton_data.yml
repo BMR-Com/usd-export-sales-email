@@ -1,0 +1,40 @@
+name: Fetch Cotton History Data
+
+on:
+  # Run every Thursday at 8:00 AM ET (before the email report at 8:31)
+  schedule:
+    - cron: '0 12 * * 4'    # EDT (summer) 8:00 AM ET
+    - cron: '0 13 * * 4'    # EST (winter) 8:00 AM ET
+  # Also run manually from GitHub UI
+  workflow_dispatch:
+
+jobs:
+  fetch-data:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fetch cotton history from USDA API
+        run: |
+          echo "Fetching ALL available years of cotton export data from USDA FAS API..."
+          python scripts/fetch_cotton_history.py
+
+      - name: Commit CSV and JS files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add cotton_history_1404.csv cotton_data.js
+          git diff --staged --stat
+          git commit -m "data: update cotton_history_1404.csv + cotton_data.js $(date -u +%Y-%m-%d) [skip ci]" \
+            || echo "No changes to commit"
+          git push
