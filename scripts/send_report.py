@@ -3,18 +3,12 @@
 USDA ESR Weekly Email Report
 =============================
 Loads index.html in headless Chromium, selects commodity 1404 / All Countries,
-waits for USDA API data + charts to fully render, then calls Playwright's
-page.pdf() — the same Chromium print engine as window.print() — to produce
-an exact PDF of what you see on screen. The PDF is sent as an email attachment
-via SMTP.
+waits for USDA API data and all 8 charts to fully render, resizes canvases to
+print resolution, then uses page.pdf() to produce an exact PDF matching what
+window.print() would generate. Sent as email attachment via SMTP.
 
 GitHub Secrets required:
-  SMTP_HOST           e.g. smtp.gmail.com
-  SMTP_PORT           e.g. 465  (SSL) or 587 (STARTTLS)
-  SMTP_USER           SMTP login username
-  SMTP_PASS           SMTP password / App Password
-  EMAIL_FROM          e.g. ESR Reports <you@gmail.com>
-  EMAIL_TO            comma-separated recipients
+  SMTP_HOST  SMTP_PORT  SMTP_USER  SMTP_PASS  EMAIL_FROM  EMAIL_TO
 """
 
 import os, re, ssl, smtplib, json
@@ -37,23 +31,15 @@ HTML_FILE    = os.environ.get('HTML_FILE',
                   str(Path(__file__).parent.parent / 'index.html'))
 REPORT_DATE  = os.environ.get('REPORT_DATE', datetime.now().strftime('%Y-%m-%d'))
 
-DEFAULT_COMMODITY = '1404'   # All Upland Cotton
+DEFAULT_COMMODITY = '1404'
 COMPARE_YEARS     = [2025, 2024, 2023, 2022]
-
-CHART_METRIC_IDS = [
-    'grossNewSales', 'currentMYNetSales', 'weeklyExports', 'accumulatedExports',
-    'outstandingSales', 'currentMYTotalCommitment', 'nextMYNetSales',
-    'nextMYOutstandingSales',
-]
 
 def log(msg):
     print(f'[{datetime.now():%H:%M:%S}] {msg}', flush=True)
 
 
-# ── Render page and produce PDF bytes ─────────────────────────────────────────
 def render_to_pdf():
     log(f'Loading {HTML_FILE}')
-
     if not Path(HTML_FILE).exists():
         raise FileNotFoundError(f'index.html not found: {HTML_FILE}')
 
@@ -63,39 +49,32 @@ def render_to_pdf():
             args=[
                 '--no-sandbox', '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage', '--disable-gpu',
-                '--disable-web-security',   # allow file:// cross-origin fetches
+                '--disable-web-security',
                 '--allow-file-access-from-files',
             ]
         )
-        # Use a wide viewport so the layout matches the dashboard view
         page = browser.new_page(viewport={'width': 1440, 'height': 900})
-
         page.goto(f'file://{HTML_FILE}', wait_until='domcontentloaded')
-        log('Page loaded')
+        log('Page DOM loaded')
 
-        # ── Set commodity 1404 + compare years ───────────────────────────────
-        log('Selecting commodity 1404 (All Upland Cotton) and compare years…')
+        # Select commodity 1404 + compare years
+        log('Configuring commodity 1404 and compare years…')
         page.evaluate(f"""() => {{
             const s = document.getElementById('selCommodity');
             if (s) s.value = '{DEFAULT_COMMODITY}';
-
             const y = document.getElementById('selYear');
             if (y && y.options.length) y.value = y.options[0].value;
-
             const c = document.getElementById('selCompareYears');
-            if (c) {{
-                for (const o of c.options) {{
-                    o.selected = {json.dumps(COMPARE_YEARS)}.includes(+o.value);
-                }}
-            }}
+            if (c) for (const o of c.options)
+                o.selected = {json.dumps(COMPARE_YEARS)}.includes(+o.value);
         }}""")
 
-        # ── Click Load Data ───────────────────────────────────────────────────
+        # Click Load Data
         log('Clicking Load Data…')
         page.click('#btnLoad')
 
-        # ── Wait for USDA API to return data (up to 90s) ──────────────────────
-        log('Waiting for USDA API response (up to 90s)…')
+        # Wait for USDA API to respond — up to 90 seconds
+        log('Waiting for USDA API (up to 90s)…')
         try:
             page.wait_for_function(
                 "() => document.getElementById('statusBar')"
@@ -105,93 +84,80 @@ def render_to_pdf():
         except PwTimeout:
             status = page.text_content('#statusBar') or 'unknown'
             raise RuntimeError(f'Data did not load in 90s. Status: "{status}"')
+        log('✓ Data loaded from USDA API')
 
-        log('✓ Data loaded')
+        # Wait 1 full minute for all charts + tables to render
+        # (projection model fetches 15 years of history which takes time)
+        log('Waiting 60s for all charts and tables to fully render…')
+        page.wait_for_timeout(60_000)
 
-        # ── Wait for Chart.js to finish all 8 charts ──────────────────────────
-        log('Waiting for all 8 charts to render…')
-        page.wait_for_timeout(5000)
-
-        # ── Switch charts to print-friendly colours (black text, white bg) ────
-        log('Switching charts to print colours…')
-        page.evaluate("""() => {
-            if (typeof prepChartsForPrint === 'function') prepChartsForPrint();
-        }""")
-        page.wait_for_timeout(800)
-
-        # ── Make sure we're on the Dashboard tab ──────────────────────────────
+        # Make sure we're on the dashboard tab
         page.evaluate("""() => {
             if (typeof switchTab === 'function') switchTab('dashboard');
         }""")
 
-        # ── Capture PDF using Playwright's print engine ────────────────────────
-        # This is identical to what Chromium produces when you do File → Print → Save as PDF
-        # or window.print() — it applies all @media print CSS rules exactly.
+        # Call prepChartsForPrint — resizes canvases to 1020×756 and switches colours
+        log('Resizing charts to print resolution (1020×756)…')
+        page.evaluate("""() => {
+            if (typeof prepChartsForPrint === 'function') prepChartsForPrint();
+        }""")
+
+        # Wait 3 extra seconds for Chart.js to finish re-rendering at new dimensions
+        log('Waiting 3s for chart re-render at print resolution…')
+        page.wait_for_timeout(3_000)
+
+        # Generate PDF — same engine as Chromium File → Print → Save as PDF
         log('Generating PDF via Chromium print engine…')
         pdf_bytes = page.pdf(
             format='A4',
             landscape=True,
             margin={
-                'top':    '6mm',
-                'bottom': '6mm',
-                'left':   '7mm',
-                'right':  '7mm',
+                'top':    '8mm',
+                'bottom': '8mm',
+                'left':   '8mm',
+                'right':  '8mm',
             },
-            print_background=True,   # preserves dark header backgrounds, chart colours
+            print_background=True,
         )
 
-        log(f'✓ PDF generated: {len(pdf_bytes):,} bytes ({len(pdf_bytes)//1024}KB)')
-
+        log(f'✓ PDF: {len(pdf_bytes):,} bytes ({len(pdf_bytes)//1024}KB)')
         browser.close()
 
     return pdf_bytes
 
 
-# ── Build plain-text email body ───────────────────────────────────────────────
-def build_plain_body(comm_short):
-    now = datetime.now().strftime('%A, %B %d, %Y')
-    return (
-        f'USDA ESR Weekly Report — {comm_short}\n'
-        f'Generated: {now}\n\n'
-        f'Please find the PDF report attached.\n\n'
-        f'The report includes:\n'
-        f'  • Seasonality charts — all 8 metrics, multi-year comparison\n'
-        f'  • Weekly Market Intelligence — top buyers, shipments, signals\n'
-        f'  • End-of-Year Export Projection — 6 models, backtested\n'
-        f'  • Country Summary — TW/LW/change + multi-year snapshot\n\n'
-        f'Commodity: {comm_short}  |  All Countries\n'
-        f'Data source: USDA FAS Export Sales Reporting  |  api.fas.usda.gov\n'
-    )
-
-
-# ── Send email with PDF attachment ────────────────────────────────────────────
-def send_email(pdf_bytes, comm_short):
-    date_str   = datetime.now().strftime('%b %d, %Y')
-    subject    = f'USDA ESR Weekly Report — {comm_short} — {date_str}'
-    filename   = f'ESR_Report_{comm_short.replace(" ","_")}_{REPORT_DATE}.pdf'
+def send_email(pdf_bytes):
+    date_str = datetime.now().strftime('%b %d, %Y')
+    subject  = f'USDA ESR Weekly Report — All Upland Cotton — {date_str}'
+    filename = f'ESR_Report_Upland_Cotton_{REPORT_DATE}.pdf'
 
     msg            = MIMEMultipart('mixed')
     msg['Subject'] = subject
     msg['From']    = EMAIL_FROM
     msg['To']      = ', '.join(EMAIL_TO)
 
-    # Plain text body
-    msg.attach(MIMEText(build_plain_body(comm_short), 'plain'))
+    body = (
+        f'USDA ESR Weekly Report — All Upland Cotton\n'
+        f'Generated: {datetime.now().strftime("%A, %B %d, %Y")}\n\n'
+        f'Please find the full PDF report attached.\n\n'
+        f'Report includes:\n'
+        f'  Pages 1–2: Seasonality charts — all 8 metrics, multi-year\n'
+        f'  Page 3:    Weekly Intelligence + End-of-Year Projection\n'
+        f'  Page 4:    Country Summary — TW/LW/change + multi-year snapshot\n'
+        f'  Page 5:    8-Week Sales Trend + Historical Percentile Ranges\n'
+        f'  Page 6:    Export Sales Narrative Summary\n\n'
+        f'Source: USDA FAS Export Sales Reporting | api.fas.usda.gov\n'
+    )
+    msg.attach(MIMEText(body, 'plain'))
 
-    # PDF attachment
     pdf_part = MIMEBase('application', 'pdf')
     pdf_part.set_payload(pdf_bytes)
     encoders.encode_base64(pdf_part)
-    pdf_part.add_header(
-        'Content-Disposition',
-        'attachment',
-        filename=filename
-    )
+    pdf_part.add_header('Content-Disposition', 'attachment', filename=filename)
     msg.attach(pdf_part)
 
     log(f'Sending to {len(EMAIL_TO)} recipient(s) via {SMTP_HOST}:{SMTP_PORT}…')
-    log(f'  Subject:  {subject}')
-    log(f'  PDF file: {filename}  ({len(pdf_bytes)//1024}KB)')
+    log(f'  Attachment: {filename} ({len(pdf_bytes)//1024}KB)')
 
     if SMTP_PORT == 465:
         ctx = ssl.create_default_context()
@@ -199,7 +165,6 @@ def send_email(pdf_bytes, comm_short):
             srv.login(SMTP_USER, SMTP_PASS)
             srv.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
     else:
-        # Port 587 — STARTTLS
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as srv:
             srv.ehlo()
             srv.starttls(context=ssl.create_default_context())
@@ -209,27 +174,20 @@ def send_email(pdf_bytes, comm_short):
     log(f'✓ Email sent to: {", ".join(EMAIL_TO)}')
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     log('=== USDA ESR Weekly Report ===')
-    log(f'Date:       {REPORT_DATE}')
-    log(f'Commodity:  {DEFAULT_COMMODITY} (All Upland Cotton)')
-    log(f'From:       {EMAIL_FROM}')
-    log(f'To:         {", ".join(EMAIL_TO)}')
-    log(f'SMTP:       {SMTP_HOST}:{SMTP_PORT}')
-    log(f'HTML file:  {HTML_FILE}')
+    log(f'Date:      {REPORT_DATE}')
+    log(f'Commodity: {DEFAULT_COMMODITY} (All Upland Cotton, All Countries)')
+    log(f'From:      {EMAIL_FROM}')
+    log(f'To:        {", ".join(EMAIL_TO)}')
+    log(f'SMTP:      {SMTP_HOST}:{SMTP_PORT}')
 
     if not EMAIL_TO:
-        raise ValueError('EMAIL_TO is empty — add recipients to GitHub Secrets')
+        raise ValueError('EMAIL_TO is empty')
 
-    # 1. Render the dashboard and export as PDF
     pdf_bytes = render_to_pdf()
-
-    # 2. Send with PDF attached
-    send_email(pdf_bytes, 'Upland Cotton')
-
+    send_email(pdf_bytes)
     log('=== Done ===')
-
 
 if __name__ == '__main__':
     main()
