@@ -78,14 +78,11 @@ jobs:
           [ -n "${{ secrets.EMAIL_TO }}" ]   && echo "OK EMAIL_TO"   || { echo "MISSING EMAIL_TO";   MISSING=1; }
           [ $MISSING -eq 1 ] && echo "One or more secrets missing — check repo Settings > Secrets" && exit 1 || echo "All secrets OK"
 
-      - name: Build cotton_data.js from CSV
+      - name: Fetch latest cotton data from USDA API
         if: steps.check_sent.outputs.already_sent == 'false'
         run: |
-          if [ -f cotton_history_1404.csv ]; then
-            python scripts/build_cotton_data.py
-          else
-            echo "cotton_history_1404.csv not in repo — skipping cotton_data.js"
-          fi
+          echo "Fetching latest cotton data to ensure CSV is up to date..."
+          python scripts/fetch_cotton_history.py
 
       - name: Generate PDF and send email
         if: steps.check_sent.outputs.already_sent == 'false'
