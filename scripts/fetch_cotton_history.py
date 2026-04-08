@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""
+fetch_cotton_history.py
+=======================
+Fetches ALL available years of Upland Cotton (1404) export data
+directly from the USDA FAS API and writes cotton_history_1404.csv
+to the repo root.
+
+Run by GitHub Actions weekly to keep the CSV current.
+Can also be run locally: python scripts/fetch_cotton_history.py
+
+No browser needed — pure Python, uses only the standard library.
+"""
+
+import json
+import csv
+import time
+import urllib.request
+import urllib.error
+from datetime import datetime
+from pathlib import Path
+
+# ── Config ────────────────────────────────────────────────────────────────────
+API_KEY      = 'p5rJTNhEZbSmIPVyRxEixuZrVfgKraUAhCNo8Kmg'
+USDA_BASE    = 'https://api.fas.usda.gov/api/esr'
+COMM_CODE    = 1404          # All Upland Cotton
+START_YEAR   = 1991          # Earliest available
+END_YEAR     = datetime.now().year + 1   # Include next MY if started
+REPO_ROOT    = Path(__file__).parent.parent
+CSV_PATH     = REPO_ROOT / 'cotton_history_1404.csv'
+JS_PATH      = REPO_ROOT / 'cotton_data.js'
+
+COUNTRIES = {
+    1:"European Union",2:"Unknown",1220:"Canada",2010:"Mexico",2050:"Guatemala",
+    2080:"Belize",2110:"El Salvador",2150:"Honduras",2190:"Nicaragua",2230:"Costa Rica",
+    2250:"Panama",2320:"Bermuda",2360:"Bahamas",2390:"Cuba",2410:"Jamaica",2450:"Haiti",
+    2470:"Dominican Republic",2480:"Leeward-Windward Islands",2720:"Barbados",
+    2740:"Trinidad and Tobago",2770:"Netherlands Antilles",2830:"French West Indies",
+    3010:"Colombia",3070:"Venezuela",3120:"Guyana",3150:"Surinam",3310:"Ecuador",
+    3330:"Peru",3350:"Bolivia",3370:"Chile",3510:"Brazil",3530:"Paraguay",
+    3550:"Uruguay",3570:"Argentina",4000:"Iceland",4010:"Sweden",4030:"Norway",
+    4050:"Finland",4090:"Denmark",4120:"United Kingdom",4190:"Ireland",
+    4210:"Netherlands",4230:"Belgium-Luxembourg",4270:"France",4280:"Germany",
+    4330:"Austria",4351:"Czech Republic",4370:"Hungary",4410:"Switzerland",
+    4470:"Estonia",4490:"Latvia",4510:"Lithuania",4550:"Poland",4621:"Russia",
+    4622:"Belarus",4623:"Ukraine",4634:"Kazakhstan",4700:"Spain",4710:"Portugal",
+    4730:"Malta",4750:"Italy",4791:"Croatia",4810:"Albania",4840:"Greece",
+    4850:"Romania",4870:"Bulgaria",4890:"Turkey",4910:"Cyprus",5020:"Syria",
+    5040:"Lebanon",5050:"Iraq",5070:"Iran",5080:"Israel",5110:"Jordan",
+    5130:"Kuwait",5170:"Saudi Arabia",5180:"Qatar",5200:"United Arab Emirates",
+    5210:"Yemen",5230:"Oman",5250:"Bahrain",5310:"Afghanistan",5330:"India",
+    5350:"Pakistan",5360:"Nepal",5380:"Bangladesh",5420:"Sri Lanka",5460:"Burma/Myanmar",
+    5490:"Thailand",5520:"Vietnam",5550:"Cambodia",5570:"Malaysia",5590:"Singapore",
+    5600:"Indonesia",5650:"Philippines",5700:"China",5740:"Mongolia",5800:"South Korea",
+    5820:"Hong Kong",5830:"Taiwan",5880:"Japan",6020:"Australia",6040:"Papua New Guinea",
+    6140:"New Zealand",7140:"Morocco",7210:"Algeria",7230:"Tunisia",7250:"Libya",
+    7290:"Egypt",7320:"Sudan",7323:"South Sudan",7410:"Mauritania",7440:"Senegal",
+    7480:"Cote d'Ivoire",7490:"Ghana",7510:"Niger",7530:"Nigeria",7620:"Angola",
+    7660:"Congo DR",7700:"Somalia",7740:"Ethiopia",7780:"Uganda",7790:"Kenya",
+    7830:"Tanzania",7870:"Mozambique",7910:"South Africa",7940:"Zambia",
+    7960:"Zimbabwe",7970:"Malawi",
+}
+
+CSV_FIELDS = [
+    'weekEndingDate','marketYear','commodityCode','countryCode','countryName',
+    'grossNewSales','currentMYNetSales','weeklyExports','accumulatedExports',
+    'outstandingSales','currentMYTotalCommitment','nextMYNetSales','nextMYOutstandingSales',
+]
+
+def log(msg):
+    print(f'[{datetime.now():%H:%M:%S}] {msg}', flush=True)
+
+def fetch_year(comm_code, year, retries=3):
+    url = f'{USDA_BASE}/exports/commodityCode/{comm_code}/allCountries/marketYear/{year}'
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers={
+                'X-Api-Key': API_KEY,
+                'Accept':    'application/json',
+            })
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read().decode())
+                if isinstance(data, list):
+                    return data
+                return []
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return []   # Year doesn't exist yet
+            if e.code == 429:
+                log(f'  Rate limited — waiting 30s…')
+                time.sleep(30)
+            else:
+                log(f'  HTTP {e.code} on attempt {attempt+1}')
+                time.sleep(5)
+        except Exception as e:
+            log(f'  Error attempt {attempt+1}: {e}')
+            time.sleep(5)
+    return []
+
+def build_cotton_data_js(csv_text):
+    """Write cotton_data.js so the AI tab auto-loads without fetch()."""
+    escaped = csv_text.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')
+    rows = csv_text.splitlines()
+    js = (f'// Auto-generated by fetch_cotton_history.py — do not edit\n'
+          f'// {len(rows):,} rows | Generated {datetime.now().strftime("%Y-%m-%d %H:%M UTC")}\n'
+          f'window.COTTON_CSV_DATA = `{escaped}`;\n')
+    JS_PATH.write_text(js, encoding='utf-8')
+    log(f'✓ cotton_data.js written ({JS_PATH.stat().st_size // 1024}KB)')
+
+def main():
+    log('=== USDA ESR Cotton History Fetcher ===')
+    log(f'Commodity: {COMM_CODE} (All Upland Cotton)')
+    log(f'Years:     {START_YEAR}–{END_YEAR}')
+    log(f'Output:    {CSV_PATH}')
+    log('='*40)
+
+    # Check if CSV already exists — load existing data to avoid re-fetching unchanged years
+    existing = {}   # year -> list of row dicts
+    if CSV_PATH.exists():
+        log(f'Existing CSV found — reading to find years already fetched…')
+        with open(CSV_PATH, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                y = int(row.get('marketYear', 0))
+                if y not in existing:
+                    existing[y] = []
+                existing[y].append(row)
+        log(f'  Existing years: {sorted(existing.keys())}')
+
+    # Determine which years need fetching
+    # Always re-fetch current year and previous year (data updates weekly)
+    current_year = datetime.now().year
+    years_to_fetch = []
+    for y in range(START_YEAR, END_YEAR + 1):
+        if y not in existing or y >= current_year - 1:
+            years_to_fetch.append(y)
+
+    log(f'Years to fetch: {len(years_to_fetch)} '
+        f'({years_to_fetch[0] if years_to_fetch else "none"}–'
+        f'{years_to_fetch[-1] if years_to_fetch else "none"})')
+    log(f'Years from cache: {len(existing)}')
+
+    all_rows = []
+    fetched_years = {}
+
+    # Copy cached years (older ones we won't re-fetch)
+    for y, rows in existing.items():
+        if y not in years_to_fetch:
+            fetched_years[y] = rows
+
+    # Fetch new/updated years
+    for idx, year in enumerate(years_to_fetch):
+        log(f'Fetching MY{year}… ({idx+1}/{len(years_to_fetch)})')
+        records = fetch_year(COMM_CODE, year)
+        if not records:
+            log(f'  MY{year}: no data')
+            continue
+
+        rows = []
+        for r in records:
+            cc = r.get('countryCode', 0)
+            if not cc or cc == 0:
+                continue
+            dt = str(r.get('weekEndingDate', '') or '').split('T')[0]
+            if not dt:
+                continue
+            rows.append({
+                'weekEndingDate':          dt,
+                'marketYear':              year,
+                'commodityCode':           COMM_CODE,
+                'countryCode':             cc,
+                'countryName':             COUNTRIES.get(cc, f'Code {cc}'),
+                'grossNewSales':           r.get('grossNewSales', 0) or 0,
+                'currentMYNetSales':       r.get('currentMYNetSales', 0) or 0,
+                'weeklyExports':           r.get('weeklyExports', 0) or 0,
+                'accumulatedExports':      r.get('accumulatedExports', 0) or 0,
+                'outstandingSales':        r.get('outstandingSales', 0) or 0,
+                'currentMYTotalCommitment':r.get('currentMYTotalCommitment', 0) or 0,
+                'nextMYNetSales':          r.get('nextMYNetSales', 0) or 0,
+                'nextMYOutstandingSales':  r.get('nextMYOutstandingSales', 0) or 0,
+            })
+
+        fetched_years[year] = rows
+        log(f'  MY{year}: {len(rows):,} rows')
+
+        # Small delay to be polite to the API
+        if idx < len(years_to_fetch) - 1:
+            time.sleep(0.5)
+
+    # Combine all years and sort
+    for rows in fetched_years.values():
+        all_rows.extend(rows)
+    all_rows.sort(key=lambda r: (r['marketYear'], r['weekEndingDate'], r['countryCode']))
+
+    if not all_rows:
+        log('✗ No data fetched — check API key and network')
+        return
+
+    # Write CSV
+    with open(CSV_PATH, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+        writer.writeheader()
+        writer.writerows(all_rows)
+
+    size_kb = CSV_PATH.stat().st_size // 1024
+    years_written = sorted(set(r['marketYear'] for r in all_rows))
+    log(f'✓ CSV written: {len(all_rows):,} rows | '
+        f'MY{years_written[0]}–MY{years_written[-1]} | {size_kb}KB')
+
+    # Write cotton_data.js
+    csv_text = CSV_PATH.read_text(encoding='utf-8')
+    build_cotton_data_js(csv_text)
+
+    log('=== Done ===')
+
+if __name__ == '__main__':
+    main()
