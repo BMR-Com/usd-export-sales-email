@@ -2308,38 +2308,47 @@ function loadCSVForAI(){
 
 
 function buildCSVSummary(){
-  if(!aiCSVData || !aiCSVData.length) return '';
-  // Build compact historical summary from CSV for AI context
-  // Aggregate total exports by year at each week number
-  const byYearWeek = {};
+  if(!aiCSVData || !aiCSVData.length) return null;
+
+  // Aggregate total exports by year across all countries
+  const byYear = {};
   for(const r of aiCSVData){
-    const y = r.marketYear, dt = r.weekEndingDate;
-    if(!y||!dt) continue;
-    if(!byYearWeek[y]) byYearWeek[y]={};
-    // We sum across countries for total
-    const key = dt;
-    if(!byYearWeek[y][key]) byYearWeek[y][key]={
-      grossNewSales:0,weeklyExports:0,accumulatedExports:0,
-      outstandingSales:0,currentMYTotalCommitment:0
+    const y = +r.marketYear;
+    if(!y) continue;
+    if(!byYear[y]) byYear[y] = {
+      grossNewSales:0, weeklyExports:0, accumulatedExports:0,
+      outstandingSales:0, currentMYTotalCommitment:0,
+      nextMYOutstandingSales:0, rows:0, weeks:new Set()
     };
-    const w = byYearWeek[y][key];
-    w.grossNewSales          += +(r.grossNewSales||0);
-    w.weeklyExports          += +(r.weeklyExports||0);
-    w.accumulatedExports     += +(r.accumulatedExports||0);
-    w.outstandingSales       += +(r.outstandingSales||0);
-    w.currentMYTotalCommitment += +(r.currentMYTotalCommitment||0);
+    const b = byYear[y];
+    // Accumulate weekly totals — pick max accum/commit (last week values)
+    const accum  = +(r.accumulatedExports||0);
+    const commit = +(r.currentMYTotalCommitment||0);
+    if(accum  > b.accumulatedExports)      b.accumulatedExports      = accum;
+    if(commit > b.currentMYTotalCommitment) b.currentMYTotalCommitment = commit;
+    b.grossNewSales          += +(r.grossNewSales||0);
+    b.weeklyExports          += +(r.weeklyExports||0);
+    b.outstandingSales        = Math.max(b.outstandingSales, +(r.outstandingSales||0));
+    b.nextMYOutstandingSales  = Math.max(b.nextMYOutstandingSales, +(r.nextMYOutstandingSales||0));
+    b.rows++;
+    if(r.weekEndingDate) b.weeks.add(r.weekEndingDate);
   }
-  // Get last week per year (max accumulated exports)
-  const yearSummary = {};
-  for(const [y, weeks] of Object.entries(byYearWeek)){
-    let best = null;
-    for(const w of Object.values(weeks))
-      if(!best || w.accumulatedExports > best.accumulatedExports) best = w;
-    if(best) yearSummary[y] = best;
+
+  const years = Object.keys(byYear).map(Number).sort((a,b)=>b-a);
+
+  // Return structured object — all years, compact numbers
+  const summary = {};
+  for(const y of years){
+    const d = byYear[y];
+    summary[y] = {
+      accumExports: Math.round(d.accumulatedExports/1000),      // in thousands RB
+      totalCommit:  Math.round(d.currentMYTotalCommitment/1000),
+      outstanding:  Math.round(d.outstandingSales/1000),
+      nextMYOutst:  Math.round(d.nextMYOutstandingSales/1000),
+      weeksOfData:  d.weeks.size,
+    };
   }
-  const years = Object.keys(yearSummary).sort().reverse().slice(0,15);
-  return 'Historical annual final exports (running bales): '+
-    years.map(y=>`MY${y}: accum=${Math.round(yearSummary[y].accumulatedExports/1000)}K, commit=${Math.round(yearSummary[y].currentMYTotalCommitment/1000)}K`).join(' | ');
+  return { years: years.length, range: `MY${years[years.length-1]}-MY${years[0]}`, data: summary };
 }
 
 function buildAIContext(){
@@ -2446,20 +2455,28 @@ async function sendAIMessage(){
   const wantsChart=/\b(plot|chart|graph|draw|visuali[sz]e|bar chart|line chart)\b/i.test(q);
 
   const ctx = buildAIContext();
-  const systemPrompt=`You are an expert USDA Export Sales Reporting (ESR) analyst with deep knowledge of cotton export markets.
+  const csvLoaded = !!aiCSVData && aiCSVData.length > 0;
+  const systemPrompt=`You are an expert USDA Export Sales Reporting (ESR) analyst.
 
-You have access to LIVE export data loaded from the USDA FAS API:
+CURRENT WEEK DATA (from USDA API — live):
 <data>
 ${ctx}
 </data>
 
-IMPORTANT INSTRUCTIONS:
-- ALWAYS use the actual numbers from the data above. Never say data is unavailable if it is in the JSON above.
-- Use historicalYearSummaries to answer any year-over-year comparison questions.
-- Use percentileRankings to answer questions about how current values compare historically.
-- Format numbers with K/M suffixes (e.g. 1.2M, 450K running bales).
-- Marketing year (MY) for cotton starts June 1. MY2026 = June 2025 - May 2026.
-- Be specific and analytical. Give concrete numbers and comparisons.
+${csvLoaded ? `FULL HISTORICAL DATABASE: ${aiCSVData.length.toLocaleString()} rows loaded from CSV covering all years.
+The csvData field in the JSON above has year-by-year summaries (accumExports, totalCommit, outstanding, nextMYOutst — all in thousands of running bales).
+Use this for ALL historical comparisons, averages, percentile rankings, and trend analysis.` : 
+'Note: Full CSV not loaded. Historical context limited to loaded years only. User can click Load CSV button.'}
+
+RULES:
+1. ALWAYS answer using the actual numbers — never say data is unavailable if it is in the JSON.
+2. For historical comparisons use csvData.data[year] values (in thousands RB — multiply by 1000 for exact).
+3. For current week use currentWeekTotals.
+4. Format: use K for thousands, M for millions (e.g. 1.2M RB, 450K RB).
+5. Marketing year for cotton: starts August 1. MY2026 = Aug 2025 – Jul 2026.
+6. For chart requests: respond ONLY with a <chart>JSON</chart> block then one sentence explanation.
+   Chart JSON format: {"type":"bar","title":"...","labels":[...],"datasets":[{"label":"...","data":[...],"backgroundColor":"#color"}]}
+   Use plain numeric arrays — NO comments, NO trailing commas in JSON.`
 
 ${wantsChart?`
 CHART INSTRUCTIONS: The user wants a chart. Respond with a JSON block in this format:
@@ -2494,7 +2511,11 @@ Be concise, analytical, and data-driven. If data is not available for a question
       const textPart=reply.replace(/<chart>[\s\S]*?<\/chart>/,'').trim();
       if(textPart) appendAIMsg('assistant',textPart);
       try{
-        const chartDef=JSON.parse(chartMatch[1]);
+        // Clean AI output: strip // comments, trailing commas, fix keys
+        let raw = chartMatch[1].trim();
+        raw = raw.replace(/\/\/[^\n]*/g, '');        // strip // comments
+        raw = raw.replace(/,\s*([}\]])/g, '$1');      // remove trailing commas
+        const chartDef = JSON.parse(raw);
         renderAIChart(chartDef);
       }catch(e){ appendAIMsg('assistant','(Chart data parse error: '+e.message+')'); }
     } else {
