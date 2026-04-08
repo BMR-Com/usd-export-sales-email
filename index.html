@@ -702,15 +702,26 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
       <div class="ai-key-row">
         <label>Model</label>
         <select class="ai-model-sel" id="groqModel" onchange="saveAIConfig()">
-          <option value="llama-3.3-70b-versatile">Llama 3.3 70B (recommended)</option>
-          <option value="llama-3.1-8b-instant">Llama 3.1 8B (fast)</option>
-          <option value="mixtral-8x7b-32768">Mixtral 8x7B (long context)</option>
-          <option value="gemma2-9b-it">Gemma 2 9B</option>
+          <optgroup label="Recommended">
+            <option value="llama-3.3-70b-versatile">Llama 3.3 70B · Best quality</option>
+            <option value="llama-3.1-8b-instant">Llama 3.1 8B · Fastest · High limits</option>
+          </optgroup>
+          <optgroup label="High token limits">
+            <option value="llama3-70b-8192">Llama 3 70B · 6K TPM limit</option>
+            <option value="llama3-8b-8192">Llama 3 8B · Highest free limits</option>
+            <option value="mixtral-8x7b-32768">Mixtral 8x7B · Long context</option>
+            <option value="gemma2-9b-it">Gemma 2 9B</option>
+          </optgroup>
         </select>
       </div>
       <button class="btn" style="font-size:.58rem;padding:6px 12px" onclick="testGroqKey()">✓ Test Connection</button>
       <button class="btn" style="font-size:.58rem;padding:6px 12px;background:var(--s2);color:var(--blue);border:1px solid rgba(79,195,247,.3)" onclick="loadCSVForAI()">📂 Load History CSV</button>
       <div class="ai-status" id="aiStatus">Enter your Groq API key to start</div>
+      <div style="font-family:'DM Mono',monospace;font-size:.5rem;color:var(--muted);margin-top:4px;line-height:1.5">
+        💡 <strong>Token tip:</strong> Free tier = 100K tokens/day.<br>
+        Switch to <em>Llama 3 8B</em> for highest limits.<br>
+        Or upgrade at console.groq.com
+      </div>
 
       <div style="border-top:1px solid var(--border);padding-top:10px">
         <div class="ai-sidebar-title">Quick Questions</div>
@@ -2404,92 +2415,72 @@ function buildCSVSummary(currentWeekNum){
 
 
 function buildAIContext(){
-  // Build comprehensive context from globalData already in memory
-  // This works without any CSV file — uses whatever years are loaded
-  if(!allLoadedYears.length) return 'No export data loaded. Please load data in the Dashboard tab first.';
-  const commCode=+document.getElementById('selCommodity').value;
-  const commName=document.getElementById('selCommodity').selectedOptions[0].text;
-  const {byC,thisWeek,lastWeek}=aggregateByCountry(globalData[primaryYear]);
-  const allC=Object.values(byC);
+  if(!allLoadedYears.length) return 'No data loaded.';
+  const commCode = +document.getElementById('selCommodity').value;
+  const commName = document.getElementById('selCommodity').selectedOptions[0].text;
+  const {byC, thisWeek, lastWeek} = aggregateByCountry(globalData[primaryYear]);
+  const allC = Object.values(byC);
 
-  const totals={
-    grossSalesTW: allC.reduce((s,r)=>s+(r.grossNewSalesTW||0),0),
-    grossSalesLW: allC.reduce((s,r)=>s+(r.grossNewSalesLW||0),0),
-    weeklyExportsTW: allC.reduce((s,r)=>s+(r.weeklyExportsTW||0),0),
-    accumulatedExports: allC.reduce((s,r)=>s+(r.accumulatedExportsTW||0),0),
-    outstandingSales: allC.reduce((s,r)=>s+(r.outstandingSalesTW||0),0),
-    totalCommitment: allC.reduce((s,r)=>s+(r.currentMYTotalCommitmentTW||0),0),
-    nextMYOutstanding: allC.reduce((s,r)=>s+(r.nextMYOutstandingSalesTW||0),0),
-  };
+  // Current week totals (raw RB)
+  const totAccum  = allC.reduce((s,r)=>s+(r.accumulatedExportsTW||0),0);
+  const totCommit = allC.reduce((s,r)=>s+(r.currentMYTotalCommitmentTW||0),0);
+  const totOutst  = allC.reduce((s,r)=>s+(r.outstandingSalesTW||0),0);
+  const totGross  = allC.reduce((s,r)=>s+(r.grossNewSalesTW||0),0);
+  const totShips  = allC.reduce((s,r)=>s+(r.weeklyExportsTW||0),0);
+  const totNext   = allC.reduce((s,r)=>s+(r.nextMYOutstandingSalesTW||0),0);
 
-  const top10=allC.sort((a,b)=>b.accumulatedExportsTW-a.accumulatedExportsTW).slice(0,10)
-    .map(r=>({name:r.name,grossTW:r.grossNewSalesTW,exportsTW:r.weeklyExportsTW,
-      accum:r.accumulatedExportsTW,commit:r.currentMYTotalCommitmentTW}));
+  const primaryWeeks = aggregateByWeek(globalData[primaryYear], commCode, primaryYear);
+  let curWk = null;
+  for(const w of primaryWeeks) if(w.accumulatedExports>0||w.weeklyExports>0) curWk=w;
+  if(!curWk && primaryWeeks.length) curWk = primaryWeeks[primaryWeeks.length-1];
+  const curWkNum = curWk?.wkNum || 0;
 
-  const primaryWeeks=aggregateByWeek(globalData[primaryYear],commCode,primaryYear);
-  const curWk=primaryWeeks[primaryWeeks.length-1];
+  // Top 5 buyers only (saves tokens vs top10)
+  const top5 = allC
+    .sort((a,b)=>b.accumulatedExportsTW-a.accumulatedExportsTW)
+    .slice(0,5)
+    .map(r=>`${r.name}:${fmt(r.accumulatedExportsTW)}accum/${fmt(r.grossNewSalesTW)}gross`);
 
-  // Build per-year historical summary from globalData (all loaded years)
-  const yearSummaries = {};
-  for(const y of allLoadedYears){
+  // Historical summaries — compact format, not JSON objects
+  const histLines = [];
+  const priorYears = allLoadedYears.filter(y=>y!==primaryYear).sort((a,b)=>b-a);
+  for(const y of priorYears){
     if(!globalData[y]) continue;
     const yWeeks = aggregateByWeek(globalData[y], commCode, y);
     let snap = null;
-    for(const w of yWeeks) if(w.accumulatedExports>0||w.weeklyExports>0) snap=w;
-    if(!snap && yWeeks.length) snap = yWeeks[yWeeks.length-1];
-    if(snap){
-      yearSummaries[y] = {
-        weekNum:       snap.wkNum,
-        accumExports:  snap.accumulatedExports,
-        outstanding:   snap.outstandingSales,
-        totalCommit:   snap.currentMYTotalCommitment,
-        grossSales:    snap.grossNewSales,
-        weeklyExports: snap.weeklyExports,
-        nextMYOutst:   snap.nextMYOutstandingSales,
-      };
-    }
+    for(const w of yWeeks) if(w.wkNum <= curWkNum) snap = w;
+    if(snap) histLines.push(
+      'MY'+y+'@wk'+snap.wkNum+':'
+      +fmt(snap.accumulatedExports)+'acc/'
+      +fmt(snap.currentMYTotalCommitment)+'cmt/'
+      +fmt(snap.outstandingSales)+'out'
+    );
   }
 
-  // Build percentile context for key metrics vs all loaded years
-  const metricsForPctile = ['accumExports','totalCommit','outstanding','nextMYOutst'];
-  const pctileCtx = {};
-  if(yearSummaries[primaryYear]){
-    const curVals = yearSummaries[primaryYear];
-    metricsForPctile.forEach(m=>{
-      const hist = allLoadedYears
-        .filter(y=>y!==primaryYear && yearSummaries[y]?.[m]!=null)
-        .map(y=>yearSummaries[y][m])
-        .sort((a,b)=>a-b);
-      if(hist.length>=2){
-        const cur = curVals[m]||0;
-        const below = hist.filter(v=>v<cur).length;
-        const pct = Math.round((below/hist.length)*100);
-        const avg = Math.round(hist.reduce((a,b)=>a+b,0)/hist.length);
-        const min = hist[0], max = hist[hist.length-1];
-        pctileCtx[m] = {current:cur, avg, min, max, percentile:pct, yearsCompared:hist.length};
-      }
-    });
-  }
-
-  // Get current week number for same-week CSV lookup
-  const curWkNum = curWk?.wkNum || 0;
+  // CSV same-week data — compact, only available years
   const csvSummary = buildCSVSummary(curWkNum);
-  return JSON.stringify({
-    commodity: commName,
-    primaryYear,
-    loadedYears: allLoadedYears,
-    weekEnding: thisWeek,
-    marketingYearWeek: curWk?.wkNum,
-    currentWeekTotals: totals,
-    top10buyers: top10,
-    historicalYearSummaries: yearSummaries,
-    percentileRankings: pctileCtx,
-    csvData: csvSummary || null,
-    note: 'Values in running bales (RB). Marketing year for cotton starts June 1. Use historicalYearSummaries for year-over-year comparisons and percentileRankings for statistical context.'
-  }, null, 2);
-}
+  let csvLines = '';
+  if(csvSummary && csvSummary.sameWeekData){
+    const yrs = Object.keys(csvSummary.sameWeekData).sort((a,b)=>b-a);
+    csvLines = 'CSV_SAME_WK' + curWkNum + '(accum/commit/outst RB):\n'
+      + yrs.map(y=>{
+          const d = csvSummary.sameWeekData[y];
+          return 'MY'+y+':'+d.accumExports+'acc/'+d.totalCommit+'cmt/'+d.outstanding+'out';
+        }).join('\n');
+  }
 
-function aiQuickAsk(q){ document.getElementById('aiInput').value=q; sendAIMessage(); }
+  const outLines = [
+    'COMMODITY:'+commName+' MY'+primaryYear+' wk'+curWkNum+' ending '+thisWeek,
+    'CURRENT accum='+totAccum+' commit='+totCommit+' outst='+totOutst+' gross='+totGross+' ships='+totShips+' nextMY='+totNext+' (all RB)',
+    'TOP5: '+top5.join(' | '),
+  ];
+  if(histLines.length) outLines.push('HIST_SAME_WK: '+histLines.join(' | '));
+  if(csvLines)         outLines.push(csvLines);
+  else                 outLines.push('NO_CSV_LOADED');
+  outLines.push('NOTE all RB. MY starts Aug1. CSV has exact wk'+curWkNum+' values for each prior year');
+  return outLines.join('\n')
+
+}
 
 async function sendAIMessage(){
   const input = document.getElementById('aiInput');
@@ -2534,7 +2525,7 @@ async function sendAIMessage(){
         model:       document.getElementById('groqModel').value,
         messages:    [{role:'system', content:sysPrompt}, ...aiHistory.slice(-8)],
         temperature: 0.2,
-        max_tokens:  2048,
+        max_tokens:  1024,
       })
     });
 
@@ -2914,6 +2905,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   loadAIConfig();
   setTimeout(autoLoadCSV, 1000);
 });
+
 </script>
 </body>
 </html>
