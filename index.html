@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>USDA FAS Export Sales Analytics</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- CSV data injected by GitHub Actions — works on file:// and GitHub Pages -->
+<script src="cotton_data.js" onerror="console.log('cotton_data.js not found — use Load CSV button')"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;600&display=swap');
 :root{--bg:#080b0f;--s1:#0e1218;--s2:#141923;--border:#1e2530;--gold:#e8c547;--gold2:#f5d76e;--blue:#4fc3f7;--green:#6fcf97;--red:#eb5757;--purple:#bb86fc;--orange:#ffb347;--text:#dde4f0;--muted:#5a6882;--muted2:#3d4a60}
@@ -747,11 +749,22 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
           </div>
         </div>
       </div>
+      <div style="padding:6px 16px 4px;background:var(--s1);border-top:1px solid var(--border)">
+        <div style="font-family:'DM Mono',monospace;font-size:.52rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">
+          ✏ Type your question below — press Enter to send, Shift+Enter for new line
+        </div>
+      </div>
       <div class="ai-input-row">
-        <textarea class="ai-input" id="aiInput" placeholder="Ask about export data, request a chart, or compare years…"
+        <textarea class="ai-input" id="aiInput"
+          placeholder="e.g. How does this week's gross sales compare to the 5-year average?&#10;e.g. Plot accumulated exports for the last 3 years&#10;e.g. Which country had the biggest increase in commitment this year?"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIMessage()}"
-          rows="1"></textarea>
-        <button class="ai-send-btn" id="aiSendBtn" onclick="sendAIMessage()">Send</button>
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,160)+'px'"
+          rows="2"></textarea>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+          <button class="ai-send-btn" id="aiSendBtn" onclick="sendAIMessage()">⬆ Send</button>
+          <button class="ai-send-btn" style="background:var(--s2);color:var(--muted);border:1px solid var(--border);font-size:.55rem"
+            onclick="document.getElementById('aiInput').value='';document.getElementById('aiInput').style.height='auto'">Clear</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2242,10 +2255,20 @@ function parseAndStoreCSV(text, filename){
 // Auto-fetch CSV from repo (works when served from GitHub Pages or localhost)
 // Falls back to relative path attempts, then file picker
 async function autoLoadCSV(){
+  const statusEl = document.getElementById('aiStatus');
+
+  // ── Priority 1: cotton_data.js injected by GitHub Actions ──────────────
+  // window.COTTON_CSV_DATA is set by cotton_data.js which loads via <script src>
+  // This works on both file:// and GitHub Pages
+  if(window.COTTON_CSV_DATA){
+    parseAndStoreCSV(window.COTTON_CSV_DATA, 'cotton_data.js (auto)');
+    return;
+  }
+
+  // ── Priority 2: fetch() — works on HTTP servers (GitHub Pages, localhost) ──
   const candidates = [
     'cotton_history_1404.csv',
     './cotton_history_1404.csv',
-    '../cotton_history_1404.csv',
     'data/cotton_history_1404.csv',
   ];
   for(const path of candidates){
@@ -2260,9 +2283,10 @@ async function autoLoadCSV(){
       }
     }catch(e){}
   }
-  // Couldn't auto-fetch — show a note but don't show error
-  document.getElementById('aiStatus').textContent =
-    'CSV not auto-loaded (file:// mode). Click "Load CSV" to browse for it.';
+
+  // ── Not loaded yet ─────────────────────────────────────────────────────
+  if(statusEl) statusEl.textContent =
+    'Historical CSV not loaded. Click "📂 Load CSV" to browse, or push cotton_data.js to repo.';
 }
 
 function loadCSVForAI(){
