@@ -20,7 +20,7 @@ on:
 
 jobs:
   send-report:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04      # ← 22.04 (Jammy) — avoids libasound2 rename in 24.04
     timeout-minutes: 20
 
     steps:
@@ -50,12 +50,21 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install Python dependencies
+        if: steps.check_sent.outputs.already_sent == 'false'
+        run: pip install -r scripts/requirements.txt
+
+      - name: Install Playwright Chromium + system dependencies
         if: steps.check_sent.outputs.already_sent == 'false'
         run: |
-          pip install -r scripts/requirements.txt
           playwright install chromium
-          playwright install-deps chromium
+          # Install system deps manually to avoid Ubuntu 24 libasound2 rename issue
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+            libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 \
+            libpango-1.0-0 libcairo2 libatspi2.0-0
 
       - name: Generate and send report
         if: steps.check_sent.outputs.already_sent == 'false'
