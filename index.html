@@ -2307,49 +2307,101 @@ function loadCSVForAI(){
 }
 
 
-function buildCSVSummary(){
+function buildCSVSummary(currentWeekNum){
   if(!aiCSVData || !aiCSVData.length) return null;
 
-  // Aggregate total exports by year across all countries
-  const byYear = {};
+  // ── Step 1: group by year → by weekEndingDate, summing all countries ────
+  const byYearByWeek = {};
   for(const r of aiCSVData){
-    const y = +r.marketYear;
-    if(!y) continue;
-    if(!byYear[y]) byYear[y] = {
-      grossNewSales:0, weeklyExports:0, accumulatedExports:0,
-      outstandingSales:0, currentMYTotalCommitment:0,
-      nextMYOutstandingSales:0, rows:0, weeks:new Set()
+    const y  = +r.marketYear;
+    const dt = r.weekEndingDate;
+    if(!y || !dt) continue;
+    if(!byYearByWeek[y])     byYearByWeek[y] = {};
+    if(!byYearByWeek[y][dt]) byYearByWeek[y][dt] = {
+      accumulatedExports:0, currentMYTotalCommitment:0,
+      outstandingSales:0,   nextMYOutstandingSales:0,
+      weeklyExports:0,      grossNewSales:0
     };
-    const b = byYear[y];
-    // Accumulate weekly totals — pick max accum/commit (last week values)
-    const accum  = +(r.accumulatedExports||0);
-    const commit = +(r.currentMYTotalCommitment||0);
-    if(accum  > b.accumulatedExports)      b.accumulatedExports      = accum;
-    if(commit > b.currentMYTotalCommitment) b.currentMYTotalCommitment = commit;
-    b.grossNewSales          += +(r.grossNewSales||0);
-    b.weeklyExports          += +(r.weeklyExports||0);
-    b.outstandingSales        = Math.max(b.outstandingSales, +(r.outstandingSales||0));
-    b.nextMYOutstandingSales  = Math.max(b.nextMYOutstandingSales, +(r.nextMYOutstandingSales||0));
-    b.rows++;
-    if(r.weekEndingDate) b.weeks.add(r.weekEndingDate);
+    const w = byYearByWeek[y][dt];
+    w.accumulatedExports       += +(r.accumulatedExports||0);
+    w.currentMYTotalCommitment += +(r.currentMYTotalCommitment||0);
+    w.outstandingSales         += +(r.outstandingSales||0);
+    w.nextMYOutstandingSales   += +(r.nextMYOutstandingSales||0);
+    w.weeklyExports            += +(r.weeklyExports||0);
+    w.grossNewSales            += +(r.grossNewSales||0);
   }
 
-  const years = Object.keys(byYear).map(Number).sort((a,b)=>b-a);
+  const years = Object.keys(byYearByWeek).map(Number).sort((a,b)=>b-a);
 
-  // Return structured object — all years, compact numbers
-  const summary = {};
+  // ── Step 2: build MY_START lookup (cotton = August = month 8) ────────────
+  // weekEndingDate is in YYYY-MM-DD format
+  // MY starts Aug 1 for cotton (commCode 1404)
+  function getMyWeekNum(dateStr, myYear){
+    const myStart = new Date((myYear-1) + '-08-01'); // Aug 1 of prior calendar year
+    const wkDate  = new Date(dateStr);
+    const diff    = Math.round((wkDate - myStart) / (7*24*3600*1000)) + 1;
+    return diff;
+  }
+
+  // ── Step 3: for each year, find the row at or before currentWeekNum ───────
+  // AND find the year-end row (for full-year comparison)
+  const sameWeekData = {};
+  const yearEndData  = {};
+
   for(const y of years){
-    const d = byYear[y];
-    summary[y] = {
-      accumExports: Math.round(d.accumulatedExports/1000),      // in thousands RB
-      totalCommit:  Math.round(d.currentMYTotalCommitment/1000),
-      outstanding:  Math.round(d.outstandingSales/1000),
-      nextMYOutst:  Math.round(d.nextMYOutstandingSales/1000),
-      weeksOfData:  d.weeks.size,
+    const weeks     = byYearByWeek[y];
+    const sortedDts = Object.keys(weeks).sort();
+
+    let sameWkSnap = null;
+    let yearEndSnap = null;
+    let maxAccum = -1;
+
+    for(const dt of sortedDts){
+      const wNum = getMyWeekNum(dt, y);
+      const w    = weeks[dt];
+
+      // Year-end = week with highest accumulated exports
+      if(w.accumulatedExports > maxAccum){
+        maxAccum    = w.accumulatedExports;
+        yearEndSnap = { ...w, weekNum: wNum, date: dt };
+      }
+
+      // Same-week = latest week at or before currentWeekNum
+      if(currentWeekNum > 0 && wNum <= currentWeekNum){
+        if(!sameWkSnap || wNum > sameWkSnap.weekNum){
+          sameWkSnap = { ...w, weekNum: wNum, date: dt };
+        }
+      }
+    }
+
+    if(yearEndSnap) yearEndData[y] = {
+      accumExports: Math.round(yearEndSnap.accumulatedExports),
+      totalCommit:  Math.round(yearEndSnap.currentMYTotalCommitment),
+      outstanding:  Math.round(yearEndSnap.outstandingSales),
+      nextMYOutst:  Math.round(yearEndSnap.nextMYOutstandingSales),
+      weeksInYear:  sortedDts.length,
+    };
+
+    if(sameWkSnap) sameWeekData[y] = {
+      accumExports: Math.round(sameWkSnap.accumulatedExports),
+      totalCommit:  Math.round(sameWkSnap.currentMYTotalCommitment),
+      outstanding:  Math.round(sameWkSnap.outstandingSales),
+      nextMYOutst:  Math.round(sameWkSnap.nextMYOutstandingSales),
+      weekNum:      sameWkSnap.weekNum,
+      date:         sameWkSnap.date,
     };
   }
-  return { years: years.length, range: `MY${years[years.length-1]}-MY${years[0]}`, data: summary };
+
+  return {
+    years:        years.length,
+    range:        'MY' + years[years.length-1] + '-MY' + years[0],
+    currentWeek:  currentWeekNum,
+    note:         'All values in raw running bales (RB). sameWeekData = actual values at week ' + currentWeekNum + ' for each year. yearEndData = final year-end totals.',
+    sameWeekData: sameWeekData,   // USE THIS for same-point-in-time comparisons
+    yearEndData:  yearEndData,    // USE THIS for full-year totals
+  };
 }
+
 
 function buildAIContext(){
   // Build comprehensive context from globalData already in memory
@@ -2419,7 +2471,9 @@ function buildAIContext(){
     });
   }
 
-  const csvSummary = buildCSVSummary();
+  // Get current week number for same-week CSV lookup
+  const curWkNum = curWk?.wkNum || 0;
+  const csvSummary = buildCSVSummary(curWkNum);
   return JSON.stringify({
     commodity: commName,
     primaryYear,
@@ -2438,90 +2492,85 @@ function buildAIContext(){
 function aiQuickAsk(q){ document.getElementById('aiInput').value=q; sendAIMessage(); }
 
 async function sendAIMessage(){
-  const input=document.getElementById('aiInput');
-  const q=input.value.trim(); if(!q) return;
-  const key=document.getElementById('groqApiKey').value.trim();
-  if(!key){ appendAIMsg('assistant','⚠️ Please enter your Groq API key in the sidebar first.'); return; }
+  const input = document.getElementById('aiInput');
+  const q     = input.value.trim();
+  if(!q) return;
+  const key   = document.getElementById('groqApiKey').value.trim();
+  if(!key){ appendAIMsg('assistant','⚠️ Enter your Groq API key in the sidebar first.'); return; }
 
-  appendAIMsg('user',q);
-  input.value='';
-  aiHistory.push({role:'user',content:q});
+  appendAIMsg('user', q);
+  input.value = '';
+  input.style.height = 'auto';
+  aiHistory.push({role:'user', content:q});
 
-  const thinkId=appendAIThinking();
-  const btn=document.getElementById('aiSendBtn');
-  btn.disabled=true;
-
-  // Detect chart request
-  const wantsChart=/\b(plot|chart|graph|draw|visuali[sz]e|bar chart|line chart)\b/i.test(q);
-
-  const ctx = buildAIContext();
-  const csvLoaded = !!aiCSVData && aiCSVData.length > 0;
-  const csvNote = csvLoaded
-    ? ('FULL HISTORICAL DATABASE: ' + aiCSVData.length.toLocaleString() + ' rows loaded from CSV.\n'
-       + 'csvData field has year-by-year summaries (accumExports, totalCommit, outstanding, nextMYOutst in thousands RB).\n'
-       + 'Use this for ALL historical comparisons, averages, percentile rankings, and trend analysis.')
-    : 'No CSV loaded. Historical context limited to loaded years only. User can click Load CSV.';
-
-  const chartNote = wantsChart
-    ? ('\nCHART: Respond with ONLY a <chart>JSON</chart> block then one sentence.\n'
-       + 'Format: {"type":"bar","title":"...","labels":[...],"datasets":[{"label":"...","data":[...],"backgroundColor":"#4fc3f7"}]}\n'
-       + 'NO comments, NO trailing commas in JSON.')
-    : '';
-
-  const systemPrompt = (
-    'You are an expert USDA ESR cotton export analyst.\n\n'
-    + 'CURRENT WEEK DATA:\n<data>\n' + ctx + '\n</data>\n\n'
-    + csvNote + '\n\n'
-    + 'RULES:\n'
-    + '1. ALWAYS use actual numbers from the data. Never say unavailable if it is there.\n'
-    + '2. For history: use csvData.data[year] (values in thousands RB, multiply by 1000 for exact).\n'
-    + '3. Format numbers: K for thousands, M for millions (e.g. 1.2M RB).\n'
-    + '4. Cotton marketing year starts August 1. MY2026 = Aug 2025 - Jul 2026.\n'
-    + '5. Be concise and analytical with specific numbers.'
-    + chartNote
-  );
+  const thinkId = appendAIThinking();
+  document.getElementById('aiSendBtn').disabled = true;
 
   try{
-    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model: document.getElementById('groqModel').value,
-        messages:[{role:'system',content:systemPrompt},...aiHistory.slice(-10)],
-        temperature:0.3,
-        max_tokens:1024,
+    // Build context from loaded data
+    const ctx = buildAIContext();
+
+    // Detect chart request
+    const wantsChart = /\b(plot|chart|graph|draw|visuali[sz]e|bar chart|line chart)\b/i.test(q);
+    const chartInstr = wantsChart
+      ? '\nFor this chart request, respond with a <chart>JSON</chart> block where JSON has: '
+        + '{"type":"bar","title":"...","labels":[...],"datasets":[{"label":"...","data":[...],"backgroundColor":"#4fc3f7"}]}'
+        + '\nThen one sentence explanation. Use plain numbers only in data arrays.'
+      : '';
+
+    const sysPrompt = 'You are an expert USDA cotton export analyst. '
+      + 'Answer questions using ONLY the data provided below. '
+      + 'All values are in running bales (RB). '
+      + 'Cotton marketing year starts August 1 (MY2026 = Aug 2025 to Jul 2026). '
+      + 'For same-point-in-time comparisons, use csvData.sameWeekData[year] - exact values at the current week. '
+      + 'Format numbers as K or M (e.g. 14.5M RB). Show year-by-year values then compute averages.'
+      + chartInstr
+      + '\n\nDATA:\n' + ctx;
+
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:  'POST',
+      headers: {'Authorization':'Bearer '+key, 'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:       document.getElementById('groqModel').value,
+        messages:    [{role:'system', content:sysPrompt}, ...aiHistory.slice(-8)],
+        temperature: 0.2,
+        max_tokens:  2048,
       })
     });
-    if(!res.ok){ const e=await res.json(); throw new Error(e.error?.message||'HTTP '+res.status); }
-    const d=await res.json();
-    const reply=d.choices[0].message.content;
-    aiHistory.push({role:'assistant',content:reply});
 
+    if(!res.ok){
+      const e = await res.json();
+      throw new Error(e.error?.message || 'HTTP '+res.status);
+    }
+
+    const d     = await res.json();
+    const reply = d.choices[0].message.content;
+    aiHistory.push({role:'assistant', content:reply});
     removeThinking(thinkId);
 
-    // Check for chart JSON
-    const chartMatch=reply.match(/<chart>([\s\S]*?)<\/chart>/);
+    // Check for chart block
+    const chartMatch = reply.match(/<chart>([\s\S]*?)<\/chart>/);
     if(chartMatch){
-      const textPart=reply.replace(/<chart>[\s\S]*?<\/chart>/,'').trim();
-      if(textPart) appendAIMsg('assistant',textPart);
+      const textPart = reply.replace(/<chart>[\s\S]*?<\/chart>/,'').trim();
+      if(textPart) appendAIMsg('assistant', textPart);
       try{
-        // Clean AI output: strip // comments, trailing commas, fix keys
         let raw = chartMatch[1].trim();
-        raw = raw.replace(/\/\/[^\n]*/g, '');        // strip // comments
-        raw = raw.replace(/,\s*([}\]])/g, '$1');      // remove trailing commas
-        const chartDef = JSON.parse(raw);
-        renderAIChart(chartDef);
-      }catch(e){ appendAIMsg('assistant','(Chart data parse error: '+e.message+')'); }
+        raw = raw.replace(/\/\/[^\n]*/g,'').replace(/,\s*([}\]])/g,'$1');
+        renderAIChart(JSON.parse(raw));
+      }catch(e){
+        appendAIMsg('assistant','(Chart parse error: '+e.message+')');
+      }
     } else {
       appendAIMsg('assistant', reply);
     }
-  }catch(e){
+
+  }catch(err){
     removeThinking(thinkId);
-    appendAIMsg('assistant','✗ Groq error: '+e.message);
-    document.getElementById('aiStatus').textContent='✗ '+e.message;
-    document.getElementById('aiStatus').className='ai-status err';
+    appendAIMsg('assistant','✗ Error: '+err.message);
+    document.getElementById('aiStatus').textContent  = '✗ '+err.message;
+    document.getElementById('aiStatus').className    = 'ai-status err';
   }
-  btn.disabled=false;
+  document.getElementById('aiSendBtn').disabled = false;
 }
 
 function appendAIMsg(role, text){
@@ -2548,6 +2597,31 @@ function appendAIThinking(){
 }
 function removeThinking(id){
   const el=document.getElementById(id); if(el) el.remove();
+}
+
+function renderAITable(rows){
+  if(!rows || !rows.length) return;
+  const msgs = document.getElementById('aiMessages');
+  const wrap = document.createElement('div');
+  wrap.className = 'ai-msg assistant';
+  const keys = Object.keys(rows[0]);
+  let html = '<div class="ai-msg-avatar">AI</div>'
+    + '<div class="ai-msg-bubble" style="max-width:95%;width:100%;overflow-x:auto">'
+    + '<table style="width:100%;border-collapse:collapse;font-family:\'DM Mono\',monospace;font-size:.62rem">'
+    + '<thead><tr>' + keys.map(k=>
+        '<th style="padding:4px 8px;background:var(--s1);border:1px solid var(--border);color:var(--gold);text-align:left">'
+        + k + '</th>'
+      ).join('') + '</tr></thead><tbody>'
+    + rows.map((r,i)=>
+        '<tr style="background:' + (i%2===0?'var(--s2)':'var(--s1)') + '">'
+        + keys.map(k=>'<td style="padding:3px 8px;border:1px solid var(--border);color:var(--text)">'
+            + (r[k]==null?'—':typeof r[k]==='number'?fmt(r[k]):r[k]) + '</td>').join('')
+        + '</tr>'
+      ).join('')
+    + '</tbody></table></div>';
+  wrap.innerHTML = html;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
 }
 
 function renderAIChart(def){
