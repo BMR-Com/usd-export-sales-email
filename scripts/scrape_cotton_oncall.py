@@ -490,45 +490,62 @@ def check_for_new_reports(existing_dates, new_rows):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
+    force_email = os.environ.get('FORCE_EMAIL','').lower() in ('true','1','yes')
+
     existing_dates = read_existing_dates(CSV_PATH)
     new_rows = []
     found_total = 0
 
-    for attempt in range(MAX_RETRIES):
-        print(f"\n--- Attempt {attempt+1}/{MAX_RETRIES} ---")
-        found = check_for_new_reports(existing_dates, new_rows)
-        found_total += found
-        if found_total > 0:
-            print(f"✅ New data found on attempt {attempt+1}")
-            break
-        if attempt < MAX_RETRIES - 1:
-            print(f"No new report yet — waiting 5 minutes before retry...")
-            time.sleep(RETRY_INTERVAL)
+    if force_email:
+        # Skip retry loop — just do one quick check, then use existing data for email
+        print("\nFORCE_EMAIL mode — single check, no retry loop")
+        found_total = check_for_new_reports(existing_dates, new_rows)
+        print(f"New reports found: {found_total}")
+    else:
+        for attempt in range(MAX_RETRIES):
+            print(f"\n--- Attempt {attempt+1}/{MAX_RETRIES} ---")
+            found = check_for_new_reports(existing_dates, new_rows)
+            found_total += found
+            if found_total > 0:
+                print(f"✅ New data found on attempt {attempt+1}")
+                break
+            if attempt < MAX_RETRIES - 1:
+                print(f"No new report yet — waiting 5 minutes before retry...")
+                time.sleep(RETRY_INTERVAL)
 
     print(f"\nTotal new reports: {found_total} | New rows: {len(new_rows)}")
 
-    if not new_rows:
+    if not new_rows and not force_email:
         print("Nothing to add — exiting")
         sys.exit(0)
 
-    # Save CSV
-    append_rows(CSV_PATH, new_rows)
+    if new_rows:
+        # Save CSV and update web file
+        append_rows(CSV_PATH, new_rows)
+        import shutil, pathlib
+        pathlib.Path(os.path.dirname(WEB_CSV)).mkdir(parents=True, exist_ok=True)
+        shutil.copy2(CSV_PATH, WEB_CSV)
+        print(f"✓ Web CSV updated: {WEB_CSV}")
+    else:
+        # force_email with no new data — just ensure web CSV exists
+        import shutil, pathlib
+        if os.path.exists(CSV_PATH):
+            pathlib.Path(os.path.dirname(WEB_CSV)).mkdir(parents=True, exist_ok=True)
+            shutil.copy2(CSV_PATH, WEB_CSV)
+            print("✓ Web CSV refreshed (no new data)")
 
-    # Copy to cotton_oncall/ so the web dashboard can fetch it
-    import shutil, pathlib
-    pathlib.Path(os.path.dirname(WEB_CSV)).mkdir(parents=True, exist_ok=True)
-    shutil.copy2(CSV_PATH, WEB_CSV)
-    print(f"✓ Web CSV updated: {WEB_CSV}")
-
-    # Generate PDF and send email
+    # Generate PDF from web page and send email
     print("Generating PDF...")
     all_rows, _ = read_all_rows(CSV_PATH)
-    pdf_bytes = generate_pdf(new_rows, all_rows)
+    # Use most recent report date for the email subject
+    report_date = (new_rows[0].get("Report Date","") if new_rows
+                   else next((r.get("Report Date","") for r in reversed(all_rows)
+                              if r.get("Report Date")), "latest"))
+    pdf_bytes = generate_pdf(new_rows if new_rows else all_rows[-20:], all_rows)
     if pdf_bytes:
-        report_date = new_rows[0].get("Report Date","unknown")
         send_email(pdf_bytes, report_date)
     else:
-        print("PDF generation skipped or failed")
+        print("PDF generation failed")
 
     print("✅ Done")
 
