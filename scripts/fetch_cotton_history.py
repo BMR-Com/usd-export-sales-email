@@ -211,6 +211,13 @@ def main():
     csv_text = CSV_PATH.read_text(encoding='utf-8')
     build_cotton_data_js(csv_text)
 
+    # Also copy to data/ folder so ESR page can fetch it via fetch('data/cotton_history.csv')
+    import shutil
+    data_dir = REPO_ROOT / 'data'
+    data_dir.mkdir(exist_ok=True)
+    shutil.copy2(CSV_PATH, data_dir / 'cotton_history.csv')
+    log(f'✓ Also copied to data/cotton_history.csv')
+
     log('=== Done ===')
 
 if __name__ == '__main__':
