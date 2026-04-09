@@ -190,7 +190,7 @@ def main():
     # Combine all years and sort
     for rows in fetched_years.values():
         all_rows.extend(rows)
-    all_rows.sort(key=lambda r: (r['marketYear'], r['weekEndingDate'], r['countryCode']))
+    all_rows.sort(key=lambda r: (int(r['marketYear']), str(r['weekEndingDate']), str(r['countryCode'])))
 
     if not all_rows:
         log('✗ No data fetched — check API key and network')
