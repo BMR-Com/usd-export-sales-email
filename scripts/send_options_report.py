@@ -41,7 +41,7 @@ def log(msg):
 def get_csv_text():
     html_dir  = Path(HTML_FILE).parent
     repo_root = html_dir.parent
-    js_file   = html_dir / 'cotton_options_data.js'
+    js_file   = html_dir / 'cotton_options_data.csv'
     csv_file  = repo_root / 'data' / 'cotton_options_history.csv'
 
     if js_file.exists():
