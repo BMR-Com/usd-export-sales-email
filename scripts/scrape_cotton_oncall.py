@@ -21,7 +21,10 @@ HEADERS_NOCACHE = {**HEADERS, "Cache-Control": "no-cache, no-store, must-revalid
 
 BASE      = "https://www.cftc.gov"
 BASE_PATH = "/MarketReports/CottonOnCall/HistoricalCottonOn-Call/"
-CSV_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "cotton_oncall.csv")
+# Repo root is one level up from scripts/
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CSV_PATH  = os.path.join(REPO_ROOT, "data", "cotton_oncall.csv")
+WEB_CSV   = os.path.join(REPO_ROOT, "cotton_oncall", "cotton_oncall_data.csv")
 
 MONTH_MAP = {
     "january":1,"february":2,"march":3,"april":4,"may":5,"june":6,
@@ -79,7 +82,7 @@ def parse_date_from_text(text):
     # Format C: header "Weekly Report N – Month DD, YYYY"
     m = re.search(
         r"Weekly Report[^-\n]*[-\u2013]\s*(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|"
-        r"Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:ember)?|"
+        r"Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|"
         r"Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2}),?\s+(\d{4})",
         text, re.IGNORECASE)
     if m:
@@ -404,9 +407,9 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     # ── Chart builder ─────────────────────────────────────────────────────────
     COLORS=['#1a6b3c','#c0392b','#2e86c1','#8e44ad','#d35400','#16a085','#f39c12','#1a3a5c']
-    TITLES=['Old Crop - Purchases','Old Crop - Sales','Old Crop - Imbalance',
-            'All Crop - Purchases','All Crop - Sales','All Crop - Imbalance',
-            'New Crop - Purchases','New Crop - Sales','New Crop - Imbalance']
+    TITLES=['Old Crop – Purchases','Old Crop – Sales','Old Crop – Imbalance',
+            'All Crop – Purchases','All Crop – Sales','All Crop – Imbalance',
+            'New Crop – Purchases','New Crop – Sales','New Crop – Imbalance']
     cur_yr=datetime.now().year
     def_years=[y for y in all_years if cur_yr-4<=int(y)<=cur_yr and int(y)>2005]
 
@@ -472,70 +475,51 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     # ── Build PDF ─────────────────────────────────────────────────────────────
     pdf=FPDF(orientation='L',unit='mm',format='A4')
-    
-    # Add Unicode font support using DejaVu with uni=True parameter (CRITICAL FIX)
-    try:
-        pdf.add_font("DejaVu", "", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", uni=True)
-        pdf.add_font("DejaVu", "B", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", uni=True)
-        FONT_FAMILY = "DejaVu"
-        print("✅ Unicode font (DejaVu) loaded successfully")
-    except Exception as e:
-        print(f"⚠️  DejaVu font failed: {e}")
-        try:
-            # Fallback to Liberation fonts
-            pdf.add_font("Liberation", "", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", uni=True)
-            pdf.add_font("Liberation", "B", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", uni=True)
-            FONT_FAMILY = "Liberation"
-            print("✅ Unicode font (Liberation) loaded successfully")
-        except Exception as e2:
-            print(f"⚠️  Liberation font failed: {e2}")
-            FONT_FAMILY = "helvetica"  # Will fail on em-dash but won't crash import
-            print("⚠️  Falling back to helvetica (may fail on Unicode characters)")
 
     def hdr_bar(txt):
         pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
         pdf.rect(M,Y_HDR,UW,9,'F')
-        pdf.set_font(FONT_FAMILY,'B',9)
+        pdf.set_font('Helvetica','B',9)
         pdf.set_xy(M+2,Y_HDR+1.5)
         pdf.cell(UW-4,6,txt,ln=0)
         pdf.set_text_color(0,0,0)
 
     def sec_bar(y,txt):
         pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
-        pdf.set_font(FONT_FAMILY,'B',6.5)
+        pdf.set_font('Helvetica','B',6.5)
         pdf.set_xy(M,y)
         pdf.cell(UW,4.5,f'  {txt}',border=0,ln=1,fill=True,align='L')
         pdf.set_text_color(0,0,0)
 
     # ════ PAGE 1 ════════════════════════════════════════════════════════════
     pdf.add_page()
-    hdr_bar(f'CFTC Cotton On-Call Report  -  {report_date}  -  Week {cur_wk}')
+    hdr_bar(f'CFTC Cotton On-Call Report  ·  {report_date}  ·  Week {cur_wk}')
 
     # ── Summary (y=17 to 53) ──────────────────────────────────────────────
     pdf.set_xy(M,Y_SUM)
-    pdf.set_font(FONT_FAMILY,'B',7); pdf.set_fill_color(235,242,250)
-    pdf.cell(UW,5,f'Weekly Summary - Unfixed Call Positions vs 20-Year History  (Week {cur_wk})',
+    pdf.set_font('Helvetica','B',7); pdf.set_fill_color(235,242,250)
+    pdf.cell(UW,5,f'Weekly Summary — Unfixed Call Positions vs 20-Year History  (Week {cur_wk})',
              border=0,ln=1,fill=True,align='C')
 
-    SCOLS=[40,22,14,22,14,22,14,22,22,15,15]  # sum=222mm (<281 - fits with room)
+    SCOLS=[40,22,14,22,14,22,14,22,22,15,15]  # sum=222mm (<281 — fits with room)
     SHDRS=['','Sales','Chg','Purchases','Chg','Imbalance','Chg',
            '20yr Avg S','20yr Avg P','Pct S','Pct P']
     RH=4.2
 
-    pdf.set_font(FONT_FAMILY,'B',6); pdf.set_fill_color(205,218,232); pdf.set_text_color(30,30,30)
+    pdf.set_font('Helvetica','B',6); pdf.set_fill_color(205,218,232); pdf.set_text_color(30,30,30)
     pdf.set_xy(M,pdf.get_y())
     for h,w in zip(SHDRS,SCOLS):
         pdf.cell(w,RH,h,border=0,ln=0,align='C',fill=True)
     pdf.ln()
 
-    CROP_LBL={"old":"OLD CROP","all":"ALL CROP","new":"NEW CROP (All - Old)"}
+    CROP_LBL={"old":"OLD CROP","all":"ALL CROP","new":"NEW CROP (All − Old)"}
     BG={"old":(255,252,230),"all":(240,245,255),"new":(245,255,245)}
     for crop in ["old","all","new"]:
         d=SUM[crop]
         pdf.set_text_color(255,255,255); pdf.set_fill_color(40,80,130)
-        pdf.set_font(FONT_FAMILY,'B',6); pdf.set_xy(M,pdf.get_y())
+        pdf.set_font('Helvetica','B',6); pdf.set_xy(M,pdf.get_y())
         pdf.cell(UW,3.5,f'  {CROP_LBL[crop]}',border=0,ln=1,fill=True,align='L')
-        pdf.set_text_color(0,0,0); pdf.set_fill_color(*BG[crop]); pdf.set_font(FONT_FAMILY,'',6.5)
+        pdf.set_text_color(0,0,0); pdf.set_fill_color(*BG[crop]); pdf.set_font('Helvetica','',6.5)
         pdf.set_xy(M,pdf.get_y())
         row_vals=['Current',n(d['s']),chg(d['cs']),n(d['p']),chg(d['cp']),
                   n(d['imb']),chg(d['ci']),
@@ -544,12 +528,12 @@ def generate_pdf(new_rows, all_rows_for_charts):
             pdf.cell(w,RH,str(val),border=0,ln=0,align='R' if val!=row_vals[0] else 'L',fill=True)
         pdf.ln()
         # 20yr range sub-row
-        pdf.set_font(FONT_FAMILY,'',5.5); pdf.set_fill_color(250,252,255)
+        pdf.set_font('Helvetica','',5.5); pdf.set_fill_color(250,252,255)
         pdf.set_xy(M,pdf.get_y())
         rng_vals=['20yr Range',
-                  n(d['smn'])+'-'+n(d['smx']),'',
-                  n(d['pmn'])+'-'+n(d['pmx']),'',
-                  n(d['imn'])+'-'+n(d['imx']),'','','','','']
+                  n(d['smn'])+'–'+n(d['smx']),'',
+                  n(d['pmn'])+'–'+n(d['pmx']),'',
+                  n(d['imn'])+'–'+n(d['imx']),'','','','','']
         for val,w in zip(rng_vals,SCOLS):
             pdf.cell(w,3.2,str(val),border=0,ln=0,align='R' if val!=rng_vals[0] else 'L',fill=True)
         pdf.ln()
@@ -557,7 +541,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
     # ── Current week table (y=54, max 16 rows) ───────────────────────────
     pdf.set_xy(M,Y_TBL)
     TCOLS=[50,22,15,24,15,24,15]; THEADS=['Futures Based On','Sales','Chg','Purchases','Chg','At Close','Chg']
-    pdf.set_font(FONT_FAMILY,'B',6.5); pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
+    pdf.set_font('Helvetica','B',6.5); pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
     for h,w in zip(THEADS,TCOLS):
         pdf.cell(w,5,h,border=0,ln=0,align='L' if h==THEADS[0] else 'R',fill=True)
     pdf.ln(); pdf.set_text_color(0,0,0)
@@ -570,7 +554,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
     for r in data_rows[:MAX_TBL_ROWS]:
         on=r.get("Old/New","")
         bg=(255,252,220) if on=="old" else (246,255,243)
-        pdf.set_fill_color(*bg); pdf.set_font(FONT_FAMILY,'',6)
+        pdf.set_fill_color(*bg); pdf.set_font('Helvetica','',6)
         pdf.cell(TCOLS[0],TBL_ROW_H,str(r.get("Futures Based On","")),border=0,ln=0,align='L',fill=True)
         for val,cw in [(r.get("Unfixed Call Sales"),TCOLS[1]),(r.get("Chg Sales"),TCOLS[2]),
                        (r.get("Unfixed Call Purchases"),TCOLS[3]),(r.get("Chg Purchases"),TCOLS[4]),
@@ -580,7 +564,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     if tot_rows:
         tr=tot_rows[0]
-        pdf.set_font(FONT_FAMILY,'B',6.5); pdf.set_fill_color(220,235,251)
+        pdf.set_font('Helvetica','B',6.5); pdf.set_fill_color(220,235,251)
         pdf.cell(TCOLS[0],4.5,'Totals',border=0,ln=0,align='L',fill=True)
         for val,cw in [(tr.get("Unfixed Call Sales"),TCOLS[1]),(tr.get("Chg Sales"),TCOLS[2]),
                        (tr.get("Unfixed Call Purchases"),TCOLS[3]),(tr.get("Chg Purchases"),TCOLS[4]),
@@ -588,21 +572,21 @@ def generate_pdf(new_rows, all_rows_for_charts):
             pdf.cell(cw,4.5,n(val),border=0,ln=0,align='R',fill=True)
         pdf.ln()
 
-    # ── Old Crop charts - FIXED at Y=132 ─────────────────────────────────
+    # ── Old Crop charts — FIXED at Y=132 ─────────────────────────────────
     sec_bar(Y_CLBL1,'OLD CROP')
     for i,ci in enumerate([0,1,2]):
         pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH1, w=CW, h=CH1_H)
 
     # ════ PAGE 2 ════════════════════════════════════════════════════════════
     pdf.add_page()
-    hdr_bar(f'CFTC Cotton On-Call - Historical Charts  -  {report_date}')
+    hdr_bar(f'CFTC Cotton On-Call — Historical Charts  ·  {report_date}')
 
-    # ── All Crop charts - FIXED at Y=22 ──────────────────────────────────
+    # ── All Crop charts — FIXED at Y=22 ──────────────────────────────────
     sec_bar(Y_CLBL2,'ALL CROP')
     for i,ci in enumerate([3,4,5]):
         pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH2, w=CW, h=CH2_H)
 
-    # ── New Crop charts - FIXED at Y=111 ─────────────────────────────────
+    # ── New Crop charts — FIXED at Y=111 ─────────────────────────────────
     sec_bar(Y_CLBL3,'NEW CROP (All minus Old)')
     for i,ci in enumerate([6,7,8]):
         pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH3, w=CW, h=CH3_H)
@@ -627,10 +611,10 @@ def send_email(pdf_bytes, report_date):
     msg = MIMEMultipart()
     msg['From']    = email_from
     msg['To']      = ', '.join(recipients)
-    msg['Subject'] = f"Cotton On-Call Report - {report_date}"
+    msg['Subject'] = f"Cotton On-Call Report — {report_date}"
     msg.attach(MIMEText(
         f"Please find attached the CFTC Cotton On-Call report for {report_date}.\n\n"
-        f"Dashboard: https://your-github-pages-url/", 'plain'))
+        f"Dashboard: https://bmr-com.github.io/usd-export-sales-email/cotton_oncall/", 'plain'))
 
     part = MIMEBase('application','pdf')
     part.set_payload(pdf_bytes)
@@ -639,10 +623,18 @@ def send_email(pdf_bytes, report_date):
     msg.attach(part)
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as srv:
-            srv.starttls()
-            srv.login(smtp_user, smtp_pass)
-            srv.sendmail(email_from, recipients, msg.as_string())
+        import ssl as _ssl
+        _ctx = _ssl.create_default_context()
+        if smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, context=_ctx, timeout=30) as srv:
+                srv.login(smtp_user, smtp_pass)
+                srv.sendmail(email_from, recipients, msg.as_string())
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as srv:
+                srv.ehlo()
+                srv.starttls(context=_ctx)
+                srv.login(smtp_user, smtp_pass)
+                srv.sendmail(email_from, recipients, msg.as_string())
         print(f"✅ Email sent to {', '.join(recipients)}")
     except Exception as e:
         print(f"⚠️  Email failed: {e}")
@@ -732,6 +724,12 @@ def main():
 
     # Save CSV
     append_rows(CSV_PATH, new_rows)
+
+    # Copy to cotton_oncall/ so the web dashboard can fetch it
+    import shutil, pathlib
+    pathlib.Path(os.path.dirname(WEB_CSV)).mkdir(parents=True, exist_ok=True)
+    shutil.copy2(CSV_PATH, WEB_CSV)
+    print(f"✓ Web CSV updated: {WEB_CSV}")
 
     # Generate PDF and send email
     print("Generating PDF...")
