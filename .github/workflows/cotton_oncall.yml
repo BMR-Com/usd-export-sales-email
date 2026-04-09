@@ -17,7 +17,7 @@ on:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     permissions:
       contents: write
@@ -28,16 +28,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install Python dependencies
         run: |
           pip uninstall -y fpdf || true
-          pip install requests beautifulsoup4 fpdf2 matplotlib
+          pip install requests beautifulsoup4 fpdf2 playwright
 
-      - name: Install fonts
+      - name: Install Playwright Chromium
         run: |
+          playwright install chromium
           sudo apt-get update -qq
-          sudo apt-get install -y fonts-dejavu-core fonts-liberation
+          sudo apt-get install -y \
+            libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+            libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 \
+            libpango-1.0-0 libcairo2 libatspi2.0-0
 
       # ── BUILD-ONLY: copy CSV → web folder, done in ~10 seconds ──────────
       - name: Build web data only (no scraping)
@@ -69,7 +75,7 @@ jobs:
             git push
           fi
 
-      # ── NORMAL: scrape CFTC + email + commit ─────────────────────────────
+      # ── NORMAL: scrape CFTC + render page as PDF + email + commit ───────
       - name: Run Cotton On-Call scraper
         if: ${{ github.event.inputs.build_web_only != 'true' }}
         env:
