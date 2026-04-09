@@ -2,12 +2,17 @@ name: ESR Weekly Email Report
 
 on:
   schedule:
-    - cron: '31 12 * * 4'
-    - cron: '36 12 * * 4'
-    - cron: '41 12 * * 4'
-    - cron: '31 13 * * 4'
-    - cron: '36 13 * * 4'
-    - cron: '41 13 * * 4'
+    # Thursday 8:30 PM EST = Friday 01:30 UTC (EST winter) / 00:30 UTC (EDT summer)
+    # Using 01:30 UTC to be safe — runs 1 hour late in summer, on-time in winter
+    - cron: '30 1 * * 5'    # Friday 01:30 UTC = Thursday 8:30 PM EST
+    
+    # Backup checks for holiday delays
+    - cron: '30 8 * * 5'   # Friday 08:30 UTC = Friday 3:30 AM EST
+    - cron: '0 18 * * 5'   # Friday 18:00 UTC = Friday 1:00 PM EST
+    
+    # Monday recap
+    - cron: '0 14 * * 1'   # Monday 14:00 UTC = Monday 9:00 AM EST / 10:00 AM EDT
+    
   workflow_dispatch:
     inputs:
       force_send:
@@ -76,6 +81,7 @@ jobs:
           [ -n "${{ secrets.SMTP_PASS }}" ]  && echo "OK SMTP_PASS"  || { echo "MISSING SMTP_PASS";  MISSING=1; }
           [ -n "${{ secrets.EMAIL_FROM }}" ] && echo "OK EMAIL_FROM" || { echo "MISSING EMAIL_FROM"; MISSING=1; }
           [ -n "${{ secrets.EMAIL_TO }}" ]   && echo "OK EMAIL_TO"   || { echo "MISSING EMAIL_TO";   MISSING=1; }
+          [ -n "${{ secrets.DASHBOARD_PASSWORD }}" ] && echo "OK DASHBOARD_PASSWORD" || { echo "MISSING DASHBOARD_PASSWORD"; MISSING=1; }
           [ $MISSING -eq 1 ] && echo "One or more secrets missing — check repo Settings > Secrets" && exit 1 || echo "All secrets OK"
 
       - name: Fetch latest cotton data from USDA API
@@ -87,14 +93,15 @@ jobs:
       - name: Generate PDF and send email
         if: steps.check_sent.outputs.already_sent == 'false'
         env:
-          SMTP_HOST:   ${{ secrets.SMTP_HOST }}
-          SMTP_PORT:   ${{ secrets.SMTP_PORT }}
-          SMTP_USER:   ${{ secrets.SMTP_USER }}
-          SMTP_PASS:   ${{ secrets.SMTP_PASS }}
-          EMAIL_FROM:  ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO:    ${{ secrets.EMAIL_TO }}
-          HTML_FILE:   ${{ github.workspace }}/index.html
-          REPORT_DATE: ${{ steps.check_sent.outputs.today }}
+          SMTP_HOST:          ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:          ${{ secrets.SMTP_PORT }}
+          SMTP_USER:          ${{ secrets.SMTP_USER }}
+          SMTP_PASS:          ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM:         ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:           ${{ secrets.EMAIL_TO }}
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+          HTML_FILE:          ${{ github.workspace }}/index.html
+          REPORT_DATE:        ${{ steps.check_sent.outputs.today }}
         run: python scripts/send_report.py
 
       - name: Commit sent flag and updated files
