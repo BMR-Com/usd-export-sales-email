@@ -35,7 +35,7 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO:   ${{ secrets.EMAIL_TO }}
-        run: python scrape_cotton_oncall.py
+        run: python scripts/scrape_cotton_oncall.py
 
       - name: Commit updated CSV if changed
         run: |
