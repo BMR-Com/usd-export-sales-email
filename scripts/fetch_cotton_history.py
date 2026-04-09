@@ -203,7 +203,7 @@ def main():
         writer.writerows(all_rows)
 
     size_kb = CSV_PATH.stat().st_size // 1024
-    years_written = sorted(set(r['marketYear'] for r in all_rows))
+    years_written = sorted(set(int(r['marketYear']) for r in all_rows))
     log(f'✓ CSV written: {len(all_rows):,} rows | '
         f'MY{years_written[0]}–MY{years_written[-1]} | {size_kb}KB')
 
