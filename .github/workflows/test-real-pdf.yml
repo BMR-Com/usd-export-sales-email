@@ -1,0 +1,62 @@
+name: Test Email with Real PDF
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 fpdf2 matplotlib
+
+      - name: Generate and send real PDF
+        env:
+          SMTP_HOST:   ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:   ${{ secrets.SMTP_PORT }}
+          SMTP_USER:   ${{ secrets.SMTP_USER }}
+          SMTP_PASS:   ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM:  ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:    ${{ secrets.EMAIL_TO }}
+        run: |
+          cat > scripts/test_real_pdf.py << 'EOF'
+          import os, sys
+          sys.path.insert(0, os.path.dirname(__file__))
+          from scrape_cotton_oncall import read_all_rows, generate_pdf, send_email, now, CSV_PATH
+          from datetime import datetime
+
+          print(f"[{now()}] Reading existing CSV...")
+          all_rows, count = read_all_rows(CSV_PATH)
+          print(f"[{now()}] Found {count} rows")
+
+          if count == 0:
+              print(f"[{now()}] ❌ No data in CSV")
+              sys.exit(1)
+
+          # Use last 10 rows as "new" data for test
+          new_rows = all_rows[-10:] if count > 10 else all_rows
+          report_date = new_rows[-1].get("Report Date", datetime.now().strftime("%m/%d/%Y"))
+
+          print(f"[{now()}] Generating PDF for {report_date}...")
+          pdf_bytes = generate_pdf(new_rows, all_rows)
+
+          if not pdf_bytes:
+              print(f"[{now()}] ❌ PDF generation failed")
+              sys.exit(1)
+
+          print(f"[{now()}] PDF generated: {len(pdf_bytes)} bytes")
+          print(f"[{now()}] Sending email...")
+          send_email(pdf_bytes, report_date)
+          print(f"[{now()}] ✅ Done")
+          EOF
+          
+          python scripts/test_real_pdf.py
