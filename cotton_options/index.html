@@ -298,47 +298,31 @@ footer{background:var(--s1);border-top:1px solid var(--border);padding:8px 20px;
 
 <script>
 (function(){
-  var PASS = 'BMR2024cotton'; // ← change this password
-  var KEY  = 'bmr_auth';
-  if(sessionStorage.getItem(KEY) === '1') return; // already authenticated this session
-  // Build overlay
-  var overlay = document.createElement('div');
-  overlay.id = 'auth-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:#060a0e;z-index:99999;'
-    + 'display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px';
-  overlay.innerHTML =
-    '<div style="text-align:center;margin-bottom:8px">'
-      + '<div style="font-family:DM Mono,monospace;font-size:1.2rem;font-weight:700;'
-        + 'letter-spacing:4px;color:#e8c547;text-transform:uppercase">Cotton Analytics</div>'
-      + '<div style="font-family:DM Mono,monospace;font-size:.6rem;letter-spacing:3px;'
-        + 'color:#4a5a72;margin-top:6px">BMR Research &middot; Private Dashboard</div>'
-    + '</div>'
-    + '<div style="background:#0e1218;border:1px solid #1e2a38;border-radius:8px;'
-      + 'padding:28px 32px;display:flex;flex-direction:column;gap:12px;min-width:280px">'
-      + '<div style="font-family:DM Mono,monospace;font-size:.7rem;color:#4a5a72;'
-        + 'text-align:center;letter-spacing:2px">ENTER PASSWORD</div>'
-      + '<input id="auth-inp" type="password" placeholder="Password" autocomplete="off"'
-        + ' style="padding:10px 14px;background:#060a0e;border:1px solid #1e2a38;'
-        + 'border-radius:4px;color:#dde4f0;font-family:DM Mono,monospace;font-size:.85rem;'
-        + 'outline:none;letter-spacing:2px;text-align:center"'
-        + ' onkeydown="if(event.key==='Enter')document.getElementById('auth-btn').click()">'
-      + '<button id="auth-btn" style="padding:10px;background:#e8c547;color:#1a1400;'
-        + 'border:none;border-radius:4px;font-family:DM Mono,monospace;font-size:.75rem;'
-        + 'font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase"'
-        + ' onclick="(function(){'
-          + 'var v=document.getElementById('auth-inp').value;'
-          + 'if(v==='' + '"+PASS+"' + ''){'
-            + 'sessionStorage.setItem('' + KEY + '','1');'
-            + 'document.getElementById('auth-overlay').remove();'
-          + '}else{'
-            + 'document.getElementById('auth-inp').style.borderColor='#e74c3c';'
-            + 'document.getElementById('auth-inp').value='';'
-            + 'document.getElementById('auth-inp').placeholder='Incorrect — try again';'
-          + '}'
-        + '})()">Access Dashboard</button>'
-    + '</div>';
-  document.body.appendChild(overlay);
+  var PASS  = 'BMR2024cotton'; // change this password
+  var KEY   = 'bmr_auth_exp';
+  var HOURS = 8;
+  var now   = Date.now();
+  var stored = null;
+  try{ stored = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  if(stored && stored.ts && (now - stored.ts) < HOURS*3600000) return;
+
+  var ov = document.createElement('div');
+  ov.id = 'auth-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:#060a0e;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px';
+  ov.innerHTML = '<div style="text-align:center;margin-bottom:8px">'+'<div style="font-family:DM Mono,monospace;font-size:1.2rem;font-weight:700;letter-spacing:4px;color:#e8c547">Cotton Analytics</div>'+'<div style="font-family:DM Mono,monospace;font-size:.6rem;letter-spacing:3px;color:#4a5a72;margin-top:6px">BMR Research &middot; Private Dashboard</div>'+'</div>'+'<div style="background:#0e1218;border:1px solid #1e2a38;border-radius:8px;padding:28px 32px;min-width:280px;display:flex;flex-direction:column;gap:12px">'+'<div style="font-family:DM Mono,monospace;font-size:.7rem;color:#4a5a72;text-align:center;letter-spacing:2px">ENTER PASSWORD</div>'+'<input id="auth-inp" type="password" placeholder="Password" autocomplete="off"'  +' style="padding:10px 14px;background:#060a0e;border:1px solid #1e2a38;border-radius:4px;color:#dde4f0;font-family:DM Mono,monospace;font-size:.85rem;outline:none;letter-spacing:2px;text-align:center"'  +' onkeydown="if(event.key===\'Enter\')document.getElementById(\'auth-btn\').click()">'+'<div id="auth-err" style="font-size:.65rem;color:#e74c3c;text-align:center;display:none">Incorrect password</div>'+'<button id="auth-btn" style="padding:10px;background:#e8c547;color:#1a1400;border:none;border-radius:4px;font-family:DM Mono,monospace;font-size:.75rem;font-weight:700;letter-spacing:2px;cursor:pointer">Access Dashboard</button>'+'</div>';
+  document.body.appendChild(ov);
   setTimeout(function(){ document.getElementById('auth-inp').focus(); }, 50);
+  document.getElementById('auth-btn').addEventListener('click', function(){
+    var v = document.getElementById('auth-inp').value;
+    if(v === PASS){
+      try{ localStorage.setItem(KEY, JSON.stringify({ts: Date.now()})); }catch(e){}
+      document.getElementById('auth-overlay').remove();
+    } else {
+      document.getElementById('auth-inp').value = '';
+      document.getElementById('auth-inp').style.borderColor = '#e74c3c';
+      document.getElementById('auth-err').style.display = 'block';
+    }
+  });
 })();
 </script>
 
