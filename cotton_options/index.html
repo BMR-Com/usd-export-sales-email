@@ -351,9 +351,9 @@ footer{background:var(--s1);border-top:1px solid var(--border);padding:8px 20px;
         <tr>
           <th style="padding:5px 10px;text-align:left;background:#0a0f15;color:var(--muted);font-size:.52rem;letter-spacing:1px;border:1px solid var(--border)">Tenor</th>
           <th style="padding:5px 10px;text-align:center;background:#0a0f15;color:#4fc3f7;font-size:.52rem;letter-spacing:1px;border:1px solid var(--border)">CT {t} 50D VOL<br><span style="color:var(--muted);font-weight:400">ATM Vol</span></th>
-          <th style="padding:5px 10px;text-align:center;background:#0a0f15;color:#6fcf97;font-size:.52rem;letter-spacing:1px;border:1px solid var(--border)">25DC − 25DP<br><span style="color:var(--muted);font-weight:400">Risk Reversal</span></th>
-          <th style="padding:5px 10px;text-align:center;background:#0a0f15;color:#f6ad55;font-size:.52rem;letter-spacing:1px;border:1px solid var(--border)">CT {t} 25DC VOL<br><span style="color:var(--muted);font-weight:400">Call Skew input</span></th>
-          <th style="padding:5px 10px;text-align:center;background:#0a0f15;color:#fc8181;font-size:.52rem;letter-spacing:1px;border:1px solid var(--border)">CT {t} 25DP VOL<br><span style="color:var(--muted);font-weight:400">Put Skew input</span></th>
+          <th style="padding:5px 10px;text-align:center;background:#0a0f15;color:#f6ad55;font-size:.52rem;letter-spacing:1px;border:1px solid var(--border)">CT {t} 25DC VOL<br><span style="color:var(--muted);font-weight:400">25-Delta Call Vol</span></th>
+          <th style="padding:5px 10px;text-align:center;background:#0a0f15;color:#fc8181;font-size:.52rem;letter-spacing:1px;border:1px solid var(--border)">CT {t} 25DP VOL<br><span style="color:var(--muted);font-weight:400">25-Delta Put Vol</span></th>
+          <th style="padding:5px 10px;text-align:center;background:#0a0f15;color:#c084fc;font-size:.52rem;letter-spacing:1px;border:1px solid var(--border)">Derived<br><span style="color:var(--muted);font-weight:400">RR / CS / PS</span></th>
         </tr>
       </thead>
       <tbody id="manualEntryBody">
@@ -549,7 +549,7 @@ footer{background:var(--s1);border-top:1px solid var(--border);padding:8px 20px;
   <span id="footerTs">&mdash;</span>
 </footer>
 
-<script>
+<<script>
 
 // ═══════════════════════════════════════════════════════
 // CONSTANTS
@@ -1498,62 +1498,73 @@ async function testAIKey(){
 }
 
 function buildVolContext(){
-  // Compute everything in JS, send only compact results to Groq
-  // Target: <300 tokens total context
   if(!allData.length) return 'No vol data loaded.';
+  var last  = allData[allData.length-1];
+  var wkAgo = allData.length > 20 ? allData[allData.length-21] : allData[0];
 
-  const last = allData[allData.length-1];
-
-  // For each tenor+metric: current value + percentile vs 5/10/20yr
-  // All computation done here — Groq gets numbers only
-  function pctile(tenor, metricId, nYears){
-    var cur  = getCurrentVal(tenor, metricId);
-    var hist = getHistData(tenor, metricId, nYears);
-    var st   = calcStats(cur, hist);
-    return st ? st.pctile : null;
-  }
-  function cur(tenor, metricId){
-    var v = getCurrentVal(tenor, metricId);
-    return v !== null ? Math.round(v * 10) / 10 : null;
-  }
-  function avg(tenor, metricId, nYears){
-    var hist = getHistData(tenor, metricId, nYears);
-    if(!hist.length) return null;
-    return Math.round(hist.reduce(function(a,b){return a+b;},0)/hist.length * 10)/10;
+  // Compute percentiles + avg + 4wk change for each tenor/metric
+  function stats(tenor, metricId){
+    var cv   = getCurrentVal(tenor, metricId);
+    if(cv === null) return null;
+    var h5   = getHistData(tenor, metricId, 5);
+    var h20  = getHistData(tenor, metricId, 0);
+    var s5   = calcStats(cv, h5);
+    var s20  = calcStats(cv, h20);
+    var prev = wkAgo[tenor] ? wkAgo[tenor][metricId] : null;
+    var chg  = (cv !== null && prev !== null) ? +(cv - prev).toFixed(2) : null;
+    var avg5 = h5.length ? +(h5.reduce(function(a,b){return a+b;},0)/h5.length).toFixed(1) : null;
+    return {
+      v:   cv,
+      p5:  s5  ? s5.pctile  : null,
+      p20: s20 ? s20.pctile : null,
+      mn5: s5  ? Math.round(s5.min)  : null,
+      mx5: s5  ? Math.round(s5.max)  : null,
+      avg: avg5,
+      chg: chg
+    };
   }
 
   var lines = [
-    'Cotton IV · ' + last.date + ' · ' + allData[0].date.slice(-2) + '-' + last.date.slice(-2),
-    'Format: value | 5yr%ile | 10yr%ile | 20yr%ile | 5yr-avg',
-    'Tenor  ATM                    RR                     CS                     PS'
+    'COTTON OPTIONS VOL · ' + last.date
+    + ' · history: ' + allData[0].date + ' to ' + last.date
+    + ' (' + allData.length + ' days)',
+    'Format per cell: value (5yr%ile/20yr%ile) [5yr range min-max] avg5yr chg4wk',
+    'Metrics: ATM=50D vol  RR=25DC-25DP  CS=25DC-ATM  PS=25DP-ATM  (all vol pts)',
+    ''
   ];
 
   TENORS.forEach(function(t){
-    var row = t + ': ';
-    ['atm','rr','callSkew','putSkew'].forEach(function(m, mi){
-      var v  = cur(t, m);
-      var p5 = pctile(t, m, 5);
-      var p10= pctile(t, m, 10);
-      var p20= pctile(t, m, 0);
-      var a5 = avg(t, m, 5);
-      if(v !== null){
-        row += (mi>0?'  ':'') + m.replace('callSkew','CS').replace('putSkew','PS').replace('atm','ATM').replace('rr','RR')
-          + '=' + v + '(' + p5 + '/' + p10 + '/' + p20 + '%ile,avg' + a5 + ')';
-      }
+    var row = [t + ':'];
+    ['atm','rr','callSkew','putSkew'].forEach(function(m){
+      var st = stats(t, m);
+      if(!st){ row.push(m + '=N/A'); return; }
+      var lbl = {atm:'ATM',rr:'RR',callSkew:'CS',putSkew:'PS'}[m];
+      var chgStr = st.chg !== null ? (st.chg >= 0 ? '+' : '') + st.chg : '';
+      row.push(lbl + '=' + st.v
+        + '(' + st.p5 + '/' + st.p20 + '%ile)'
+        + '[' + st.mn5 + '-' + st.mx5 + ']'
+        + 'avg' + st.avg
+        + (chgStr ? ' 4wk' + chgStr : ''));
     });
-    lines.push(row);
+    lines.push(row.join('  '));
   });
 
-  // Term structure snapshots (1M vs 1Y)
-  var atm1m = cur('1M','atm'), atm1y = cur('1Y','atm');
-  var rr1m  = cur('1M','rr'),  rr1y  = cur('1Y','rr');
-  if(atm1m && atm1y) lines.push('TermStr: 1M-1Y ATM=' + Math.round((atm1m-atm1y)*10)/10
-    + ' RR=' + Math.round((rr1m-rr1y)*10)/10);
+  // Term structure
+  var atm1m = getCurrentVal('1M','atm');
+  var atm1y = getCurrentVal('1Y','atm');
+  var rr1m  = getCurrentVal('1M','rr');
+  var rr1y  = getCurrentVal('1Y','rr');
+  if(atm1m && atm1y){
+    lines.push('');
+    lines.push('TERM STRUCT: 1M-1Y ATM=' + (+(atm1m-atm1y).toFixed(1))
+      + '  1M-1Y RR=' + (+(rr1m-rr1y).toFixed(2)));
+  }
 
-  lines.push('Units: vol pts. ATM=50D. RR=25DC-25DP(+ve=calls rich). CS=25DC-ATM. PS=25DP-ATM. %ile vs 5/10/20yr history.');
+  lines.push('');
+  lines.push('NOTE: RR>0=calls rich vs puts. CS>0=call OTM premium. PS<0=puts below ATM(typical).');
+  lines.push('If user asks for historical values, use the percentile/range data above.');
 
-  var ctx = lines.join(String.fromCharCode(10));
-  return ctx;
+  return lines.join(String.fromCharCode(10));
 }
 
 
@@ -1587,9 +1598,6 @@ async function sendAI(){
 
   try{
     const ctx = buildVolContext();
-    // Log token estimate to help user understand usage
-    const estTokens = Math.round((ctx.length + sysPrompt.length) / 4);
-    document.getElementById('aiStatus').textContent = 'Sending ~' + estTokens + ' tokens…';
     const wantsChart = /\b(plot|chart|graph|bar|line)\b/i.test(q);
     const chartInstr = wantsChart
       ? ' For charts respond with <chart>{"type":"bar","title":"...","labels":[...],"datasets":[{"label":"...","data":[...],"backgroundColor":"#4fc3f7"}]}</chart> then one sentence.'
@@ -1597,11 +1605,15 @@ async function sendAI(){
 
     const sysPrompt = 'You are an expert cotton options trader and volatility analyst. '
       + 'Analyze the provided cotton implied vol data and give specific, actionable insights. '
-      + 'Use option trading terminology correctly. '
-      + 'Risk reversals, skew, term structure, calendar spreads, straddles/strangles. '
+      + 'Use option trading terminology: RR=risk reversal, CS=call skew, PS=put skew. '
       + 'Be concise and specific with numbers. All values in vol points.'
       + chartInstr
       + '\n\nDATA:\n' + ctx;
+
+    // Show token estimate after sysPrompt is defined
+    const estTokens = Math.round((sysPrompt.length + q.length) / 4);
+    var stEl = document.getElementById('aiStatus');
+    if(stEl) stEl.textContent = 'Sending ~' + estTokens + ' tokens…';
 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method: 'POST',
@@ -1728,6 +1740,23 @@ function setStatus(type, msg){
 // ═══════════════════════════════════════════════════════
 var manualOverrides = {}; // {tenor: {atm, dc25, dp25}}
 
+function updateDerived(tenor){
+  var atm  = parseFloat(document.getElementById('me_'+tenor+'_atm')?.value)  || null;
+  var dc25 = parseFloat(document.getElementById('me_'+tenor+'_dc25')?.value) || null;
+  var dp25 = parseFloat(document.getElementById('me_'+tenor+'_dp25')?.value) || null;
+  var cell = document.getElementById('me_'+tenor+'_derived');
+  if(!cell) return;
+  if(atm && dc25 && dp25){
+    cell.innerHTML = 'RR='+(dc25-dp25).toFixed(1)
+      + '<br>CS='+(dc25-atm).toFixed(1)
+      + '<br>PS='+(dp25-atm).toFixed(1);
+    cell.style.color = 'var(--text)';
+  } else {
+    cell.innerHTML = '—';
+    cell.style.color = 'var(--muted)';
+  }
+}
+
 function toggleManualEntry(){
   var panel = document.getElementById('manualEntryPanel');
   var btn   = document.getElementById('btnManual');
@@ -1751,18 +1780,22 @@ function buildManualEntryRows(){
     var dp25V = ov.dp25 != null ? ov.dp25 : (last.atm && last.putSkew  != null ? +(last.atm + last.putSkew ).toFixed(2) : '');
 
     var row = document.createElement('tr');
+    var rrPrev  = (atmV && dc25V && dp25V) ? (+dc25V - +dp25V).toFixed(1) : '—';
+    var csPrev  = (atmV && dc25V)          ? (+dc25V - +atmV).toFixed(1)  : '—';
+    var psPrev  = (atmV && dp25V)          ? (+dp25V - +atmV).toFixed(1)  : '—';
     row.innerHTML =
       '<td style="padding:5px 10px;border:1px solid var(--border);color:var(--gold);font-weight:700">' + t + '</td>'
       + '<td style="padding:4px 6px;border:1px solid var(--border)">'
-        + '<input id="me_'+t+'_atm"  class="me-input" value="'+atmV+'"  placeholder="e.g. 21.4" style="width:80px"></td>'
+        + '<input id="me_'+t+'_atm"  class="me-input" value="'+atmV+'"  placeholder="e.g. 21.4" style="width:80px"'
+        + ' oninput="updateDerived(\'' + t + '\')"></td>'
       + '<td style="padding:4px 6px;border:1px solid var(--border)">'
-        + '<input id="me_'+t+'_dc25" class="me-input" value="'+dc25V+'" placeholder="e.g. 23.7" style="width:80px"></td>'
+        + '<input id="me_'+t+'_dc25" class="me-input" value="'+dc25V+'" placeholder="e.g. 23.7" style="width:80px"'
+        + ' oninput="updateDerived(\'' + t + '\')"></td>'
       + '<td style="padding:4px 6px;border:1px solid var(--border)">'
-        + '<input id="me_'+t+'_dp25" class="me-input" value="'+dp25V+'" placeholder="e.g. 20.1" style="width:80px"></td>'
-      + '<td style="padding:4px 6px;border:1px solid var(--border);color:var(--muted);font-size:.5rem">'
-        + (atmV&&dc25V&&dp25V
-            ? 'RR='+(+dc25V - +dp25V).toFixed(1)+' CS='+(+dc25V - +atmV).toFixed(1)+' PS='+(+dp25V - +atmV).toFixed(1)
-            : '—')
+        + '<input id="me_'+t+'_dp25" class="me-input" value="'+dp25V+'" placeholder="e.g. 20.1" style="width:80px"'
+        + ' oninput="updateDerived(\'' + t + '\')"></td>'
+      + '<td id="me_'+t+'_derived" style="padding:4px 10px;border:1px solid var(--border);color:var(--muted);font-size:.58rem;white-space:nowrap">'
+        + (rrPrev!=='—' ? 'RR='+rrPrev+'<br>CS='+csPrev+'<br>PS='+psPrev : '—')
         + '</td>';
     tbody.appendChild(row);
   });
