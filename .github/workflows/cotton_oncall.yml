@@ -2,10 +2,28 @@ name: Cotton On-Call Weekly Update
 
 on:
   schedule:
-    # Thursday 3:30 PM EDT (summer, UTC-4) = 19:30 UTC
+    # Thursday 3:30 PM EDT (summer) = 19:30 UTC
     - cron: '30 19 * * 4'
-    # Thursday 3:30 PM EST (winter, UTC-5) = 20:30 UTC
-    - cron: '30 20 * * 4'
+    # Thursday 3:35 PM EDT = 19:35 UTC
+    - cron: '35 19 * * 4'
+    # Thursday 3:40 PM EDT = 19:40 UTC
+    - cron: '40 19 * * 4'
+    # Thursday 3:45 PM EDT = 19:45 UTC
+    - cron: '45 19 * * 4'
+    # Thursday 3:50 PM EDT = 19:50 UTC
+    - cron: '50 19 * * 4'
+    # Thursday 3:55 PM EDT = 19:55 UTC
+    - cron: '55 19 * * 4'
+    # Thursday 4:00 PM EDT = 20:00 UTC
+    - cron: '0 20 * * 4'
+    
+    # Friday backup: 3:30 PM EDT = 19:30 UTC
+    - cron: '30 19 * * 5'
+    # Friday 3:35 PM EDT = 19:35 UTC
+    - cron: '35 19 * * 5'
+    # Friday 3:40 PM EDT = 19:40 UTC
+    - cron: '40 19 * * 5'
+    
   workflow_dispatch:
     inputs:
       build_web_only:
@@ -20,7 +38,7 @@ on:
 jobs:
   run:
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 15
     permissions:
       contents: write
 
@@ -37,7 +55,7 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 fpdf2
+        run: pip install requests beautifulsoup4 fpdf2 matplotlib
 
       # ── BUILD-ONLY MODE: just copy CSV → cotton_oncall_data.csv ─────────────
       - name: Build web data file from existing CSV
