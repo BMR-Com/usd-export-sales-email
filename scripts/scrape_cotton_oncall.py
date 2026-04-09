@@ -7,7 +7,7 @@ Retries every 5 minutes for up to 35 minutes if report not yet published.
 Only sends email when new data is found.
 """
 
-import requests, re, os, sys, time, csv, smtplib, io
+import requests, re, os, sys, time, csv, smtplib, io, ssl
 from bs4 import BeautifulSoup
 from datetime import date, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -42,6 +42,9 @@ MAX_RETRIES    = 7     # 7 attempts × 5 min = 35 min window
 RETRY_INTERVAL = 300   # 5 minutes
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def now():
+    return datetime.now().strftime('%H:%M:%S')
 
 def get_old_new(cy, cm, ry, report_month):
     if report_month <= 6:
@@ -157,7 +160,7 @@ def parse_report(html):
 # ── URL helpers ───────────────────────────────────────────────────────────────
 
 def get_candidate_urls():
-    print("Fetching CFTC index page...")
+    print(f"[{now()}] Fetching CFTC index page...")
     try:
         r = requests.get(BASE + BASE_PATH + "index.htm", headers=HEADERS, timeout=30)
         soup = BeautifulSoup(r.text, "html.parser")
@@ -173,7 +176,7 @@ def get_candidate_urls():
             if full not in seen:
                 seen.add(full); urls.append(full)
     except Exception as e:
-        print(f"⚠️  Index page error: {e}")
+        print(f"[{now()}] ⚠️  Index page error: {e}")
         urls, seen = [], set()
 
     known_2026 = [
@@ -200,7 +203,7 @@ def get_candidate_urls():
         u = BASE + BASE_PATH + fn
         if u not in seen: urls.append(u)
 
-    print(f"Found {len(urls)} total candidate URLs")
+    print(f"[{now()}] Found {len(urls)} total candidate URLs")
     return urls
 
 # ── CSV helpers ───────────────────────────────────────────────────────────────
@@ -216,31 +219,31 @@ def read_existing_dates(csv_path):
                     if d: existing.add(d)
             if existing: break
         except: pass
-    print(f"Found {len(existing)} existing report dates in CSV")
+    print(f"[{now()}] Found {len(existing)} existing report dates in CSV")
     return existing
 
 def read_all_rows(csv_path):
     if not os.path.exists(csv_path):
-        print(f"CSV not found: {csv_path}"); return [], 0
+        print(f"[{now()}] CSV not found: {csv_path}"); return [], 0
     fsize = os.path.getsize(csv_path)
-    print(f"CSV size: {fsize} bytes")
+    print(f"[{now()}] CSV size: {fsize} bytes")
     if fsize < 100:
-        print("⚠️  CSV too small — aborting"); sys.exit(1)
+        print(f"[{now()}] ⚠️  CSV too small — aborting"); sys.exit(1)
     for enc in ("utf-8-sig","utf-8","latin-1"):
         try:
             with open(csv_path, newline="", encoding=enc) as f:
                 rows = [dict(r) for r in csv.DictReader(f)]
             if rows:
-                print(f"Read {len(rows)} rows (encoding: {enc})")
+                print(f"[{now()}] Read {len(rows)} rows (encoding: {enc})")
                 return rows, len(rows)
         except Exception as e:
-            print(f"  {enc}: {e}")
-    print("⚠️  Could not read CSV — aborting"); sys.exit(1)
+            print(f"[{now()}]   {enc}: {e}")
+    print(f"[{now()}] ⚠️  Could not read CSV — aborting"); sys.exit(1)
 
 def append_rows(csv_path, new_rows):
     existing_rows, rows_before = read_all_rows(csv_path)
     if os.path.exists(csv_path) and rows_before == 0:
-        print("⚠️  SAFETY ABORT: file exists but 0 rows"); sys.exit(1)
+        print(f"[{now()}] ⚠️  SAFETY ABORT: file exists but 0 rows"); sys.exit(1)
 
     for r in new_rows:
         clean = {k:v for k,v in r.items() if not k.startswith("_")}
@@ -253,7 +256,7 @@ def append_rows(csv_path, new_rows):
         if r.get("Report Date","") else datetime.min))
 
     if len(existing_rows) < rows_before:
-        print(f"⚠️  SAFETY ABORT: would shrink {rows_before}→{len(existing_rows)}"); sys.exit(1)
+        print(f"[{now()}] ⚠️  SAFETY ABORT: would shrink {rows_before}→{len(existing_rows)}"); sys.exit(1)
 
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
     tmp = csv_path + ".tmp"
@@ -261,7 +264,7 @@ def append_rows(csv_path, new_rows):
         w = csv.DictWriter(f, fieldnames=CSV_COLS, extrasaction="ignore")
         w.writeheader(); w.writerows(existing_rows)
     os.replace(tmp, csv_path)
-    print(f"✅ CSV saved: {rows_before} → {len(existing_rows)} rows (+{len(existing_rows)-rows_before})")
+    print(f"[{now()}] ✅ CSV saved: {rows_before} → {len(existing_rows)} rows (+{len(existing_rows)-rows_before})")
 
 # ── PDF generation ────────────────────────────────────────────────────────────
 
@@ -273,12 +276,12 @@ def generate_pdf(new_rows, all_rows_for_charts):
     All Y positions are CONSTANTS — never shift regardless of content length.
     """
     try:
-        import matplotlib, io
+        import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         from fpdf import FPDF
     except ImportError as e:
-        print(f"PDF lib missing ({e})"); return None
+        print(f"[{now()}] PDF lib missing ({e})"); return None
 
     if not new_rows: return None
     report_date = new_rows[0].get("Report Date","")
@@ -595,15 +598,17 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
 
 def send_email(pdf_bytes, report_date):
+    """Send PDF via Gmail SMTP with SSL (port 465)"""
     smtp_host = os.environ.get('SMTP_HOST','')
-    smtp_port = int(os.environ.get('SMTP_PORT', 587))
+    smtp_port = int(os.environ.get('SMTP_PORT', 465))
     smtp_user = os.environ.get('SMTP_USER','')
     smtp_pass = os.environ.get('SMTP_PASS','')
     email_from= os.environ.get('EMAIL_FROM','')
     email_to  = os.environ.get('EMAIL_TO','')
+    force     = os.environ.get('FORCE_EMAIL','false').lower() == 'true'
 
     if not all([smtp_host, smtp_user, smtp_pass, email_from, email_to]):
-        print("⚠️  Email env vars not set — skipping email"); return
+        print(f"[{now()}] ⚠️  Email env vars not set — skipping email"); return
 
     recipients = [e.strip() for e in email_to.split(',') if e.strip()]
     fname = f"cotton_oncall_{report_date.replace('/','_')}.pdf"
@@ -611,10 +616,17 @@ def send_email(pdf_bytes, report_date):
     msg = MIMEMultipart()
     msg['From']    = email_from
     msg['To']      = ', '.join(recipients)
-    msg['Subject'] = f"Cotton On-Call Report — {report_date}"
+    msg['Subject'] = f"[BMR] Cotton On-Call Report — {report_date}"
+    msg['X-Priority'] = '1'
     msg.attach(MIMEText(
-        f"Please find attached the CFTC Cotton On-Call report for {report_date}.\n\n"
-        f"Dashboard: https://your-github-pages-url/", 'plain'))
+        f"""BMR Cotton Analytics — CFTC On-Call Report
+
+Report Date: {report_date}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+Source: CFTC Cotton On-Call
+
+This is an automated report. Do not reply.
+""", 'plain'))
 
     part = MIMEBase('application','pdf')
     part.set_payload(pdf_bytes)
@@ -622,21 +634,21 @@ def send_email(pdf_bytes, report_date):
     part.add_header('Content-Disposition', f'attachment; filename="{fname}"')
     msg.attach(part)
 
+    # Gmail SMTP with SSL on port 465
     try:
-        import ssl as _ssl
-        ctx = _ssl.create_default_context()
-        if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx) as srv:
-                srv.login(smtp_user, smtp_pass)
-                srv.sendmail(email_from, recipients, msg.as_string())
-        else:
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as srv:
-                srv.ehlo(); srv.starttls(context=ctx)
-                srv.login(smtp_user, smtp_pass)
-                srv.sendmail(email_from, recipients, msg.as_string())
-        print(f"✅ Email sent to {', '.join(recipients)}")
+        ctx = ssl.create_default_context()
+        print(f"[{now()}] Connecting to {smtp_host}:{smtp_port} via SSL...")
+        
+        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx, timeout=30) as srv:
+            print(f"[{now()}] Logging in as {smtp_user}...")
+            srv.login(smtp_user, smtp_pass)
+            print(f"[{now()}] Sending to {len(recipients)} recipient(s)...")
+            srv.sendmail(email_from, recipients, msg.as_string())
+            
+        print(f"[{now()}] ✅ Email sent to {', '.join(recipients)}")
     except Exception as e:
-        print(f"⚠️  Email failed: {e}")
+        print(f"[{now()}] ❌ Email failed: {e}")
+        raise
 
 # ── Core scrape logic ─────────────────────────────────────────────────────────
 
@@ -646,7 +658,7 @@ def check_for_new_reports(existing_dates, new_rows):
 
     # Step 1: live main page
     live_url = f"https://www.cftc.gov/MarketReports/CottonOnCall/index.htm?_={int(time.time())}"
-    print(f"Checking live page...")
+    print(f"[{now()}] Checking live page...")
     try:
         r = requests.get(live_url, headers=HEADERS_NOCACHE, timeout=15)
         if r.status_code == 200 and "Unfixed" in r.text:
@@ -657,11 +669,11 @@ def check_for_new_reports(existing_dates, new_rows):
                     new_rows.extend(rows)
                     existing_dates.add(rdate)
                     found += 1
-                    print(f"✅ LIVE PAGE: {rdate} ({len(rows)} rows)")
+                    print(f"[{now()}] ✅ LIVE PAGE: {rdate} ({len(rows)} rows)")
                 else:
-                    print(f"⏭️  Live page already in CSV: {rdate}")
+                    print(f"[{now()}] ⏭️  Live page already in CSV: {rdate}")
     except Exception as e:
-        print(f"⚠️  Live page: {e}")
+        print(f"[{now()}] ⚠️  Live page: {e}")
 
     # Step 2: archive last 60 days
     cutoff = datetime.now() - timedelta(days=60)
@@ -677,7 +689,7 @@ def check_for_new_reports(existing_dates, new_rows):
                         recent.append(url); break
                 except: pass
 
-    print(f"Checking {len(recent)} recent archive URLs")
+    print(f"[{now()}] Checking {len(recent)} recent archive URLs")
     for url in recent:
         try:
             r = requests.get(url, headers=HEADERS, timeout=15)
@@ -686,13 +698,13 @@ def check_for_new_reports(existing_dates, new_rows):
             if not rows: continue
             rdate = rows[0]["Report Date"]
             if rdate in existing_dates:
-                print(f"⏭️  Already have {rdate}"); continue
+                print(f"[{now()}] ⏭️  Already have {rdate}"); continue
             new_rows.extend(rows)
             existing_dates.add(rdate)
             found += 1
-            print(f"✅ NEW: {url.split('/')[-1]} → {rdate} ({len(rows)} rows)")
+            print(f"[{now()}] ✅ NEW: {url.split('/')[-1]} → {rdate} ({len(rows)} rows)")
         except Exception as e:
-            print(f"⚠️  {url.split('/')[-1]}: {e}")
+            print(f"[{now()}] ⚠️  {url.split('/')[-1]}: {e}")
         time.sleep(0.3)
 
     return found
@@ -705,20 +717,20 @@ def main():
     found_total = 0
 
     for attempt in range(MAX_RETRIES):
-        print(f"\n--- Attempt {attempt+1}/{MAX_RETRIES} ---")
+        print(f"\n[{now()}] --- Attempt {attempt+1}/{MAX_RETRIES} ---")
         found = check_for_new_reports(existing_dates, new_rows)
         found_total += found
         if found_total > 0:
-            print(f"✅ New data found on attempt {attempt+1}")
+            print(f"[{now()}] ✅ New data found on attempt {attempt+1}")
             break
         if attempt < MAX_RETRIES - 1:
-            print(f"No new report yet — waiting 5 minutes before retry...")
+            print(f"[{now()}] No new report yet — waiting 5 minutes before retry...")
             time.sleep(RETRY_INTERVAL)
 
-    print(f"\nTotal new reports: {found_total} | New rows: {len(new_rows)}")
+    print(f"\n[{now()}] Total new reports: {found_total} | New rows: {len(new_rows)}")
 
     if not new_rows:
-        print("Nothing to add — exiting")
+        print(f"[{now()}] Nothing to add — exiting")
         sys.exit(0)
 
     # Save CSV
@@ -728,19 +740,19 @@ def main():
     import shutil
     os.makedirs(os.path.dirname(WEB_CSV), exist_ok=True)
     shutil.copy2(CSV_PATH, WEB_CSV)
-    print(f"✓ Web CSV updated: {WEB_CSV}")
+    print(f"[{now()}] ✓ Web CSV updated: {WEB_CSV}")
 
     # Generate PDF and send email
-    print("Generating PDF...")
+    print(f"[{now()}] Generating PDF...")
     all_rows, _ = read_all_rows(CSV_PATH)
     pdf_bytes = generate_pdf(new_rows, all_rows)
     if pdf_bytes:
         report_date = new_rows[0].get("Report Date","unknown")
         send_email(pdf_bytes, report_date)
     else:
-        print("PDF generation skipped or failed")
+        print(f"[{now()}] PDF generation skipped or failed")
 
-    print("✅ Done")
+    print(f"[{now()}] ✅ Done")
 
 if __name__ == "__main__":
     main()
