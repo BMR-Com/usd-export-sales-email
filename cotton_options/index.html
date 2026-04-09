@@ -545,82 +545,88 @@ function parseAndBuild(text){
   const cleaned = text.replace(/\uFEFF/g,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   const rawLines = cleaned.split('\n');
 
-  // Parse CSV rows properly (handle quoted fields)
-  function parseCSVRow(line){
-    const result = [];
-    let cur = '', inQ = false;
-    for(let i = 0; i < line.length; i++){
-      const ch = line[i];
+  // Auto-detect delimiter: tab or comma
+  // Check first non-empty line
+  const firstNonEmpty = rawLines.find(function(l){ return l.trim(); }) || '';
+  const TAB = String.fromCharCode(9);
+  const delim = firstNonEmpty.indexOf(TAB) >= 0 ? TAB : ',';
+
+  function parseRow(line){
+    if(delim === TAB){
+      return line.split(TAB).map(function(v){ return v.replace(/"/g,'').replace(/\r/g,'').trim(); });
+    }
+    // CSV comma parser
+    var result = [], cur = '', inQ = false;
+    for(var i = 0; i < line.length; i++){
+      var ch = line[i];
       if(ch === '"'){ inQ = !inQ; }
-      else if(ch === ',' && !inQ){ result.push(cur.trim()); cur = ''; }
+      else if(ch === ',' && !inQ){ result.push(cur.replace(/\r/g,'').trim()); cur = ''; }
       else { cur += ch; }
     }
-    result.push(cur.trim());
+    result.push(cur.replace(/\r/g,'').trim());
     return result;
   }
 
   const rows = rawLines
-    .map(function(l){ return parseCSVRow(l); })
+    .map(function(l){ return parseRow(l); })
     .filter(function(r){ return r.some(function(v){ return v !== ''; }); });
 
   if(rows.length < 2){
-    throw new Error('File appears empty. Got ' + rawLines.length + ' raw lines.');
+    throw new Error('File appears empty. Got ' + rawLines.length + ' raw lines, delimiter=' + (delim===TAB?'TAB':'COMMA'));
   }
 
-  // Find the header row: the row that contains 'Date' (case-insensitive)
-  let headerRow = null;
-  let headerRowIdx = -1;
-  for(let i = 0; i < Math.min(10, rows.length); i++){
-    const hasDate = rows[i].some(function(v){ return v.toLowerCase() === 'date'; });
-    if(hasDate){ headerRow = rows[i]; headerRowIdx = i; break; }
+  // Find header row: first row where any cell equals 'date' (case-insensitive)
+  var headerRow = null, headerRowIdx = -1;
+  for(var i = 0; i < Math.min(10, rows.length); i++){
+    if(rows[i].some(function(v){ return v.toLowerCase() === 'date'; })){
+      headerRow = rows[i]; headerRowIdx = i; break;
+    }
   }
 
   if(!headerRow){
-    throw new Error('Could not find header row with "Date" column. '
-      + 'First row: ' + rows[0].slice(0,5).join(' | '));
+    throw new Error('No header row found. First row: ' + rows[0].slice(0,4).join(' | '));
   }
 
-  // Find which column index has 'Date'
-  const dateColIdx = headerRow.findIndex(function(v){ return v.toLowerCase() === 'date'; });
+  var dateColIdx = headerRow.findIndex(function(v){ return v.toLowerCase() === 'date'; });
 
-  // Map each vol field to its column index
-  const colIdx = {};
+  // Map vol columns
+  var colIdx = {};
   TENORS.forEach(function(t){ colIdx[t] = {dc25:-1, dp25:-1, atm:-1}; });
 
   headerRow.forEach(function(h, i){
-    const hc = h.replace(/\r/g,'').trim();
+    var hc = h.replace(/\r/g,'').trim();
     TENORS.forEach(function(t){
       if(hc.indexOf('CT ' + t + ' 25DC') >= 0) colIdx[t].dc25 = i;
       if(hc.indexOf('CT ' + t + ' 25DP') >= 0) colIdx[t].dp25 = i;
       if(hc.indexOf('CT ' + t + ' 50D')  >= 0){
-        const after = hc.slice(hc.indexOf('CT ' + t + ' 50D') + ('CT ' + t + ' 50D').length);
+        var after = hc.slice(hc.indexOf('CT ' + t + ' 50D') + ('CT ' + t + ' 50D').length);
         if(!after || (after[0] !== 'C' && after[0] !== 'P')) colIdx[t].atm = i;
       }
     });
   });
 
   if(colIdx['1M'].atm < 0){
-    throw new Error('Could not find CT 1M 50D VOL column. '
-      + 'Headers: ' + headerRow.filter(function(v){ return v; }).slice(0,6).join(' | '));
+    throw new Error('Could not find CT 1M 50D VOL column. Headers: '
+      + headerRow.filter(function(v){ return v; }).slice(0,5).join(' | '));
   }
 
-  // Parse data rows (all rows after the header row)
+  // Parse data rows
   allData = [];
-  for(let i = headerRowIdx + 1; i < rows.length; i++){
-    const row    = rows[i];
-    const dateStr = row[dateColIdx] || '';
+  for(var i = headerRowIdx + 1; i < rows.length; i++){
+    var row     = rows[i];
+    var dateStr = row[dateColIdx] || '';
     if(!dateStr) continue;
-    const dateObj = parseDate(dateStr);
+    var dateObj = parseDate(dateStr);
     if(!dateObj) continue;
 
-    const yr  = dateObj.getFullYear();
-    const doy = getDayOfYear(dateObj);
-    const rec = {date: dateStr, dateObj: dateObj, year: yr, doy: doy};
+    var yr  = dateObj.getFullYear();
+    var doy = getDayOfYear(dateObj);
+    var rec = {date: dateStr, dateObj: dateObj, year: yr, doy: doy};
 
     TENORS.forEach(function(t){
-      const dc25 = +(row[colIdx[t].dc25] || 0);
-      const dp25 = +(row[colIdx[t].dp25] || 0);
-      const atm  = +(row[colIdx[t].atm]  || 0);
+      var dc25 = +(row[colIdx[t].dc25] || 0);
+      var dp25 = +(row[colIdx[t].dp25] || 0);
+      var atm  = +(row[colIdx[t].atm]  || 0);
       if(atm > 0){
         rec[t] = {
           atm:      atm,
@@ -636,32 +642,34 @@ function parseAndBuild(text){
   allData.sort(function(a,b){ return a.dateObj - b.dateObj; });
 
   if(!allData.length){
-    throw new Error('No valid data rows found. Check that the file has date rows with numeric vol values.');
+    throw new Error('No valid data rows parsed. Delimiter=' + (delim===TAB?'TAB':'COMMA')
+      + ' headerAt=' + headerRowIdx + ' totalRows=' + rows.length);
   }
 
-  // ── Success — update UI and render ──────────────────────────────────────
-  const lastRow   = allData[allData.length - 1];
-  const firstRow  = allData[0];
-  currentYear     = lastRow.year;
-  todayDoy        = lastRow.doy;
-  const dataYears = currentYear - firstRow.year + 1;
+  // Success — update UI and render
+  var lastRow  = allData[allData.length - 1];
+  var firstRow = allData[0];
+  currentYear  = lastRow.year;
+  todayDoy     = lastRow.doy;
+  var dataYears = currentYear - firstRow.year + 1;
 
   setStatus('ok',
-    '✓ Loaded ' + allData.length.toLocaleString() + ' records'
-    + ' · ' + firstRow.date + ' – ' + lastRow.date
+    '\u2713 Loaded ' + allData.length.toLocaleString() + ' records'
+    + ' \u00b7 ' + firstRow.date + ' \u2013 ' + lastRow.date
     + ' (' + dataYears + ' years)'
-    + ' · Latest: ' + lastRow.date
+    + ' \u00b7 Latest: ' + lastRow.date
   );
 
-  document.getElementById('liveDot').className      = 'live-dot on';
-  document.getElementById('dataLabel').textContent  = 'Data loaded · ' + lastRow.date;
-  document.getElementById('footerTs').textContent   = 'Updated ' + new Date().toLocaleString();
-  document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('fileLabel').textContent  = allData.length.toLocaleString() + ' records loaded';
+  (function(){var _e=document.getElementById('liveDot');if(_e)_e.className='live-dot on'})();
+  (function(){var _e=document.getElementById('dataLabel');if(_e)_e.textContent='Data loaded \u00b7 ' + lastRow.date})();
+  (function(){var _e=document.getElementById('footerTs');if(_e)_e.textContent='Updated ' + new Date().toLocaleString()})();
+  (function(){var _e=document.getElementById('emptyState');if(_e)_e.style.display='none'})();
+  (function(){var _e=document.getElementById('fileLabel');if(_e)_e.textContent=allData.length.toLocaleString() + ' records loaded'})();
 
   renderAll();
   updateSummarySubLabel();
 }
+
 
 function splitCSVLine(line){
   const result = [];
@@ -1630,6 +1638,7 @@ function renderAIChart(def){
 // ═══════════════════════════════════════════════════════
 function setStatus(type, msg){
   const el = document.getElementById('statusBar');
+  if(!el) return;
   el.textContent  = msg;
   el.className    = 'status ' + type;
 }
@@ -1830,6 +1839,7 @@ function renderAIChart(def){
 // ═══════════════════════════════════════════════════════
 function setStatus(type, msg){
   const el = document.getElementById('statusBar');
+  if(!el) return;
   el.textContent  = msg;
   el.className    = 'status ' + type;
 }
