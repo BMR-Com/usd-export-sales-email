@@ -28,6 +28,10 @@ jobs:
           EMAIL_FROM:  ${{ secrets.EMAIL_FROM }}
           EMAIL_TO:    ${{ secrets.EMAIL_TO }}
         run: |
+          # Fix the unicode issue in scrape_cotton_oncall.py
+          sed -i 's/ — / - /g' scripts/scrape_cotton_oncall.py
+          sed -i 's/—/-/g' scripts/scrape_cotton_oncall.py
+          
           cat > scripts/test_real_pdf.py << 'EOF'
           import os, sys
           sys.path.insert(0, os.path.dirname(__file__))
