@@ -41,26 +41,22 @@ def log(msg):
 def get_csv_text():
     html_dir  = Path(HTML_FILE).parent
     repo_root = html_dir.parent
-    js_file   = html_dir / 'cotton_options_data.csv'
-    csv_file  = repo_root / 'data' / 'cotton_options_history.csv'
 
-    if js_file.exists():
-        log(f'Found cotton_options_data.js ({js_file.stat().st_size // 1024}KB)')
-        js_content = js_file.read_text(encoding='utf-8')
-        tick     = js_content.find('`')
-        tick_end = js_content.rfind('`')
-        if tick >= 0 and tick_end > tick:
-            return js_content[tick+1:tick_end]
-        raise RuntimeError('Could not extract CSV from cotton_options_data.js')
+    # Priority 1: cotton_options/cotton_options_data.csv (built by build_options_data.py)
+    csv_copy = html_dir / 'cotton_options_data.csv'
+    if csv_copy.exists():
+        log(f'Found cotton_options_data.csv ({csv_copy.stat().st_size // 1024}KB)')
+        return csv_copy.read_text(encoding='utf-8-sig')
 
-    if csv_file.exists():
-        log(f'Found cotton_options_history.csv ({csv_file.stat().st_size // 1024}KB)')
-        return csv_file.read_text(encoding='utf-8')
+    # Priority 2: data/cotton_options_history.csv (original upload)
+    csv_src = repo_root / 'data' / 'cotton_options_history.csv'
+    if csv_src.exists():
+        log(f'Found cotton_options_history.csv ({csv_src.stat().st_size // 1024}KB)')
+        return csv_src.read_text(encoding='utf-8-sig')
 
     raise FileNotFoundError(
-        'No vol data found. Need either:\n'
-        '  cotton_options/cotton_options_data.js  (run build_options_data.py first)\n'
-        '  data/cotton_options_history.csv'
+        'No vol data found.\n'
+        '  Run build_options_data.py to create cotton_options/cotton_options_data.csv'
     )
 
 def render_to_pdf():
