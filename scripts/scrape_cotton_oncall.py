@@ -265,6 +265,22 @@ def append_rows(csv_path, new_rows):
 
 # ── PDF generation ────────────────────────────────────────────────────────────
 
+def safe_text(t):
+    """Replace unicode chars that latin-1 fonts can't handle."""
+    return (str(t)
+        .replace('—', ' - ')   # em dash
+        .replace('–', ' - ')   # en dash
+        .replace('−', ' - ')   # minus sign
+        .replace('’', "'")     # right single quote
+        .replace('‘', "'")     # left single quote
+        .replace('“', '"')     # left double quote
+        .replace('”', '"')     # right double quote
+        .replace('▲', '^')     # triangle up
+        .replace('▼', 'v')     # triangle down
+        .replace('●', 'o')     # circle
+    )
+
+
 def generate_pdf(new_rows, all_rows_for_charts):
     """
     A4 Landscape (297x210mm), margins 8mm, usable 281x194mm (y:8-202)
@@ -407,9 +423,9 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     # ── Chart builder ─────────────────────────────────────────────────────────
     COLORS=['#1a6b3c','#c0392b','#2e86c1','#8e44ad','#d35400','#16a085','#f39c12','#1a3a5c']
-    TITLES=['Old Crop – Purchases','Old Crop – Sales','Old Crop – Imbalance',
-            'All Crop – Purchases','All Crop – Sales','All Crop – Imbalance',
-            'New Crop – Purchases','New Crop – Sales','New Crop – Imbalance']
+    TITLES=['Old Crop - Purchases','Old Crop - Sales','Old Crop - Imbalance',
+            'All Crop - Purchases','All Crop - Sales','All Crop - Imbalance',
+            'New Crop - Purchases','New Crop - Sales','New Crop - Imbalance']
     cur_yr=datetime.now().year
     def_years=[y for y in all_years if cur_yr-4<=int(y)<=cur_yr and int(y)>2005]
 
@@ -471,22 +487,43 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     def pbar(p):
         if p is None: return '--'
-        return f'{p}% '+('▲' if p>=70 else ('▼' if p<=30 else '●'))
+        return safe_text(f'{p}%') + (' HI' if p>=70 else (' LO' if p<=30 else ''))
 
     # ── Build PDF ─────────────────────────────────────────────────────────────
     pdf=FPDF(orientation='L',unit='mm',format='A4')
 
+    FONT_FAMILY = "Helvetica"
+    for _fn, _fp, _fbp in [
+        ("DejaVu",
+         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+        ("Liberation",
+         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
+    ]:
+        try:
+            if os.path.exists(_fp) and os.path.exists(_fbp):
+                pdf.add_font(_fn, "",  _fp,  uni=True)
+                pdf.add_font(_fn, "B", _fbp, uni=True)
+                FONT_FAMILY = _fn
+                print(f"Font loaded: {_fn}")
+                break
+        except Exception as _fe:
+            print(f"Font {_fn} failed: {_fe}")
+    if FONT_FAMILY == "Helvetica":
+        print("Using Helvetica - unicode replaced by safe_text()")
+
     def hdr_bar(txt):
         pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
         pdf.rect(M,Y_HDR,UW,9,'F')
-        pdf.set_font('Helvetica','B',9)
+        pdf.set_font(FONT_FAMILY,'B',9)
         pdf.set_xy(M+2,Y_HDR+1.5)
         pdf.cell(UW-4,6,txt,ln=0)
         pdf.set_text_color(0,0,0)
 
     def sec_bar(y,txt):
         pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
-        pdf.set_font('Helvetica','B',6.5)
+        pdf.set_font(FONT_FAMILY,'B',6.5)
         pdf.set_xy(M,y)
         pdf.cell(UW,4.5,f'  {txt}',border=0,ln=1,fill=True,align='L')
         pdf.set_text_color(0,0,0)
@@ -497,8 +534,8 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     # ── Summary (y=17 to 53) ──────────────────────────────────────────────
     pdf.set_xy(M,Y_SUM)
-    pdf.set_font('Helvetica','B',7); pdf.set_fill_color(235,242,250)
-    pdf.cell(UW,5,f'Weekly Summary — Unfixed Call Positions vs 20-Year History  (Week {cur_wk})',
+    pdf.set_font(FONT_FAMILY,'B',7); pdf.set_fill_color(235,242,250)
+    pdf.cell(UW,5,safe_text(f'Weekly Summary - Unfixed Call Positions vs 20-Year History  (Week {cur_wk})'),
              border=0,ln=1,fill=True,align='C')
 
     SCOLS=[40,22,14,22,14,22,14,22,22,15,15]  # sum=222mm (<281 — fits with room)
@@ -506,20 +543,20 @@ def generate_pdf(new_rows, all_rows_for_charts):
            '20yr Avg S','20yr Avg P','Pct S','Pct P']
     RH=4.2
 
-    pdf.set_font('Helvetica','B',6); pdf.set_fill_color(205,218,232); pdf.set_text_color(30,30,30)
+    pdf.set_font(FONT_FAMILY,'B',6); pdf.set_fill_color(205,218,232); pdf.set_text_color(30,30,30)
     pdf.set_xy(M,pdf.get_y())
     for h,w in zip(SHDRS,SCOLS):
         pdf.cell(w,RH,h,border=0,ln=0,align='C',fill=True)
     pdf.ln()
 
-    CROP_LBL={"old":"OLD CROP","all":"ALL CROP","new":"NEW CROP (All − Old)"}
+    CROP_LBL={"old":"OLD CROP","all":"ALL CROP","new":"NEW CROP (All - Old)"}
     BG={"old":(255,252,230),"all":(240,245,255),"new":(245,255,245)}
     for crop in ["old","all","new"]:
         d=SUM[crop]
         pdf.set_text_color(255,255,255); pdf.set_fill_color(40,80,130)
-        pdf.set_font('Helvetica','B',6); pdf.set_xy(M,pdf.get_y())
+        pdf.set_font(FONT_FAMILY,'B',6); pdf.set_xy(M,pdf.get_y())
         pdf.cell(UW,3.5,f'  {CROP_LBL[crop]}',border=0,ln=1,fill=True,align='L')
-        pdf.set_text_color(0,0,0); pdf.set_fill_color(*BG[crop]); pdf.set_font('Helvetica','',6.5)
+        pdf.set_text_color(0,0,0); pdf.set_fill_color(*BG[crop]); pdf.set_font(FONT_FAMILY,'',6.5)
         pdf.set_xy(M,pdf.get_y())
         row_vals=['Current',n(d['s']),chg(d['cs']),n(d['p']),chg(d['cp']),
                   n(d['imb']),chg(d['ci']),
@@ -528,12 +565,12 @@ def generate_pdf(new_rows, all_rows_for_charts):
             pdf.cell(w,RH,str(val),border=0,ln=0,align='R' if val!=row_vals[0] else 'L',fill=True)
         pdf.ln()
         # 20yr range sub-row
-        pdf.set_font('Helvetica','',5.5); pdf.set_fill_color(250,252,255)
+        pdf.set_font(FONT_FAMILY,'',5.5); pdf.set_fill_color(250,252,255)
         pdf.set_xy(M,pdf.get_y())
         rng_vals=['20yr Range',
-                  n(d['smn'])+'–'+n(d['smx']),'',
-                  n(d['pmn'])+'–'+n(d['pmx']),'',
-                  n(d['imn'])+'–'+n(d['imx']),'','','','','']
+                  n(d['smn'])+'-'+n(d['smx']),'',
+                  n(d['pmn'])+'-'+n(d['pmx']),'',
+                  n(d['imn'])+'-'+n(d['imx']),'','','','','']
         for val,w in zip(rng_vals,SCOLS):
             pdf.cell(w,3.2,str(val),border=0,ln=0,align='R' if val!=rng_vals[0] else 'L',fill=True)
         pdf.ln()
@@ -541,7 +578,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
     # ── Current week table (y=54, max 16 rows) ───────────────────────────
     pdf.set_xy(M,Y_TBL)
     TCOLS=[50,22,15,24,15,24,15]; THEADS=['Futures Based On','Sales','Chg','Purchases','Chg','At Close','Chg']
-    pdf.set_font('Helvetica','B',6.5); pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
+    pdf.set_font(FONT_FAMILY,'B',6.5); pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
     for h,w in zip(THEADS,TCOLS):
         pdf.cell(w,5,h,border=0,ln=0,align='L' if h==THEADS[0] else 'R',fill=True)
     pdf.ln(); pdf.set_text_color(0,0,0)
@@ -554,7 +591,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
     for r in data_rows[:MAX_TBL_ROWS]:
         on=r.get("Old/New","")
         bg=(255,252,220) if on=="old" else (246,255,243)
-        pdf.set_fill_color(*bg); pdf.set_font('Helvetica','',6)
+        pdf.set_fill_color(*bg); pdf.set_font(FONT_FAMILY,'',6)
         pdf.cell(TCOLS[0],TBL_ROW_H,str(r.get("Futures Based On","")),border=0,ln=0,align='L',fill=True)
         for val,cw in [(r.get("Unfixed Call Sales"),TCOLS[1]),(r.get("Chg Sales"),TCOLS[2]),
                        (r.get("Unfixed Call Purchases"),TCOLS[3]),(r.get("Chg Purchases"),TCOLS[4]),
@@ -564,7 +601,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     if tot_rows:
         tr=tot_rows[0]
-        pdf.set_font('Helvetica','B',6.5); pdf.set_fill_color(220,235,251)
+        pdf.set_font(FONT_FAMILY,'B',6.5); pdf.set_fill_color(220,235,251)
         pdf.cell(TCOLS[0],4.5,'Totals',border=0,ln=0,align='L',fill=True)
         for val,cw in [(tr.get("Unfixed Call Sales"),TCOLS[1]),(tr.get("Chg Sales"),TCOLS[2]),
                        (tr.get("Unfixed Call Purchases"),TCOLS[3]),(tr.get("Chg Purchases"),TCOLS[4]),
@@ -579,7 +616,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     # ════ PAGE 2 ════════════════════════════════════════════════════════════
     pdf.add_page()
-    hdr_bar(f'CFTC Cotton On-Call — Historical Charts  ·  {report_date}')
+    hdr_bar(f'CFTC Cotton On-Call - Historical Charts - {report_date}')
 
     # ── All Crop charts — FIXED at Y=22 ──────────────────────────────────
     sec_bar(Y_CLBL2,'ALL CROP')
@@ -587,7 +624,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
         pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH2, w=CW, h=CH2_H)
 
     # ── New Crop charts — FIXED at Y=111 ─────────────────────────────────
-    sec_bar(Y_CLBL3,'NEW CROP (All minus Old)')
+    sec_bar(Y_CLBL3,'NEW CROP (All - Old)')
     for i,ci in enumerate([6,7,8]):
         pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH3, w=CW, h=CH3_H)
 
@@ -611,7 +648,7 @@ def send_email(pdf_bytes, report_date):
     msg = MIMEMultipart()
     msg['From']    = email_from
     msg['To']      = ', '.join(recipients)
-    msg['Subject'] = f"Cotton On-Call Report — {report_date}"
+    msg['Subject'] = f"Cotton On-Call Report - {report_date}"
     msg.attach(MIMEText(
         f"Please find attached the CFTC Cotton On-Call report for {report_date}.\n\n"
         f"Dashboard: https://bmr-com.github.io/usd-export-sales-email/cotton_oncall/", 'plain'))
