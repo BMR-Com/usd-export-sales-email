@@ -3,10 +3,10 @@
 send_options_report.py
 ======================
 Loads cotton_options/index.html in headless Chromium,
-waits for cotton_options_data.js to auto-load,
-generates PDF via page.pdf(), sends via SMTP.
+injects the vol data directly (bypasses file:// script-src restriction),
+generates PDF, sends via SMTP.
 
-Reuses the same GitHub Secrets as send_report.py (ESR):
+Reuses same GitHub Secrets as ESR send_report.py:
   SMTP_HOST  SMTP_PORT  SMTP_USER  SMTP_PASS  EMAIL_FROM  EMAIL_TO
 """
 import os, sys, ssl, smtplib
@@ -16,12 +16,12 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-from playwright.sync_api import sync_playwright, TimeoutError as PwTimeout
+from playwright.sync_api import sync_playwright
 
 def require_env(name):
     val = os.environ.get(name, '').strip()
     if not val:
-        print(f'✗ MISSING SECRET: {name}', flush=True)
+        print(f'\u2717 MISSING SECRET: {name}', flush=True)
         sys.exit(1)
     return val
 
@@ -38,76 +38,107 @@ REPORT_DATE = os.environ.get('REPORT_DATE', datetime.now().strftime('%Y-%m-%d'))
 def log(msg):
     print(f'[{datetime.now():%H:%M:%S}] {msg}', flush=True)
 
+def get_csv_text():
+    html_dir  = Path(HTML_FILE).parent
+    repo_root = html_dir.parent
+    js_file   = html_dir / 'cotton_options_data.js'
+    csv_file  = repo_root / 'data' / 'cotton_options_history.csv'
+
+    if js_file.exists():
+        log(f'Found cotton_options_data.js ({js_file.stat().st_size // 1024}KB)')
+        js_content = js_file.read_text(encoding='utf-8')
+        tick     = js_content.find('`')
+        tick_end = js_content.rfind('`')
+        if tick >= 0 and tick_end > tick:
+            return js_content[tick+1:tick_end]
+        raise RuntimeError('Could not extract CSV from cotton_options_data.js')
+
+    if csv_file.exists():
+        log(f'Found cotton_options_history.csv ({csv_file.stat().st_size // 1024}KB)')
+        return csv_file.read_text(encoding='utf-8')
+
+    raise FileNotFoundError(
+        'No vol data found. Need either:\n'
+        '  cotton_options/cotton_options_data.js  (run build_options_data.py first)\n'
+        '  data/cotton_options_history.csv'
+    )
+
 def render_to_pdf():
-    log(f'HTML file: {HTML_FILE}')
+    log(f'HTML: {HTML_FILE}')
     if not Path(HTML_FILE).exists():
         raise FileNotFoundError(f'Options page not found: {HTML_FILE}')
+
+    csv_text = get_csv_text()
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(
             headless=True,
-            args=['--no-sandbox','--disable-setuid-sandbox',
-                  '--disable-dev-shm-usage','--disable-gpu',
-                  '--disable-web-security','--allow-file-access-from-files']
+            args=[
+                '--no-sandbox', '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage', '--disable-gpu',
+                '--disable-web-security', '--allow-file-access-from-files',
+            ]
         )
-        page = browser.new_page(viewport={'width':1440,'height':900})
+        page = browser.new_page(viewport={'width': 1440, 'height': 900})
+        errors = []
+        page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
 
         log('Loading page...')
         page.goto(f'file://{HTML_FILE}', wait_until='domcontentloaded')
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1500)
 
-        # Check if data auto-loaded from cotton_options_data.js
-        data_loaded = page.evaluate("() => typeof allData !== 'undefined' && allData.length > 0")
-        log(f'Data auto-loaded: {data_loaded}')
+        # Inject CSV directly — file:// blocks <script src> cross-file loading
+        log(f'Injecting {len(csv_text):,} chars of vol data...')
+        safe_csv = csv_text.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')
+        page.evaluate(f'window.COTTON_OPTIONS_DATA = `{safe_csv}`;')
 
-        if not data_loaded:
-            log('No auto-load data — checking if cotton_options_data.js exists...')
-            js_file = Path(HTML_FILE).parent / 'cotton_options_data.js'
-            if js_file.exists():
-                log(f'cotton_options_data.js found ({js_file.stat().st_size//1024}KB) — retrying...')
-                page.wait_for_timeout(3000)
-                data_loaded = page.evaluate("() => typeof allData !== 'undefined' && allData.length > 0")
+        # Parse and render
+        result = page.evaluate("""() => {
+            try {
+                parseAndBuild(window.COTTON_OPTIONS_DATA);
+                return {
+                    ok: true,
+                    records: allData.length,
+                    latest: allData.length ? allData[allData.length-1].date : 'none'
+                };
+            } catch(e) {
+                return { ok: false, error: e.message };
+            }
+        }""")
 
-            if not data_loaded:
-                raise RuntimeError(
-                    'No vol data loaded. '
-                    'Ensure data/cotton_options_history.csv is in the repo '
-                    'and build_options_data.py has been run to generate cotton_options_data.js'
-                )
+        log(f'Parse result: {result}')
 
-        record_count = page.evaluate("() => allData.length")
-        latest_date  = page.evaluate("() => allData[allData.length-1].date")
-        log(f'Records: {record_count:,} · Latest: {latest_date}')
+        if not result.get('ok'):
+            if errors: log(f'JS errors: {errors[:3]}')
+            raise RuntimeError(f'parseAndBuild failed: {result.get("error","unknown")}')
 
-        # Wait for charts to render
-        log('Waiting for charts to render...')
-        page.wait_for_timeout(5000)
+        log(f'Records: {result["records"]:,}  Latest: {result["latest"]}')
 
-        # Switch to print-friendly colors
-        log('Preparing for print...')
-        page.evaluate("() => { if(typeof prepForPrint === 'function') prepForPrint(); }")
+        log('Rendering charts (waiting 6s)...')
+        page.wait_for_timeout(6000)
+
+        chart_count = page.evaluate("() => Object.keys(charts).length")
+        log(f'Charts rendered: {chart_count}')
+
+        page.evaluate("() => { if (typeof prepForPrint === 'function') prepForPrint(); }")
         page.wait_for_timeout(1000)
 
-        # Generate PDF
         log('Generating PDF...')
         pdf_bytes = page.pdf(
-            format='A4',
-            landscape=True,
+            format='A4', landscape=True,
             margin={'top':'6mm','bottom':'6mm','left':'7mm','right':'7mm'},
             print_background=True,
         )
         log(f'PDF: {len(pdf_bytes):,} bytes ({len(pdf_bytes)//1024}KB)')
         browser.close()
 
-    return pdf_bytes, latest_date
+    return pdf_bytes, result['latest']
 
 def send_email(pdf_bytes, latest_date):
     date_str = datetime.now().strftime('%b %d, %Y')
-    subject  = f'Cotton Options Analytics — Implied Vol Report — {date_str}'
+    subject  = f'Cotton Options Analytics \u2014 Implied Vol Report \u2014 {date_str}'
     filename = f'Cotton_Options_Analytics_{REPORT_DATE}.pdf'
-
-    log(f'Sending: "{subject}"')
-    log(f'To: {", ".join(EMAIL_TO)}')
+    log(f'Sending to: {", ".join(EMAIL_TO)}')
 
     msg = MIMEMultipart('mixed')
     msg['Subject'] = subject
@@ -115,15 +146,14 @@ def send_email(pdf_bytes, latest_date):
     msg['To']      = ', '.join(EMAIL_TO)
 
     body = (
-        f'Cotton Options Analytics — Weekly Implied Volatility Report\n'
+        f'Cotton Options Analytics \u2014 Weekly Implied Volatility Report\n'
         f'Generated: {datetime.now().strftime("%A, %B %d, %Y")}\n'
         f'Latest data: {latest_date}\n\n'
         f'Report includes:\n'
-        f'  • Seasonality charts — ATM Vol, 25D RR, Call Skew, Put Skew for all tenors\n'
-        f'  • Term structure differentials — 1M spreads vs 2M/3M/6M/1Y\n'
-        f'  • Current level summary — percentile rankings vs 5/10/20-year history\n'
-        f'  • Rule-based trade ideas\n\n'
-        f'Source: BVOL — Cotton implied volatility\n'
+        f'  \u2022 Seasonality charts \u2014 ATM Vol, 25D RR, Call Skew, Put Skew (all tenors)\n'
+        f'  \u2022 Term structure differentials \u2014 1M spreads vs 2M/3M/6M/1Y\n'
+        f'  \u2022 Current level summary \u2014 percentile rankings vs 5/10/20-year history\n'
+        f'  \u2022 Rule-based trade ideas\n'
     )
     msg.attach(MIMEText(body, 'plain'))
 
@@ -140,16 +170,15 @@ def send_email(pdf_bytes, latest_date):
             srv.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
     else:
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as srv:
-            srv.ehlo()
-            srv.starttls(context=ssl.create_default_context())
+            srv.ehlo(); srv.starttls(context=ssl.create_default_context())
             srv.login(SMTP_USER, SMTP_PASS)
             srv.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
 
-    log(f'✓ Email sent to: {", ".join(EMAIL_TO)}')
+    log(f'\u2713 Sent successfully')
 
 def main():
     log('=== Cotton Options Analytics Report ===')
-    log(f'Date: {REPORT_DATE} | SMTP: {SMTP_HOST}:{SMTP_PORT}')
+    log(f'Date: {REPORT_DATE}  SMTP: {SMTP_HOST}:{SMTP_PORT}')
     pdf_bytes, latest_date = render_to_pdf()
     send_email(pdf_bytes, latest_date)
     log('=== Done ===')
