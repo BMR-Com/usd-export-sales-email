@@ -68,11 +68,11 @@ def render_to_pdf():
         
         # Force clean DOM
         print(f"[{now()}] Cleaning DOM...")
-        page.evaluate('''() => {
+        page.evaluate("""() => {
             const overlay = document.getElementById('auth-overlay');
             if (overlay) overlay.remove();
             document.querySelectorAll('.modal, .overlay, [class*="backdrop"]').forEach(el => el.remove());
-        }''')
+        }""")
         page.wait_for_timeout(300)
         
         # Set defaults
@@ -80,9 +80,11 @@ def render_to_pdf():
         start_year = current_year - 5
         print(f"[{now()}] Setting defaults: ALL countries, {start_year}–{current_year}...")
         
-        page.evaluate(f'''() => {{
-            const ys = document.getElementById('yearStart') || document.getElementById('startYear') || document.querySelector('[id*="start"][id*="year"]');
-            const ye = document.getElementById('yearEnd') || document.getElementById('endYear') || document.querySelector('[id*="end"][id*="year"]');
+        # Use separate variables to avoid quote issues
+        js_code = f"""
+        () => {{
+            const ys = document.getElementById('yearStart') || document.getElementById('startYear') || document.querySelector('[id*=\"start\"][id*=\"year\"]');
+            const ye = document.getElementById('yearEnd') || document.getElementById('endYear') || document.querySelector('[id*=\"end\"][id*=\"year\"]');
             const cs = document.getElementById('countrySelect') || document.getElementById('country') || document.querySelector('select');
             
             if (ys) {{ ys.value = '{start_year}'; ys.dispatchEvent(new Event('change')); }}
@@ -91,24 +93,31 @@ def render_to_pdf():
                 const allOpt = Array.from(cs.options).find(o => /all|total|world|global/i.test(o.text)) || cs.options[0];
                 if (allOpt) {{ cs.value = allOpt.value; cs.dispatchEvent(new Event('change')); }}
             }}
-        }}''')
+        }}
+        """
+        page.evaluate(js_code)
+        
         page.wait_for_timeout(500)
         print(f"[{now()}] Defaults applied")
         
         # Activate and click button
         print(f"[{now()}] Activating button...")
-        page.evaluate('''() => {
+        page.evaluate("""() => {
             const btn = document.getElementById('btnLoad');
-            if (btn) {{
+            if (btn) {
                 btn.style.cssText = 'display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;position:relative!important;z-index:9999!important';
                 btn.disabled = false;
                 btn.hidden = false;
-            }}
-        }}''')
+            }
+        }""")
         page.wait_for_timeout(200)
         
         print(f"[{now()}] Clicking Load Data...")
-        page.evaluate('() => { const b=document.getElementById("btnLoad"); if(b)b.click(); else if(typeof loadAll==="function")loadAll(); }')
+        page.evaluate("""() => { 
+            const b = document.getElementById('btnLoad'); 
+            if (b && b.click) b.click(); 
+            else if (typeof loadAll === 'function') loadAll(); 
+        }""")
         
         # === 30 SECOND WAIT FOR PAGE LOAD ===
         print(f"[{now()}] ⏳ Waiting 30 seconds for data to load...")
