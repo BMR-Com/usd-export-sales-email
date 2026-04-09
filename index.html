@@ -558,6 +558,53 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
 </style>
 </head>
 <body>
+
+<script>
+(function(){
+  var PASS = 'BMR2024cotton'; // ← change this password
+  var KEY  = 'bmr_auth';
+  if(sessionStorage.getItem(KEY) === '1') return; // already authenticated this session
+  // Build overlay
+  var overlay = document.createElement('div');
+  overlay.id = 'auth-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#060a0e;z-index:99999;'
+    + 'display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px';
+  overlay.innerHTML =
+    '<div style="text-align:center;margin-bottom:8px">'
+      + '<div style="font-family:DM Mono,monospace;font-size:1.2rem;font-weight:700;'
+        + 'letter-spacing:4px;color:#e8c547;text-transform:uppercase">Cotton Analytics</div>'
+      + '<div style="font-family:DM Mono,monospace;font-size:.6rem;letter-spacing:3px;'
+        + 'color:#4a5a72;margin-top:6px">BMR Research &middot; Private Dashboard</div>'
+    + '</div>'
+    + '<div style="background:#0e1218;border:1px solid #1e2a38;border-radius:8px;'
+      + 'padding:28px 32px;display:flex;flex-direction:column;gap:12px;min-width:280px">'
+      + '<div style="font-family:DM Mono,monospace;font-size:.7rem;color:#4a5a72;'
+        + 'text-align:center;letter-spacing:2px">ENTER PASSWORD</div>'
+      + '<input id="auth-inp" type="password" placeholder="Password" autocomplete="off"'
+        + ' style="padding:10px 14px;background:#060a0e;border:1px solid #1e2a38;'
+        + 'border-radius:4px;color:#dde4f0;font-family:DM Mono,monospace;font-size:.85rem;'
+        + 'outline:none;letter-spacing:2px;text-align:center"'
+        + ' onkeydown="if(event.key==='Enter')document.getElementById('auth-btn').click()">'
+      + '<button id="auth-btn" style="padding:10px;background:#e8c547;color:#1a1400;'
+        + 'border:none;border-radius:4px;font-family:DM Mono,monospace;font-size:.75rem;'
+        + 'font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase"'
+        + ' onclick="(function(){'
+          + 'var v=document.getElementById('auth-inp').value;'
+          + 'if(v==='' + '"+PASS+"' + ''){'
+            + 'sessionStorage.setItem('' + KEY + '','1');'
+            + 'document.getElementById('auth-overlay').remove();'
+          + '}else{'
+            + 'document.getElementById('auth-inp').style.borderColor='#e74c3c';'
+            + 'document.getElementById('auth-inp').value='';'
+            + 'document.getElementById('auth-inp').placeholder='Incorrect — try again';'
+          + '}'
+        + '})()">Access Dashboard</button>'
+    + '</div>';
+  document.body.appendChild(overlay);
+  setTimeout(function(){ document.getElementById('auth-inp').focus(); }, 50);
+})();
+</script>
+
 <nav class="platform-nav">
   <div class="platform-brand">
     <div class="platform-name">Cotton Analytics</div>
@@ -992,6 +1039,9 @@ async function loadAll(){
   // Cache CSV for instant restore on tab switch
   try{ if(window.COTTON_CSV_DATA) sessionStorage.setItem('esr_csv_cache', window.COTTON_CSV_DATA); }catch(e){}
   setStatus('ok',`✓ Loaded ${allLoadedYears.length} years (MY${fromYr}–MY${toYr}) · ${commName}`);
+  // Hide the load button — data is in
+  const _lb = document.getElementById('btnLoad');
+  if(_lb) _lb.style.display = 'none';
     const footerEl=document.getElementById('footerTs');
     if(footerEl) footerEl.textContent=`Updated ${new Date().toLocaleString()}`;
     renderAll(commCode, commName);
@@ -2368,47 +2418,46 @@ function parseAndStoreCSV(text, filename){
 // Auto-fetch CSV from repo (works when served from GitHub Pages or localhost)
 // Falls back to relative path attempts, then file picker
 async function autoLoadCSV(){
-  // Restore from sessionStorage cache — instant on tab switch back
+  // 1. sessionStorage cache — instant restore on tab switch
   try{
     var _c = sessionStorage.getItem('esr_csv_cache');
     if(_c && _c.length > 500){
-      window.COTTON_CSV_DATA = _c; // restore the global
-      loadAll(); // re-process from global (same as initial load)
+      window.COTTON_CSV_DATA = _c;
+      loadAll();
       return;
     }
   }catch(e){}
-  const statusEl = document.getElementById('aiStatus');
 
-  // ── Priority 1: cotton_data.js injected by GitHub Actions ──────────────
-  // window.COTTON_CSV_DATA is set by cotton_data.js which loads via <script src>
-  // This works on both file:// and GitHub Pages
-  if(window.COTTON_CSV_DATA){
-    parseAndStoreCSV(window.COTTON_CSV_DATA, 'cotton_data.js (auto)');
+  // 2. cotton_data.js already set COTTON_CSV_DATA (loaded via script src)
+  if(window.COTTON_CSV_DATA && window.COTTON_CSV_DATA.length > 500){
+    loadAll();
     return;
   }
 
-  // ── Priority 2: fetch() — works on HTTP servers (GitHub Pages, localhost) ──
-  const candidates = [
+  // 3. Fetch CSV directly — GitHub Pages serves these files
+  //    fetch_cotton_history.py saves data/cotton_history.csv every Thursday
+  const csvPaths = [
+    'data/cotton_history.csv',
     'cotton_history_1404.csv',
-    './cotton_history_1404.csv',
     'data/cotton_history_1404.csv',
   ];
-  for(const path of candidates){
+  for(const path of csvPaths){
     try{
       const res = await fetch(path);
-      if(res.ok){
-        const text = await res.text();
-        if(text.includes('weekEndingDate')){
-          parseAndStoreCSV(text, path);
-          return;
-        }
+      if(!res.ok) continue;
+      const text = await res.text();
+      if(text.length > 500){
+        window.COTTON_CSV_DATA = text;
+        loadAll();
+        return;
       }
     }catch(e){}
   }
 
-  // ── Not loaded yet ─────────────────────────────────────────────────────
-  if(statusEl) statusEl.textContent =
-    'Historical CSV not loaded. Click "📂 Load CSV" to browse, or push cotton_data.js to repo.';
+  // 4. Nothing found — show the load button prominently
+  const btnLoad = document.getElementById('btnLoad');
+  if(btnLoad) btnLoad.style.cssText = 'display:inline-flex;background:#e8c547;color:#1a1400;font-weight:700;animation:pulse 2s infinite';
+  setStatus('warn', 'No data file found — click “Load Data” or run the fetch workflow to build data/cotton_history.csv');
 }
 
 function loadCSVForAI(){
