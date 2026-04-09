@@ -19,6 +19,12 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4 fpdf2 matplotlib
 
+      - name: Download Unicode font
+        run: |
+          mkdir -p fonts
+          curl -L -o fonts/DejaVuSans.ttf https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf
+          curl -L -o fonts/DejaVuSans-Bold.ttf https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf
+
       - name: Generate and send real PDF
         env:
           SMTP_HOST:   ${{ secrets.SMTP_HOST }}
@@ -28,18 +34,11 @@ jobs:
           EMAIL_FROM:  ${{ secrets.EMAIL_FROM }}
           EMAIL_TO:    ${{ secrets.EMAIL_TO }}
         run: |
-          # Fix all unicode issues - use only ASCII characters
-          sed -i 's/ — / - /g' scripts/scrape_cotton_oncall.py
-          sed -i 's/—/-/g' scripts/scrape_cotton_oncall.py
-          sed -i "s/'▲'/'H'/g" scripts/scrape_cotton_oncall.py
-          sed -i "s/'▼'/'L'/g" scripts/scrape_cotton_oncall.py
-          sed -i "s/'●'/'M'/g" scripts/scrape_cotton_oncall.py
-          sed -i 's/▲/H/g' scripts/scrape_cotton_oncall.py
-          sed -i 's/▼/L/g' scripts/scrape_cotton_oncall.py
-          sed -i 's/●/M/g' scripts/scrape_cotton_oncall.py
-          sed -i 's/↑/H/g' scripts/scrape_cotton_oncall.py
-          sed -i 's/↓/L/g' scripts/scrape_cotton_oncall.py
-          sed -i 's/•/M/g' scripts/scrape_cotton_oncall.py
+          # Patch generate_pdf to use Unicode font
+          sed -i 's/pdf=FPDF/pdf=FPDF/' scripts/scrape_cotton_oncall.py
+          sed -i 's/from fpdf import FPDF/from fpdf import FPDF\n        pdf.add_font("DejaVu", "", "fonts\/DejaVuSans.ttf", uni=True)\n        pdf.add_font("DejaVu", "B", "fonts\/DejaVuSans-Bold.ttf", uni=True)/' scripts/scrape_cotton_oncall.py
+          sed -i 's/Helvetica/DejaVu/g' scripts/scrape_cotton_oncall.py
+          sed -i 's/helvetica/DejaVu/g' scripts/scrape_cotton_oncall.py
           
           cat > scripts/test_real_pdf.py << 'EOF'
           import os, sys
@@ -55,7 +54,6 @@ jobs:
               print(f"[{now()}] ❌ No data in CSV")
               sys.exit(1)
 
-          # Use last 10 rows as "new" data for test
           new_rows = all_rows[-10:] if count > 10 else all_rows
           report_date = new_rows[-1].get("Report Date", datetime.now().strftime("%m/%d/%Y"))
 
