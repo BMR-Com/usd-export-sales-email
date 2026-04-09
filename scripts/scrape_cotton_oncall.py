@@ -283,352 +283,104 @@ def safe_text(t):
 
 def generate_pdf(new_rows, all_rows_for_charts):
     """
-    A4 Landscape (297x210mm), margins 8mm, usable 281x194mm (y:8-202)
-    PAGE 1: header(8) | summary(17-53) | table(54-124) | old-charts(132-202)
-    PAGE 2: header(8) | all-charts(22-105) | new-charts(111-202)
-    All Y positions are CONSTANTS — never shift regardless of content length.
+    Renders cotton_oncall/index.html via Playwright and returns PDF bytes.
+    Injects the full CSV data so the page renders with the latest data.
+    Falls back to None if Playwright is unavailable.
     """
+    import subprocess, sys, pathlib, csv, io
+
+    # Find the HTML file relative to this script
+    repo_root  = pathlib.Path(__file__).parent.parent
+    html_file  = repo_root / "cotton_oncall" / "index.html"
+    csv_file   = repo_root / "cotton_oncall" / "cotton_oncall_data.csv"
+
+    if not html_file.exists():
+        print(f"HTML file not found: {html_file}")
+        return None
+    if not csv_file.exists():
+        print(f"CSV file not found: {csv_file}")
+        return None
+
     try:
-        import matplotlib, io
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-        from fpdf import FPDF
-    except ImportError as e:
-        print(f"PDF lib missing ({e})"); return None
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        print("Playwright not installed — skipping PDF generation")
+        return None
 
-    if not new_rows: return None
-    report_date = new_rows[0].get("Report Date","")
+    # Read CSV text to inject into the page
+    csv_text = csv_file.read_text(encoding="utf-8-sig")
+    report_date = new_rows[0].get("Report Date", "") if new_rows else ""
+    print(f"Rendering page for report date: {report_date}")
 
-    # ── Constants ─────────────────────────────────────────────────────────────
-    M    = 8       # margin mm
-    W    = 297     # A4 landscape width
-    H    = 210     # A4 landscape height
-    UW   = W-2*M   # 281mm usable width
-    CW   = (UW-4)/3  # 92.3mm per chart (2mm gaps x2)
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(args=[
+                "--no-sandbox", "--disable-setuid-sandbox",
+                "--disable-web-security", "--allow-file-access-from-files"
+            ])
+            page = browser.new_page(viewport={"width": 1440, "height": 900})
+            errors = []
+            page.on("pageerror", lambda e: errors.append(str(e)[:100]))
 
-    # Page 1 fixed Y positions
-    Y_HDR   = M          # 8
-    Y_SUM   = 17         # summary section start
-    Y_TBL   = 54         # table start
-    Y_CLBL1 = 127        # "OLD CROP" label
-    Y_CH1   = 132        # old crop charts start
-    CH1_H   = 70         # old crop chart height → ends at 202 ✓
+            page.goto(f"file://{html_file}", wait_until="load")
+            page.wait_for_timeout(2000)
 
-    # Page 2 fixed Y positions
-    Y_CLBL2 = 17         # "ALL CROP" label
-    Y_CH2   = 22         # all crop charts start
-    CH2_H   = 83         # → ends at 105
-    Y_CLBL3 = 106        # "NEW CROP" label
-    Y_CH3   = 111        # new crop charts start
-    CH3_H   = 91         # → ends at 202 ✓
+            # Inject the CSV and trigger the page to render
+            js_extract = """
+                () => typeof parseCSV === 'function'
+                    || typeof ALL_DATA !== 'undefined'
+            """
+            # Inject boot logic: set CSV as if fetched, then re-run boot
+            safe_csv = csv_text.replace('`', '\\`').replace('${', '\\${')
+            inject_js = (
+                "() => {"
+                "  var _orig = window.fetch;"
+                "  window.fetch = function(url) {"
+                "    if(url && url.toString().includes('cotton_oncall_data')) {"
+                "      return Promise.resolve({"
+                "        ok: true,"
+                "        text: function() { return Promise.resolve(`" + safe_csv + "`); }"
+                "      });"
+                "    }"
+                "    return _orig ? _orig(url) : Promise.reject('no fetch');"
+                "  };"
+                "}"
+            )
+            page.evaluate(inject_js)
 
-    TBL_ROW_H = 3.8
-    MAX_TBL_ROWS = 16    # caps table at 16 rows so it never overflows Y_CLBL1
+            # Re-run boot with our intercepted fetch
+            page.evaluate("() => { if(typeof boot === 'function') boot(); }")
+            page.wait_for_timeout(4000)
 
-    CM = [3,5,7,10,12]
+            # Wait for data to load (badge shows OK)
+            try:
+                page.wait_for_function(
+                    "() => { var b = document.getElementById('badge'); "
+                    "return b && b.className === 'ok'; }",
+                    timeout=10000
+                )
+            except Exception:
+                print("Warning: badge not OK after 10s — rendering anyway")
 
-    # ── Build DATA ────────────────────────────────────────────────────────────
-    DATA = {}
-    for r in all_rows_for_charts:
-        yr = r.get("Report Year","").strip()
-        if not yr and "/" in r.get("Report Date",""):
-            yr = r["Report Date"].split("/")[2]
-        try: wk = int(round(float(r.get("Week #",0))))
-        except: continue
-        on = r.get("Old/New","")
-        if not yr or not wk or on=="total": continue
-        try: mon = int(float(r.get("Month",0)))
-        except: mon=0
-        try: p = int(r.get("Unfixed Call Purchases",0) or 0)
-        except: p=0
-        try: s = int(r.get("Unfixed Call Sales",0) or 0)
-        except: s=0
-        if yr not in DATA: DATA[yr]={}
-        if wk not in DATA[yr]: DATA[yr][wk]={}
-        if mon not in DATA[yr][wk]: DATA[yr][wk][mon]={"oP":0,"oS":0,"aP":0,"aS":0}
-        DATA[yr][wk][mon]["aP"]+=p; DATA[yr][wk][mon]["aS"]+=s
-        if on=="old": DATA[yr][wk][mon]["oP"]+=p; DATA[yr][wk][mon]["oS"]+=s
+            page.wait_for_timeout(2000)
 
-    all_years=sorted(DATA.keys())
-    max_wk=max((max(wks.keys()) for wks in DATA.values() if wks),default=52)
-    weeks=list(range(1,max_wk+1))
-    years20=all_years[-20:]
+            if errors:
+                print(f"Page errors: {errors[:3]}")
 
-    def slot_get(yr,wk):
-        if yr not in DATA or wk not in DATA[yr]: return None
-        slot=DATA[yr][wk]
-        if not any(m in slot for m in CM): return None
-        aP=sum(slot[m]["aP"] for m in CM if m in slot)
-        aS=sum(slot[m]["aS"] for m in CM if m in slot)
-        oP=sum(slot[m]["oP"] for m in CM if m in slot)
-        oS=sum(slot[m]["oS"] for m in CM if m in slot)
-        return {"aP":aP,"aS":aS,"oP":oP,"oS":oS,"nP":aP-oP,"nS":aS-oS}
+            pdf_bytes = page.pdf(
+                format="A4",
+                landscape=True,
+                print_background=True,
+                margin={"top": "8mm", "bottom": "8mm",
+                        "left": "8mm", "right": "8mm"}
+            )
+            browser.close()
+            print(f"PDF generated: {len(pdf_bytes)//1024}KB")
+            return pdf_bytes
 
-    def get_val(ci,yr,wk):
-        v=slot_get(yr,wk)
-        if v is None: return None
-        keys=[("oP","oS"),("aP","aS"),("nP","nS")][ci//3]
-        p2,s2=v[keys[0]],v[keys[1]]
-        return [p2,s2,s2-p2][ci%3]
-
-    cur_wk=None
-    for r in new_rows:
-        try: cur_wk=int(round(float(r.get("Week #",0)))); break
-        except: pass
-
-    # ── Summary computation ───────────────────────────────────────────────────
-    def cur_crop(rows, crop):
-        s=p=cs=cp=0
-        for r in rows:
-            on=r.get("Old/New","")
-            if on=="total": continue
-            if crop=="old" and on!="old": continue
-            if crop=="new" and on=="old": continue
-            try: s +=int(r.get("Unfixed Call Sales",0) or 0)
-            except: pass
-            try: p +=int(r.get("Unfixed Call Purchases",0) or 0)
-            except: pass
-            try: cs+=int(r.get("Chg Sales",0) or 0)
-            except: pass
-            try: cp+=int(r.get("Chg Purchases",0) or 0)
-            except: pass
-        return s,p,s-p,cs,cp,cs-cp
-
-    def hist(ci_idx, wk):
-        vals=[]
-        for yr in years20:
-            v=get_val(ci_idx,yr,wk)
-            if v is not None: vals.append(v)
-        avg=round(sum(vals)/len(vals)) if vals else None
-        mn=min(vals) if vals else None
-        mx=max(vals) if vals else None
-        pct=round(100*sum(1 for v in vals if v<=vals[0])/len(vals)) if vals else None
-        return avg,mn,mx,vals
-
-    SUM={}
-    CI_MAP={"old":(1,0,2),"all":(4,3,5),"new":(7,6,8)}
-    for crop in ["old","all","new"]:
-        s,p,imb,cs,cp,ci_=cur_crop(new_rows,crop)
-        si,pi,ii=CI_MAP[crop]
-        savg,smn,smx,svals=hist(si,cur_wk)
-        pavg,pmn,pmx,pvals=hist(pi,cur_wk)
-        iavg,imn,imx,ivals=hist(ii,cur_wk)
-        spct=round(100*sum(1 for v in svals if v<=s)/len(svals)) if svals else None
-        ppct=round(100*sum(1 for v in pvals if v<=p)/len(pvals)) if pvals else None
-        ipct=round(100*sum(1 for v in ivals if v<=imb)/len(ivals)) if ivals else None
-        SUM[crop]={"s":s,"p":p,"imb":imb,"cs":cs,"cp":cp,"ci":ci_,
-                   "savg":savg,"smn":smn,"smx":smx,"spct":spct,
-                   "pavg":pavg,"pmn":pmn,"pmx":pmx,"ppct":ppct,
-                   "iavg":iavg,"imn":imn,"imx":imx,"ipct":ipct}
-
-    # ── Chart builder ─────────────────────────────────────────────────────────
-    COLORS=['#1a6b3c','#c0392b','#2e86c1','#8e44ad','#d35400','#16a085','#f39c12','#1a3a5c']
-    TITLES=['Old Crop - Purchases','Old Crop - Sales','Old Crop - Imbalance',
-            'All Crop - Purchases','All Crop - Sales','All Crop - Imbalance',
-            'New Crop - Purchases','New Crop - Sales','New Crop - Imbalance']
-    cur_yr=datetime.now().year
-    def_years=[y for y in all_years if cur_yr-4<=int(y)<=cur_yr and int(y)>2005]
-
-    def make_chart(ci, w_mm, h_mm, dpi=120):
-        fig,ax=plt.subplots(figsize=(w_mm/25.4, h_mm/25.4), dpi=dpi)
-        fig.patch.set_facecolor('white')
-        # 20yr band
-        maxV,minV=[],[]
-        for wk in weeks:
-            vs=[get_val(ci,y,wk) for y in years20]
-            vs=[v for v in vs if v is not None]
-            maxV.append(max(vs) if vs else None)
-            minV.append(min(vs) if vs else None)
-        idx=[i for i in range(len(weeks)) if maxV[i] is not None]
-        if idx:
-            ax.fill_between([weeks[i] for i in idx],[minV[i] for i in idx],[maxV[i] for i in idx],
-                            alpha=0.14,color='#4a90d9',zorder=0,label='20yr Range')
-        # Year lines
-        for yi,yr in enumerate(def_years):
-            vals=[get_val(ci,yr,wk) for wk in weeks]
-            ax.plot(weeks,vals,color=COLORS[yi%len(COLORS)],
-                    linewidth=1.8 if yr==str(cur_yr) else 1.1,label=yr,zorder=2)
-        ax.set_title(TITLES[ci],fontsize=6.5,fontweight='bold',color='#1a3a5c',pad=2)
-        ax.tick_params(labelsize=4.5,pad=1)
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(
-            lambda x,_: f'{int(x/1000)}k' if abs(x)>=1000 else str(int(x))))
-        ax.grid(axis='y',color='#efefef',linewidth=0.4)
-        ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
-        ax.set_xlim(1,max_wk)
-        ax.legend(fontsize=4,loc='upper right',framealpha=0.6,ncol=3,
-                  columnspacing=0.4,handlelength=0.8,handletextpad=0.3)
-        plt.tight_layout(pad=0.15)
-        buf=io.BytesIO()
-        fig.savefig(buf,format='png',dpi=dpi,bbox_inches='tight',
-                    facecolor='white',edgecolor='none')
-        plt.close(fig); buf.seek(0)
-        return buf.read()
-
-    # Pre-render all 9 charts
-    imgs={}
-    for ci in range(9):
-        h=CH1_H if ci<3 else (CH2_H if ci<6 else CH3_H)
-        imgs[ci]=make_chart(ci,CW,h)
-        tmp=f'/tmp/ch{ci}.png'
-        with open(tmp,'wb') as f: f.write(imgs[ci])
-
-    # ── PDF helpers ───────────────────────────────────────────────────────────
-    def n(v):
-        try:
-            iv=int(v)
-            return f'({abs(iv):,})' if iv<0 else f'{iv:,}'
-        except: return '--' if (v is None or str(v).strip()=='') else str(v)
-
-    def chg(v):
-        try:
-            iv=int(v)
-            return ('+' if iv>0 else '')+f'{iv:,}'
-        except: return '--'
-
-    def pbar(p):
-        if p is None: return '--'
-        return safe_text(f'{p}%') + (' HI' if p>=70 else (' LO' if p<=30 else ''))
-
-    # ── Build PDF ─────────────────────────────────────────────────────────────
-    pdf=FPDF(orientation='L',unit='mm',format='A4')
-
-    FONT_FAMILY = "Helvetica"
-    for _fn, _fp, _fbp in [
-        ("DejaVu",
-         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
-        ("Liberation",
-         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
-    ]:
-        try:
-            if os.path.exists(_fp) and os.path.exists(_fbp):
-                pdf.add_font(_fn, "",  _fp,  uni=True)
-                pdf.add_font(_fn, "B", _fbp, uni=True)
-                FONT_FAMILY = _fn
-                print(f"Font loaded: {_fn}")
-                break
-        except Exception as _fe:
-            print(f"Font {_fn} failed: {_fe}")
-    if FONT_FAMILY == "Helvetica":
-        print("Using Helvetica - unicode replaced by safe_text()")
-
-    def hdr_bar(txt):
-        pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
-        pdf.rect(M,Y_HDR,UW,9,'F')
-        pdf.set_font(FONT_FAMILY,'B',9)
-        pdf.set_xy(M+2,Y_HDR+1.5)
-        pdf.cell(UW-4,6,txt,ln=0)
-        pdf.set_text_color(0,0,0)
-
-    def sec_bar(y,txt):
-        pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
-        pdf.set_font(FONT_FAMILY,'B',6.5)
-        pdf.set_xy(M,y)
-        pdf.cell(UW,4.5,f'  {txt}',border=0,ln=1,fill=True,align='L')
-        pdf.set_text_color(0,0,0)
-
-    # ════ PAGE 1 ════════════════════════════════════════════════════════════
-    pdf.add_page()
-    hdr_bar(f'CFTC Cotton On-Call Report  ·  {report_date}  ·  Week {cur_wk}')
-
-    # ── Summary (y=17 to 53) ──────────────────────────────────────────────
-    pdf.set_xy(M,Y_SUM)
-    pdf.set_font(FONT_FAMILY,'B',7); pdf.set_fill_color(235,242,250)
-    pdf.cell(UW,5,safe_text(f'Weekly Summary - Unfixed Call Positions vs 20-Year History  (Week {cur_wk})'),
-             border=0,ln=1,fill=True,align='C')
-
-    SCOLS=[40,22,14,22,14,22,14,22,22,15,15]  # sum=222mm (<281 — fits with room)
-    SHDRS=['','Sales','Chg','Purchases','Chg','Imbalance','Chg',
-           '20yr Avg S','20yr Avg P','Pct S','Pct P']
-    RH=4.2
-
-    pdf.set_font(FONT_FAMILY,'B',6); pdf.set_fill_color(205,218,232); pdf.set_text_color(30,30,30)
-    pdf.set_xy(M,pdf.get_y())
-    for h,w in zip(SHDRS,SCOLS):
-        pdf.cell(w,RH,h,border=0,ln=0,align='C',fill=True)
-    pdf.ln()
-
-    CROP_LBL={"old":"OLD CROP","all":"ALL CROP","new":"NEW CROP (All - Old)"}
-    BG={"old":(255,252,230),"all":(240,245,255),"new":(245,255,245)}
-    for crop in ["old","all","new"]:
-        d=SUM[crop]
-        pdf.set_text_color(255,255,255); pdf.set_fill_color(40,80,130)
-        pdf.set_font(FONT_FAMILY,'B',6); pdf.set_xy(M,pdf.get_y())
-        pdf.cell(UW,3.5,f'  {CROP_LBL[crop]}',border=0,ln=1,fill=True,align='L')
-        pdf.set_text_color(0,0,0); pdf.set_fill_color(*BG[crop]); pdf.set_font(FONT_FAMILY,'',6.5)
-        pdf.set_xy(M,pdf.get_y())
-        row_vals=['Current',n(d['s']),chg(d['cs']),n(d['p']),chg(d['cp']),
-                  n(d['imb']),chg(d['ci']),
-                  n(d['savg']),n(d['pavg']),pbar(d['spct']),pbar(d['ppct'])]
-        for val,w in zip(row_vals,SCOLS):
-            pdf.cell(w,RH,str(val),border=0,ln=0,align='R' if val!=row_vals[0] else 'L',fill=True)
-        pdf.ln()
-        # 20yr range sub-row
-        pdf.set_font(FONT_FAMILY,'',5.5); pdf.set_fill_color(250,252,255)
-        pdf.set_xy(M,pdf.get_y())
-        rng_vals=['20yr Range',
-                  n(d['smn'])+'-'+n(d['smx']),'',
-                  n(d['pmn'])+'-'+n(d['pmx']),'',
-                  n(d['imn'])+'-'+n(d['imx']),'','','','','']
-        for val,w in zip(rng_vals,SCOLS):
-            pdf.cell(w,3.2,str(val),border=0,ln=0,align='R' if val!=rng_vals[0] else 'L',fill=True)
-        pdf.ln()
-
-    # ── Current week table (y=54, max 16 rows) ───────────────────────────
-    pdf.set_xy(M,Y_TBL)
-    TCOLS=[50,22,15,24,15,24,15]; THEADS=['Futures Based On','Sales','Chg','Purchases','Chg','At Close','Chg']
-    pdf.set_font(FONT_FAMILY,'B',6.5); pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
-    for h,w in zip(THEADS,TCOLS):
-        pdf.cell(w,5,h,border=0,ln=0,align='L' if h==THEADS[0] else 'R',fill=True)
-    pdf.ln(); pdf.set_text_color(0,0,0)
-
-    data_rows=sorted([r for r in new_rows if r.get("Old/New","") not in ("total","")],
-        key=lambda r:(0 if r.get("Old/New")=="old" else 1,
-                      float(r.get("Yr",0) or 0),float(r.get("Month",0) or 0)))
-    tot_rows=[r for r in new_rows if r.get("Old/New","")=="total"]
-
-    for r in data_rows[:MAX_TBL_ROWS]:
-        on=r.get("Old/New","")
-        bg=(255,252,220) if on=="old" else (246,255,243)
-        pdf.set_fill_color(*bg); pdf.set_font(FONT_FAMILY,'',6)
-        pdf.cell(TCOLS[0],TBL_ROW_H,str(r.get("Futures Based On","")),border=0,ln=0,align='L',fill=True)
-        for val,cw in [(r.get("Unfixed Call Sales"),TCOLS[1]),(r.get("Chg Sales"),TCOLS[2]),
-                       (r.get("Unfixed Call Purchases"),TCOLS[3]),(r.get("Chg Purchases"),TCOLS[4]),
-                       (r.get("At Close"),TCOLS[5]),(r.get("Chg At Close"),TCOLS[6])]:
-            pdf.cell(cw,TBL_ROW_H,n(val),border=0,ln=0,align='R',fill=True)
-        pdf.ln()
-
-    if tot_rows:
-        tr=tot_rows[0]
-        pdf.set_font(FONT_FAMILY,'B',6.5); pdf.set_fill_color(220,235,251)
-        pdf.cell(TCOLS[0],4.5,'Totals',border=0,ln=0,align='L',fill=True)
-        for val,cw in [(tr.get("Unfixed Call Sales"),TCOLS[1]),(tr.get("Chg Sales"),TCOLS[2]),
-                       (tr.get("Unfixed Call Purchases"),TCOLS[3]),(tr.get("Chg Purchases"),TCOLS[4]),
-                       (tr.get("At Close"),TCOLS[5]),(tr.get("Chg At Close"),TCOLS[6])]:
-            pdf.cell(cw,4.5,n(val),border=0,ln=0,align='R',fill=True)
-        pdf.ln()
-
-    # ── Old Crop charts — FIXED at Y=132 ─────────────────────────────────
-    sec_bar(Y_CLBL1,'OLD CROP')
-    for i,ci in enumerate([0,1,2]):
-        pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH1, w=CW, h=CH1_H)
-
-    # ════ PAGE 2 ════════════════════════════════════════════════════════════
-    pdf.add_page()
-    hdr_bar(f'CFTC Cotton On-Call - Historical Charts - {report_date}')
-
-    # ── All Crop charts — FIXED at Y=22 ──────────────────────────────────
-    sec_bar(Y_CLBL2,'ALL CROP')
-    for i,ci in enumerate([3,4,5]):
-        pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH2, w=CW, h=CH2_H)
-
-    # ── New Crop charts — FIXED at Y=111 ─────────────────────────────────
-    sec_bar(Y_CLBL3,'NEW CROP (All - Old)')
-    for i,ci in enumerate([6,7,8]):
-        pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH3, w=CW, h=CH3_H)
-
-    return pdf.output()
+    except Exception as e:
+        print(f"Playwright PDF generation failed: {e}")
+        return None
 
 
 def send_email(pdf_bytes, report_date):
