@@ -1,0 +1,63 @@
+name: Cotton On-Call Weekly Update
+
+on:
+  schedule:
+    # Thursday 3:30 PM EDT (summer, UTC-4) = 19:30 UTC
+    - cron: '30 19 * * 4'
+    # Thursday 3:30 PM EST (winter, UTC-5) = 20:30 UTC
+    - cron: '30 20 * * 4'
+  workflow_dispatch:
+    inputs:
+      force_email:
+        description: 'Force send email even if no new data found'
+        required: false
+        default: 'false'
+
+jobs:
+  scrape-and-notify:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4 fpdf2
+
+      - name: Run Cotton On-Call scraper
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:   ${{ secrets.EMAIL_TO }}
+          FORCE_EMAIL: ${{ github.event.inputs.force_email }}
+        run: python scripts/scrape_cotton_oncall.py
+
+      - name: Commit updated data files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/cotton_oncall.csv
+          git add cotton_oncall/cotton_oncall_data.csv || true
+          if git diff --staged --quiet; then
+            echo "No data changes to commit"
+          else
+            DATE=$(TZ="America/New_York" date +%Y-%m-%d)
+            git commit -m "data: cotton on-call update $DATE [skip ci]"
+            git push
+            echo "✓ Data committed and pushed"
+          fi
