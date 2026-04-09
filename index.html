@@ -989,6 +989,8 @@ async function loadAll(){
     };
     localStorage.setItem('bmr_data_esr', JSON.stringify(esrSummary));
   }catch(e){}
+  // Cache CSV for instant restore on tab switch
+  try{ if(window.COTTON_CSV_DATA) sessionStorage.setItem('esr_csv_cache', window.COTTON_CSV_DATA); }catch(e){}
   setStatus('ok',`✓ Loaded ${allLoadedYears.length} years (MY${fromYr}–MY${toYr}) · ${commName}`);
     const footerEl=document.getElementById('footerTs');
     if(footerEl) footerEl.textContent=`Updated ${new Date().toLocaleString()}`;
@@ -2366,6 +2368,15 @@ function parseAndStoreCSV(text, filename){
 // Auto-fetch CSV from repo (works when served from GitHub Pages or localhost)
 // Falls back to relative path attempts, then file picker
 async function autoLoadCSV(){
+  // Restore from sessionStorage cache — instant on tab switch back
+  try{
+    var _c = sessionStorage.getItem('esr_csv_cache');
+    if(_c && _c.length > 500){
+      window.COTTON_CSV_DATA = _c; // restore the global
+      loadAll(); // re-process from global (same as initial load)
+      return;
+    }
+  }catch(e){}
   const statusEl = document.getElementById('aiStatus');
 
   // ── Priority 1: cotton_data.js injected by GitHub Actions ──────────────
@@ -2637,6 +2648,7 @@ async function sendAIMessage(){
     const d     = await res.json();
     const reply = d.choices[0].message.content;
     aiHistory.push({role:'assistant', content:reply});
+    try{ sessionStorage.setItem('esr_ai_hist', JSON.stringify(aiHistory)); }catch(e){}
     removeThinking(thinkId);
 
     // Check for chart block
@@ -3003,6 +3015,28 @@ function buildEmailReportHTML(){
 // Auto-load CSV when page loads
 document.addEventListener('DOMContentLoaded', ()=>{
   loadAIConfig();
+  // Restore AI chat history from session
+  try{
+    var _h = sessionStorage.getItem('esr_ai_hist');
+    if(_h){
+      var _msgs = JSON.parse(_h);
+      aiHistory = _msgs;
+      // Re-render saved messages
+      _msgs.forEach(function(m){
+        if(m.role !== 'system') appendAIMsg(m.role, m.content);
+      });
+    }
+  }catch(e){}
+
+  // Restore master AI chat history
+  try{
+    var _mh = sessionStorage.getItem('platform_ai_hist');
+    if(_mh){
+      var _mm = JSON.parse(_mh);
+      MASTER_AI_HIST_ESR = _mm;
+      _mm.forEach(function(m){ if(m.role!=='system') appendMasterMsgEsr(m.role, m.content); });
+    }
+  }catch(e){}
   setTimeout(autoLoadCSV, 1000);
 });
 
@@ -3044,6 +3078,7 @@ async function sendMasterAIEsr(){
     if(!res.ok){var e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
     var d=await res.json(); var reply=d.choices[0].message.content;
     MASTER_AI_HIST_ESR.push({role:'assistant',content:reply});
+    try{ sessionStorage.setItem('platform_ai_hist', JSON.stringify(MASTER_AI_HIST_ESR)); }catch(e){}
     removeMasterThinkEsr(thkId); appendMasterMsgEsr('assistant',reply);
   }catch(err){removeMasterThinkEsr(thkId);appendMasterMsgEsr('assistant','Error: '+err.message);}
   document.getElementById('master-send-btn').disabled=false;
