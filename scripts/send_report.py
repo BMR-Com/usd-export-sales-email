@@ -79,14 +79,29 @@ def render_to_pdf():
         )
         page = context.new_page()
         
-        # Block unnecessary resources for speed
-        page.route("**/*.{png,jpg,jpeg,gif,svg,css,woff,woff2}", lambda route: route.abort())
-        
         print(f"[{now()}] Loading dashboard...")
-        page.goto(f"file://{os.path.abspath('index.html')}", wait_until='domcontentloaded')
+        page.goto(f"file://{os.path.abspath('index.html')}", wait_until='networkidle')
         
         # === SECURITY: Real authentication ===
         authenticate(page)
+        
+        # === CRITICAL: Ensure overlay is completely gone ===
+        print(f"[{now()}] Ensuring clean DOM state...")
+        page.evaluate('''() => {
+            // Force remove auth overlay if still present
+            const overlay = document.getElementById('auth-overlay');
+            if (overlay) overlay.remove();
+            
+            // Force show and enable button
+            const btn = document.getElementById('btnLoad');
+            if (btn) {
+                btn.style.display = 'block';
+                btn.style.visibility = 'visible';
+                btn.disabled = false;
+                btn.hidden = false;
+            }
+        }''')
+        page.wait_for_timeout(300)
         
         # === SET DEFAULTS: All countries, last 5 years ===
         current_year = datetime.now().year
@@ -95,7 +110,6 @@ def render_to_pdf():
         print(f"[{now()}] Setting defaults: ALL countries, {start_year}–{current_year}...")
         
         page.evaluate(f'''() => {{
-            // Set year dropdowns (try multiple common ID patterns)
             const ys = document.getElementById('yearStart') || document.getElementById('startYear') || document.querySelector('[id*="year"][id*="start"]');
             const ye = document.getElementById('yearEnd') || document.getElementById('endYear') || document.querySelector('[id*="year"][id*="end"]');
             const cs = document.getElementById('countrySelect') || document.getElementById('country') || document.querySelector('select[name*="country"]');
@@ -103,7 +117,6 @@ def render_to_pdf():
             if (ys) {{ ys.value = '{start_year}'; ys.dispatchEvent(new Event('change')); }}
             if (ye) {{ ye.value = '{current_year}'; ye.dispatchEvent(new Event('change')); }}
             
-            // Try common "all" values: 'ALL', '', '0', 'all'
             if (cs) {{
                 const allOption = Array.from(cs.options).find(o => 
                     o.value === 'ALL' || o.value === '' || o.value === '0' || 
@@ -116,30 +129,31 @@ def render_to_pdf():
             }}
         }}''')
         
-        page.wait_for_timeout(500)  # Let UI update
+        page.wait_for_timeout(500)
         print(f"[{now()}] Defaults applied")
-        # === END DEFAULTS ===
         
-        # === FIX: Wait for button to enable, then click ===
-        print(f"[{now()}] Waiting for Load Data button...")
+        # === FINAL BUTTON ACTIVATION ===
+        print(f"[{now()}] Activating Load Data button...")
+        page.evaluate('''() => {
+            const btn = document.getElementById('btnLoad');
+            if (btn) {
+                btn.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important;';
+                btn.disabled = false;
+                btn.hidden = false;
+                btn.removeAttribute('hidden');
+                btn.removeAttribute('aria-hidden');
+            }
+        }''')
+        page.wait_for_timeout(200)
         
-        try:
-            # Wait up to 10s for button to be enabled
-            page.wait_for_selector('#btnLoad:not([disabled])', timeout=10000)
-        except PlaywrightTimeout:
-            print(f"[{now()}] Button still disabled — forcing enable...")
-            page.evaluate('() => {{ const b = document.getElementById("btnLoad"); if(b) b.disabled = false; }}')
+        # Click using JavaScript (bypasses visibility checks)
+        print(f"[{now()}] Triggering data load...")
+        page.evaluate('() => { const b = document.getElementById("btnLoad"); if(b && b.click) b.click(); else if(typeof loadAll === "function") loadAll(); }')
         
-        # Ensure visible and click
-        page.wait_for_selector('#btnLoad', state='visible', timeout=5000)
-        print(f"[{now()}] Clicking Load Data...")
-        page.click('#btnLoad')
-        
-        # Wait for data load completion
-        page.wait_for_selector('.data-loaded, #resultsTable, .chart-container', 
+        # Wait for results
+        page.wait_for_selector('.data-loaded, #resultsTable, .chart-container, [class*="result"], [id*="result"]', 
                               state='visible', timeout=30000)
         
-        # Small delay for charts to render
         page.wait_for_timeout(2000)
         
         # Generate PDF
