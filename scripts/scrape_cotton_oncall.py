@@ -7,7 +7,7 @@ Retries every 5 minutes for up to 35 minutes if report not yet published.
 Only sends email when new data is found.
 """
 
-import requests, re, os, sys, time, csv, smtplib, io, ssl
+import requests, re, os, sys, time, csv, smtplib, io
 from bs4 import BeautifulSoup
 from datetime import date, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -21,10 +21,7 @@ HEADERS_NOCACHE = {**HEADERS, "Cache-Control": "no-cache, no-store, must-revalid
 
 BASE      = "https://www.cftc.gov"
 BASE_PATH = "/MarketReports/CottonOnCall/HistoricalCottonOn-Call/"
-# Repo root is one level up from scripts/
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CSV_PATH  = os.path.join(REPO_ROOT, "data", "cotton_oncall.csv")
-WEB_CSV   = os.path.join(REPO_ROOT, "cotton_oncall", "cotton_oncall_data.csv")
+CSV_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "cotton_oncall.csv")
 
 MONTH_MAP = {
     "january":1,"february":2,"march":3,"april":4,"may":5,"june":6,
@@ -42,9 +39,6 @@ MAX_RETRIES    = 7     # 7 attempts × 5 min = 35 min window
 RETRY_INTERVAL = 300   # 5 minutes
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-def now():
-    return datetime.now().strftime('%H:%M:%S')
 
 def get_old_new(cy, cm, ry, report_month):
     if report_month <= 6:
@@ -85,7 +79,7 @@ def parse_date_from_text(text):
     # Format C: header "Weekly Report N – Month DD, YYYY"
     m = re.search(
         r"Weekly Report[^-\n]*[-\u2013]\s*(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|"
-        r"Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|"
+        r"Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:ember)?|"
         r"Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2}),?\s+(\d{4})",
         text, re.IGNORECASE)
     if m:
@@ -160,7 +154,7 @@ def parse_report(html):
 # ── URL helpers ───────────────────────────────────────────────────────────────
 
 def get_candidate_urls():
-    print(f"[{now()}] Fetching CFTC index page...")
+    print("Fetching CFTC index page...")
     try:
         r = requests.get(BASE + BASE_PATH + "index.htm", headers=HEADERS, timeout=30)
         soup = BeautifulSoup(r.text, "html.parser")
@@ -176,7 +170,7 @@ def get_candidate_urls():
             if full not in seen:
                 seen.add(full); urls.append(full)
     except Exception as e:
-        print(f"[{now()}] ⚠️  Index page error: {e}")
+        print(f"⚠️  Index page error: {e}")
         urls, seen = [], set()
 
     known_2026 = [
@@ -203,7 +197,7 @@ def get_candidate_urls():
         u = BASE + BASE_PATH + fn
         if u not in seen: urls.append(u)
 
-    print(f"[{now()}] Found {len(urls)} total candidate URLs")
+    print(f"Found {len(urls)} total candidate URLs")
     return urls
 
 # ── CSV helpers ───────────────────────────────────────────────────────────────
@@ -219,31 +213,31 @@ def read_existing_dates(csv_path):
                     if d: existing.add(d)
             if existing: break
         except: pass
-    print(f"[{now()}] Found {len(existing)} existing report dates in CSV")
+    print(f"Found {len(existing)} existing report dates in CSV")
     return existing
 
 def read_all_rows(csv_path):
     if not os.path.exists(csv_path):
-        print(f"[{now()}] CSV not found: {csv_path}"); return [], 0
+        print(f"CSV not found: {csv_path}"); return [], 0
     fsize = os.path.getsize(csv_path)
-    print(f"[{now()}] CSV size: {fsize} bytes")
+    print(f"CSV size: {fsize} bytes")
     if fsize < 100:
-        print(f"[{now()}] ⚠️  CSV too small — aborting"); sys.exit(1)
+        print("⚠️  CSV too small — aborting"); sys.exit(1)
     for enc in ("utf-8-sig","utf-8","latin-1"):
         try:
             with open(csv_path, newline="", encoding=enc) as f:
                 rows = [dict(r) for r in csv.DictReader(f)]
             if rows:
-                print(f"[{now()}] Read {len(rows)} rows (encoding: {enc})")
+                print(f"Read {len(rows)} rows (encoding: {enc})")
                 return rows, len(rows)
         except Exception as e:
-            print(f"[{now()}]   {enc}: {e}")
-    print(f"[{now()}] ⚠️  Could not read CSV — aborting"); sys.exit(1)
+            print(f"  {enc}: {e}")
+    print("⚠️  Could not read CSV — aborting"); sys.exit(1)
 
 def append_rows(csv_path, new_rows):
     existing_rows, rows_before = read_all_rows(csv_path)
     if os.path.exists(csv_path) and rows_before == 0:
-        print(f"[{now()}] ⚠️  SAFETY ABORT: file exists but 0 rows"); sys.exit(1)
+        print("⚠️  SAFETY ABORT: file exists but 0 rows"); sys.exit(1)
 
     for r in new_rows:
         clean = {k:v for k,v in r.items() if not k.startswith("_")}
@@ -256,7 +250,7 @@ def append_rows(csv_path, new_rows):
         if r.get("Report Date","") else datetime.min))
 
     if len(existing_rows) < rows_before:
-        print(f"[{now()}] ⚠️  SAFETY ABORT: would shrink {rows_before}→{len(existing_rows)}"); sys.exit(1)
+        print(f"⚠️  SAFETY ABORT: would shrink {rows_before}→{len(existing_rows)}"); sys.exit(1)
 
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
     tmp = csv_path + ".tmp"
@@ -264,7 +258,7 @@ def append_rows(csv_path, new_rows):
         w = csv.DictWriter(f, fieldnames=CSV_COLS, extrasaction="ignore")
         w.writeheader(); w.writerows(existing_rows)
     os.replace(tmp, csv_path)
-    print(f"[{now()}] ✅ CSV saved: {rows_before} → {len(existing_rows)} rows (+{len(existing_rows)-rows_before})")
+    print(f"✅ CSV saved: {rows_before} → {len(existing_rows)} rows (+{len(existing_rows)-rows_before})")
 
 # ── PDF generation ────────────────────────────────────────────────────────────
 
@@ -276,12 +270,12 @@ def generate_pdf(new_rows, all_rows_for_charts):
     All Y positions are CONSTANTS — never shift regardless of content length.
     """
     try:
-        import matplotlib
+        import matplotlib, io
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         from fpdf import FPDF
     except ImportError as e:
-        print(f"[{now()}] PDF lib missing ({e})"); return None
+        print(f"PDF lib missing ({e})"); return None
 
     if not new_rows: return None
     report_date = new_rows[0].get("Report Date","")
@@ -410,9 +404,9 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     # ── Chart builder ─────────────────────────────────────────────────────────
     COLORS=['#1a6b3c','#c0392b','#2e86c1','#8e44ad','#d35400','#16a085','#f39c12','#1a3a5c']
-    TITLES=['Old Crop – Purchases','Old Crop – Sales','Old Crop – Imbalance',
-            'All Crop – Purchases','All Crop – Sales','All Crop – Imbalance',
-            'New Crop – Purchases','New Crop – Sales','New Crop – Imbalance']
+    TITLES=['Old Crop - Purchases','Old Crop - Sales','Old Crop - Imbalance',
+            'All Crop - Purchases','All Crop - Sales','All Crop - Imbalance',
+            'New Crop - Purchases','New Crop - Sales','New Crop - Imbalance']
     cur_yr=datetime.now().year
     def_years=[y for y in all_years if cur_yr-4<=int(y)<=cur_yr and int(y)>2005]
 
@@ -478,51 +472,70 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     # ── Build PDF ─────────────────────────────────────────────────────────────
     pdf=FPDF(orientation='L',unit='mm',format='A4')
+    
+    # Add Unicode font support using DejaVu with uni=True parameter (CRITICAL FIX)
+    try:
+        pdf.add_font("DejaVu", "", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", uni=True)
+        pdf.add_font("DejaVu", "B", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", uni=True)
+        FONT_FAMILY = "DejaVu"
+        print("✅ Unicode font (DejaVu) loaded successfully")
+    except Exception as e:
+        print(f"⚠️  DejaVu font failed: {e}")
+        try:
+            # Fallback to Liberation fonts
+            pdf.add_font("Liberation", "", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", uni=True)
+            pdf.add_font("Liberation", "B", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", uni=True)
+            FONT_FAMILY = "Liberation"
+            print("✅ Unicode font (Liberation) loaded successfully")
+        except Exception as e2:
+            print(f"⚠️  Liberation font failed: {e2}")
+            FONT_FAMILY = "helvetica"  # Will fail on em-dash but won't crash import
+            print("⚠️  Falling back to helvetica (may fail on Unicode characters)")
 
     def hdr_bar(txt):
         pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
         pdf.rect(M,Y_HDR,UW,9,'F')
-        pdf.set_font('Helvetica','B',9)
+        pdf.set_font(FONT_FAMILY,'B',9)
         pdf.set_xy(M+2,Y_HDR+1.5)
         pdf.cell(UW-4,6,txt,ln=0)
         pdf.set_text_color(0,0,0)
 
     def sec_bar(y,txt):
         pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
-        pdf.set_font('Helvetica','B',6.5)
+        pdf.set_font(FONT_FAMILY,'B',6.5)
         pdf.set_xy(M,y)
         pdf.cell(UW,4.5,f'  {txt}',border=0,ln=1,fill=True,align='L')
         pdf.set_text_color(0,0,0)
 
     # ════ PAGE 1 ════════════════════════════════════════════════════════════
     pdf.add_page()
-    hdr_bar(f'CFTC Cotton On-Call Report  ·  {report_date}  ·  Week {cur_wk}')
+    hdr_bar(f'CFTC Cotton On-Call Report  -  {report_date}  -  Week {cur_wk}')
 
     # ── Summary (y=17 to 53) ──────────────────────────────────────────────
     pdf.set_xy(M,Y_SUM)
-    pdf.set_font('Helvetica','B',7); pdf.set_fill_color(235,242,250)
-    pdf.cell(UW,5,f'Weekly Summary — Unfixed Call Positions vs 20-Year History  (Week {cur_wk})',
+    pdf.set_font(FONT_FAMILY,'B',7); pdf.set_fill_color(235,242,250)
+    pdf.cell(UW,5,f'Weekly Summary - Unfixed Call Positions vs 20-Year History  (Week {cur_wk})',
              border=0,ln=1,fill=True,align='C')
 
-    SCOLS=[40,22,14,22,14,22,14,22,22,15,15]  # sum=222mm (<281 — fits with room)
+    SCOLS=[40,22,14,22,14,22,14,22,22,15,15]  # sum=222mm (<281 - fits with room)
     SHDRS=['','Sales','Chg','Purchases','Chg','Imbalance','Chg',
            '20yr Avg S','20yr Avg P','Pct S','Pct P']
     RH=4.2
 
-    pdf.set_font('Helvetica','B',6); pdf.set_fill_color(205,218,232); pdf.set_text_color(30,30,30)
+    pdf.set_font(FONT_FAMILY,'B',6); pdf.set_fill_color(205,218,232); pdf.set_text_color(30,30,30)
     pdf.set_xy(M,pdf.get_y())
     for h,w in zip(SHDRS,SCOLS):
         pdf.cell(w,RH,h,border=0,ln=0,align='C',fill=True)
     pdf.ln()
 
-    CROP_LBL={"old":"OLD CROP","all":"ALL CROP","new":"NEW CROP (All − Old)"}
+    CROP_LBL={"old":"OLD CROP","all":"ALL CROP","new":"NEW CROP (All - Old)"}
     BG={"old":(255,252,230),"all":(240,245,255),"new":(245,255,245)}
     for crop in ["old","all","new"]:
         d=SUM[crop]
         pdf.set_text_color(255,255,255); pdf.set_fill_color(40,80,130)
-        pdf.set_font('Helvetica','B',6); pdf.set_xy(M,pdf.get_y())
+        pdf.set_font(FONT_FAMILY,'B',6); pdf.set_xy(M,pdf.get_y())
         pdf.cell(UW,3.5,f'  {CROP_LBL[crop]}',border=0,ln=1,fill=True,align='L')
-        pdf.set_text_color(0,0,0); pdf.set_fill_color(*BG[crop]); pdf.set_font('Helvetica','',6.5)
+        pdf.set_text_color(0,0,0); pdf.set_fill_color(*BG[crop]); pdf.set_font(FONT_FAMILY,'',6.5)
         pdf.set_xy(M,pdf.get_y())
         row_vals=['Current',n(d['s']),chg(d['cs']),n(d['p']),chg(d['cp']),
                   n(d['imb']),chg(d['ci']),
@@ -531,12 +544,12 @@ def generate_pdf(new_rows, all_rows_for_charts):
             pdf.cell(w,RH,str(val),border=0,ln=0,align='R' if val!=row_vals[0] else 'L',fill=True)
         pdf.ln()
         # 20yr range sub-row
-        pdf.set_font('Helvetica','',5.5); pdf.set_fill_color(250,252,255)
+        pdf.set_font(FONT_FAMILY,'',5.5); pdf.set_fill_color(250,252,255)
         pdf.set_xy(M,pdf.get_y())
         rng_vals=['20yr Range',
-                  n(d['smn'])+'–'+n(d['smx']),'',
-                  n(d['pmn'])+'–'+n(d['pmx']),'',
-                  n(d['imn'])+'–'+n(d['imx']),'','','','','']
+                  n(d['smn'])+'-'+n(d['smx']),'',
+                  n(d['pmn'])+'-'+n(d['pmx']),'',
+                  n(d['imn'])+'-'+n(d['imx']),'','','','','']
         for val,w in zip(rng_vals,SCOLS):
             pdf.cell(w,3.2,str(val),border=0,ln=0,align='R' if val!=rng_vals[0] else 'L',fill=True)
         pdf.ln()
@@ -544,7 +557,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
     # ── Current week table (y=54, max 16 rows) ───────────────────────────
     pdf.set_xy(M,Y_TBL)
     TCOLS=[50,22,15,24,15,24,15]; THEADS=['Futures Based On','Sales','Chg','Purchases','Chg','At Close','Chg']
-    pdf.set_font('Helvetica','B',6.5); pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
+    pdf.set_font(FONT_FAMILY,'B',6.5); pdf.set_fill_color(26,58,92); pdf.set_text_color(255,255,255)
     for h,w in zip(THEADS,TCOLS):
         pdf.cell(w,5,h,border=0,ln=0,align='L' if h==THEADS[0] else 'R',fill=True)
     pdf.ln(); pdf.set_text_color(0,0,0)
@@ -557,7 +570,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
     for r in data_rows[:MAX_TBL_ROWS]:
         on=r.get("Old/New","")
         bg=(255,252,220) if on=="old" else (246,255,243)
-        pdf.set_fill_color(*bg); pdf.set_font('Helvetica','',6)
+        pdf.set_fill_color(*bg); pdf.set_font(FONT_FAMILY,'',6)
         pdf.cell(TCOLS[0],TBL_ROW_H,str(r.get("Futures Based On","")),border=0,ln=0,align='L',fill=True)
         for val,cw in [(r.get("Unfixed Call Sales"),TCOLS[1]),(r.get("Chg Sales"),TCOLS[2]),
                        (r.get("Unfixed Call Purchases"),TCOLS[3]),(r.get("Chg Purchases"),TCOLS[4]),
@@ -567,7 +580,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
     if tot_rows:
         tr=tot_rows[0]
-        pdf.set_font('Helvetica','B',6.5); pdf.set_fill_color(220,235,251)
+        pdf.set_font(FONT_FAMILY,'B',6.5); pdf.set_fill_color(220,235,251)
         pdf.cell(TCOLS[0],4.5,'Totals',border=0,ln=0,align='L',fill=True)
         for val,cw in [(tr.get("Unfixed Call Sales"),TCOLS[1]),(tr.get("Chg Sales"),TCOLS[2]),
                        (tr.get("Unfixed Call Purchases"),TCOLS[3]),(tr.get("Chg Purchases"),TCOLS[4]),
@@ -575,21 +588,21 @@ def generate_pdf(new_rows, all_rows_for_charts):
             pdf.cell(cw,4.5,n(val),border=0,ln=0,align='R',fill=True)
         pdf.ln()
 
-    # ── Old Crop charts — FIXED at Y=132 ─────────────────────────────────
+    # ── Old Crop charts - FIXED at Y=132 ─────────────────────────────────
     sec_bar(Y_CLBL1,'OLD CROP')
     for i,ci in enumerate([0,1,2]):
         pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH1, w=CW, h=CH1_H)
 
     # ════ PAGE 2 ════════════════════════════════════════════════════════════
     pdf.add_page()
-    hdr_bar(f'CFTC Cotton On-Call — Historical Charts  ·  {report_date}')
+    hdr_bar(f'CFTC Cotton On-Call - Historical Charts  -  {report_date}')
 
-    # ── All Crop charts — FIXED at Y=22 ──────────────────────────────────
+    # ── All Crop charts - FIXED at Y=22 ──────────────────────────────────
     sec_bar(Y_CLBL2,'ALL CROP')
     for i,ci in enumerate([3,4,5]):
         pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH2, w=CW, h=CH2_H)
 
-    # ── New Crop charts — FIXED at Y=111 ─────────────────────────────────
+    # ── New Crop charts - FIXED at Y=111 ─────────────────────────────────
     sec_bar(Y_CLBL3,'NEW CROP (All minus Old)')
     for i,ci in enumerate([6,7,8]):
         pdf.image(f'/tmp/ch{ci}.png', x=M+i*(CW+2), y=Y_CH3, w=CW, h=CH3_H)
@@ -598,17 +611,15 @@ def generate_pdf(new_rows, all_rows_for_charts):
 
 
 def send_email(pdf_bytes, report_date):
-    """Send PDF via Gmail SMTP with SSL (port 465)"""
     smtp_host = os.environ.get('SMTP_HOST','')
-    smtp_port = int(os.environ.get('SMTP_PORT', 465))
+    smtp_port = int(os.environ.get('SMTP_PORT', 587))
     smtp_user = os.environ.get('SMTP_USER','')
     smtp_pass = os.environ.get('SMTP_PASS','')
     email_from= os.environ.get('EMAIL_FROM','')
     email_to  = os.environ.get('EMAIL_TO','')
-    force     = os.environ.get('FORCE_EMAIL','false').lower() == 'true'
 
     if not all([smtp_host, smtp_user, smtp_pass, email_from, email_to]):
-        print(f"[{now()}] ⚠️  Email env vars not set — skipping email"); return
+        print("⚠️  Email env vars not set — skipping email"); return
 
     recipients = [e.strip() for e in email_to.split(',') if e.strip()]
     fname = f"cotton_oncall_{report_date.replace('/','_')}.pdf"
@@ -616,17 +627,10 @@ def send_email(pdf_bytes, report_date):
     msg = MIMEMultipart()
     msg['From']    = email_from
     msg['To']      = ', '.join(recipients)
-    msg['Subject'] = f"[BMR] Cotton On-Call Report — {report_date}"
-    msg['X-Priority'] = '1'
+    msg['Subject'] = f"Cotton On-Call Report - {report_date}"
     msg.attach(MIMEText(
-        f"""BMR Cotton Analytics — CFTC On-Call Report
-
-Report Date: {report_date}
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
-Source: CFTC Cotton On-Call
-
-This is an automated report. Do not reply.
-""", 'plain'))
+        f"Please find attached the CFTC Cotton On-Call report for {report_date}.\n\n"
+        f"Dashboard: https://your-github-pages-url/", 'plain'))
 
     part = MIMEBase('application','pdf')
     part.set_payload(pdf_bytes)
@@ -634,21 +638,14 @@ This is an automated report. Do not reply.
     part.add_header('Content-Disposition', f'attachment; filename="{fname}"')
     msg.attach(part)
 
-    # Gmail SMTP with SSL on port 465
     try:
-        ctx = ssl.create_default_context()
-        print(f"[{now()}] Connecting to {smtp_host}:{smtp_port} via SSL...")
-        
-        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx, timeout=30) as srv:
-            print(f"[{now()}] Logging in as {smtp_user}...")
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as srv:
+            srv.starttls()
             srv.login(smtp_user, smtp_pass)
-            print(f"[{now()}] Sending to {len(recipients)} recipient(s)...")
             srv.sendmail(email_from, recipients, msg.as_string())
-            
-        print(f"[{now()}] ✅ Email sent to {', '.join(recipients)}")
+        print(f"✅ Email sent to {', '.join(recipients)}")
     except Exception as e:
-        print(f"[{now()}] ❌ Email failed: {e}")
-        raise
+        print(f"⚠️  Email failed: {e}")
 
 # ── Core scrape logic ─────────────────────────────────────────────────────────
 
@@ -658,7 +655,7 @@ def check_for_new_reports(existing_dates, new_rows):
 
     # Step 1: live main page
     live_url = f"https://www.cftc.gov/MarketReports/CottonOnCall/index.htm?_={int(time.time())}"
-    print(f"[{now()}] Checking live page...")
+    print(f"Checking live page...")
     try:
         r = requests.get(live_url, headers=HEADERS_NOCACHE, timeout=15)
         if r.status_code == 200 and "Unfixed" in r.text:
@@ -669,11 +666,11 @@ def check_for_new_reports(existing_dates, new_rows):
                     new_rows.extend(rows)
                     existing_dates.add(rdate)
                     found += 1
-                    print(f"[{now()}] ✅ LIVE PAGE: {rdate} ({len(rows)} rows)")
+                    print(f"✅ LIVE PAGE: {rdate} ({len(rows)} rows)")
                 else:
-                    print(f"[{now()}] ⏭️  Live page already in CSV: {rdate}")
+                    print(f"⏭️  Live page already in CSV: {rdate}")
     except Exception as e:
-        print(f"[{now()}] ⚠️  Live page: {e}")
+        print(f"⚠️  Live page: {e}")
 
     # Step 2: archive last 60 days
     cutoff = datetime.now() - timedelta(days=60)
@@ -689,7 +686,7 @@ def check_for_new_reports(existing_dates, new_rows):
                         recent.append(url); break
                 except: pass
 
-    print(f"[{now()}] Checking {len(recent)} recent archive URLs")
+    print(f"Checking {len(recent)} recent archive URLs")
     for url in recent:
         try:
             r = requests.get(url, headers=HEADERS, timeout=15)
@@ -698,13 +695,13 @@ def check_for_new_reports(existing_dates, new_rows):
             if not rows: continue
             rdate = rows[0]["Report Date"]
             if rdate in existing_dates:
-                print(f"[{now()}] ⏭️  Already have {rdate}"); continue
+                print(f"⏭️  Already have {rdate}"); continue
             new_rows.extend(rows)
             existing_dates.add(rdate)
             found += 1
-            print(f"[{now()}] ✅ NEW: {url.split('/')[-1]} → {rdate} ({len(rows)} rows)")
+            print(f"✅ NEW: {url.split('/')[-1]} → {rdate} ({len(rows)} rows)")
         except Exception as e:
-            print(f"[{now()}] ⚠️  {url.split('/')[-1]}: {e}")
+            print(f"⚠️  {url.split('/')[-1]}: {e}")
         time.sleep(0.3)
 
     return found
@@ -717,42 +714,36 @@ def main():
     found_total = 0
 
     for attempt in range(MAX_RETRIES):
-        print(f"\n[{now()}] --- Attempt {attempt+1}/{MAX_RETRIES} ---")
+        print(f"\n--- Attempt {attempt+1}/{MAX_RETRIES} ---")
         found = check_for_new_reports(existing_dates, new_rows)
         found_total += found
         if found_total > 0:
-            print(f"[{now()}] ✅ New data found on attempt {attempt+1}")
+            print(f"✅ New data found on attempt {attempt+1}")
             break
         if attempt < MAX_RETRIES - 1:
-            print(f"[{now()}] No new report yet — waiting 5 minutes before retry...")
+            print(f"No new report yet — waiting 5 minutes before retry...")
             time.sleep(RETRY_INTERVAL)
 
-    print(f"\n[{now()}] Total new reports: {found_total} | New rows: {len(new_rows)}")
+    print(f"\nTotal new reports: {found_total} | New rows: {len(new_rows)}")
 
     if not new_rows:
-        print(f"[{now()}] Nothing to add — exiting")
+        print("Nothing to add — exiting")
         sys.exit(0)
 
     # Save CSV
     append_rows(CSV_PATH, new_rows)
 
-    # Copy to cotton_oncall/ for GitHub Pages web access
-    import shutil
-    os.makedirs(os.path.dirname(WEB_CSV), exist_ok=True)
-    shutil.copy2(CSV_PATH, WEB_CSV)
-    print(f"[{now()}] ✓ Web CSV updated: {WEB_CSV}")
-
     # Generate PDF and send email
-    print(f"[{now()}] Generating PDF...")
+    print("Generating PDF...")
     all_rows, _ = read_all_rows(CSV_PATH)
     pdf_bytes = generate_pdf(new_rows, all_rows)
     if pdf_bytes:
         report_date = new_rows[0].get("Report Date","unknown")
         send_email(pdf_bytes, report_date)
     else:
-        print(f"[{now()}] PDF generation skipped or failed")
+        print("PDF generation skipped or failed")
 
-    print(f"[{now()}] ✅ Done")
+    print("✅ Done")
 
 if __name__ == "__main__":
     main()
