@@ -84,8 +84,26 @@ def render_to_pdf():
         page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
 
         log('Loading page...')
-        page.goto(f'file://{HTML_FILE}', wait_until='domcontentloaded')
-        page.wait_for_timeout(1500)
+        page.goto(f'file://{HTML_FILE}', wait_until='load')
+        page.wait_for_timeout(2000)
+
+        # Check if main script executed (file:// can block inline scripts in some environments)
+        defined = page.evaluate("() => typeof parseAndBuild")
+        if defined == 'undefined':
+            log('Main script not auto-executed — injecting via add_script_tag...')
+            html_content = Path(HTML_FILE).read_text(encoding='utf-8')
+            import re as _re
+            script_tags  = [m.start() for m in _re.finditer(r'<script>', html_content)]
+            script_close = [m.start() for m in _re.finditer(r'</script>', html_content)]
+            main_js = html_content[script_tags[-1]:script_close[-1]].replace('<script>','',1)
+            page.add_script_tag(content=main_js)
+            page.wait_for_timeout(800)
+            log('Main script injected via add_script_tag')
+
+        defined2 = page.evaluate("() => typeof parseAndBuild")
+        if defined2 == 'undefined':
+            raise RuntimeError('parseAndBuild still not defined after manual injection')
+        log('Page JS ready')
 
         # Inject CSV directly — file:// blocks <script src> cross-file loading
         log(f'Injecting {len(csv_text):,} chars of vol data...')
