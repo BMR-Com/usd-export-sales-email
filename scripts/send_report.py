@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import smtplib
+import ssl
 import re
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -80,7 +81,6 @@ def render_to_pdf():
         start_year = current_year - 5
         print(f"[{now()}] Setting defaults: ALL countries, {start_year}–{current_year}...")
         
-        # Use separate variables to avoid quote issues
         js_code = f"""
         () => {{
             const ys = document.getElementById('yearStart') || document.getElementById('startYear') || document.querySelector('[id*=\"start\"][id*=\"year\"]');
@@ -150,6 +150,7 @@ def render_to_pdf():
         return pdf_path
 
 def send_email(pdf_path):
+    """Send PDF via Gmail SMTP with SSL (port 465)"""
     current_year = datetime.now().year
     start_year = current_year - 5
     
@@ -177,12 +178,17 @@ This is an automated report. Do not reply.
         attachment.add_header('Content-Disposition', f'attachment; filename=BMR_Cotton_Report_{datetime.now():%Y%m%d_%H%M}.pdf')
         msg.attach(attachment)
     
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASS)
-        server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
+    # Gmail SMTP with SSL on port 465 (more reliable than TLS/587 in CI)
+    print(f"[{now()}] Connecting to Gmail SMTP (SSL)...")
     
-    print(f"[{now()}] 📧 Email sent to {len(EMAIL_TO)} recipient(s)")
+    context = ssl.create_default_context()
+    
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context, timeout=30) as server:
+        print(f"[{now()}] Logging in...")
+        server.login(SMTP_USER, SMTP_PASS)
+        print(f"[{now()}] Sending to {len(EMAIL_TO)} recipient(s)...")
+        server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
+        print(f"[{now()}] ✅ Email sent successfully")
 
 def main():
     for attempt in range(1, MAX_RETRIES + 1):
