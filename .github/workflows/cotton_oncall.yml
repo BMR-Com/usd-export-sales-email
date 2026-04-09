@@ -8,13 +8,17 @@ on:
     - cron: '30 20 * * 4'
   workflow_dispatch:
     inputs:
+      build_web_only:
+        description: 'Just build web data file from existing CSV (no scraping, no email)'
+        type: boolean
+        default: false
       force_email:
-        description: 'Force send email even if no new data found'
-        required: false
-        default: 'false'
+        description: 'Force send email even if no new data'
+        type: boolean
+        default: false
 
 jobs:
-  scrape-and-notify:
+  run:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     permissions:
@@ -33,21 +37,55 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
-        run: |
-          pip install requests beautifulsoup4 fpdf2
+        run: pip install requests beautifulsoup4 fpdf2
 
-      - name: Run Cotton On-Call scraper
+      # ── BUILD-ONLY MODE: just copy CSV → cotton_oncall_data.csv ─────────────
+      - name: Build web data file from existing CSV
+        if: ${{ github.event.inputs.build_web_only == 'true' }}
+        run: |
+          python3 - << 'PYEOF'
+          import os, shutil
+          src  = 'data/cotton_oncall.csv'
+          dest = 'cotton_oncall/cotton_oncall_data.csv'
+          if not os.path.exists(src):
+              print(f"ERROR: {src} not found — upload it first")
+              exit(1)
+          os.makedirs('cotton_oncall', exist_ok=True)
+          shutil.copy2(src, dest)
+          size = os.path.getsize(dest)
+          lines = open(src).read().count('\n')
+          print(f"Copied {lines} rows ({size//1024}KB) → {dest}")
+          PYEOF
+
+      - name: Commit web data file (build-only mode)
+        if: ${{ github.event.inputs.build_web_only == 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add cotton_oncall/cotton_oncall_data.csv
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "data: build cotton_oncall_data.csv [skip ci]"
+            git push
+            echo "Done"
+          fi
+
+      # ── NORMAL MODE: scrape CFTC + email ────────────────────────────────────
+      - name: Scrape CFTC and send email
+        if: ${{ github.event.inputs.build_web_only != 'true' }}
         env:
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO:   ${{ secrets.EMAIL_TO }}
+          SMTP_HOST:   ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:   ${{ secrets.SMTP_PORT }}
+          SMTP_USER:   ${{ secrets.SMTP_USER }}
+          SMTP_PASS:   ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM:  ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:    ${{ secrets.EMAIL_TO }}
           FORCE_EMAIL: ${{ github.event.inputs.force_email }}
         run: python scripts/scrape_cotton_oncall.py
 
       - name: Commit updated data files
+        if: ${{ github.event.inputs.build_web_only != 'true' }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -59,5 +97,4 @@ jobs:
             DATE=$(TZ="America/New_York" date +%Y-%m-%d)
             git commit -m "data: cotton on-call update $DATE [skip ci]"
             git push
-            echo "✓ Data committed and pushed"
           fi
