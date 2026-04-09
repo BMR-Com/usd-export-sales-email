@@ -280,6 +280,16 @@ footer{background:var(--s1);border-top:1px solid var(--border);padding:8px 20px;
 .me-input::placeholder{color:var(--muted2)}
 .me-apply-btn{font-family:"DM Mono",monospace;font-size:.58rem;padding:5px 14px;background:var(--gold);color:#1a1400;border:none;border-radius:2px;cursor:pointer;font-weight:700;margin-top:4px}
 .me-clear-btn{font-family:"DM Mono",monospace;font-size:.58rem;padding:5px 14px;background:var(--s2);color:var(--muted);border:1px solid var(--border);border-radius:2px;cursor:pointer;margin-top:4px}
+
+#master-ai-btn{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;
+  background:#1e293b;color:#fff;border:none;cursor:pointer;font-size:1.35rem;
+  box-shadow:0 4px 16px rgba(30,41,59,.5);z-index:9998;display:flex;align-items:center;
+  justify-content:center;transition:all .2s}
+#master-ai-btn:hover{background:var(--gold);color:#1a1400;transform:scale(1.08)}
+#master-ai-panel{position:fixed;bottom:88px;right:24px;width:380px;height:500px;
+  background:var(--s1);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:9999;
+  display:none;flex-direction:column;overflow:hidden;border:1px solid var(--border)}
+#master-ai-panel.open{display:flex}
 </style>
 </head>
 <body>
@@ -291,6 +301,7 @@ footer{background:var(--s1);border-top:1px solid var(--border);padding:8px 20px;
   <div class="platform-tabs">
     <a class="platform-tab" href="../index.html"><span class="nav-icon">📊</span> ESR Export Sales</a>
     <a class="platform-tab active" href="index.html"><span class="nav-icon">📈</span> Options Analytics</a>
+    <a class="platform-tab" href="../cotton_oncall/index.html"><span class="nav-icon">📋</span> Cotton On-Call</a>
   </div>
   <div style="font-family:'DM Mono',monospace;font-size:.52rem;color:var(--muted)">USDA FAS · BVOL</div>
 </nav>
@@ -716,6 +727,15 @@ function parseAndBuild(text){
   currentYear  = lastRow.year;
   todayDoy     = lastRow.doy;
   var dataYears = currentYear - firstRow.year + 1;
+
+  // Store compact summary for master AI cross-tab access
+  try{
+    var _atm1m = allData.length ? (allData[allData.length-1]['1M'] ? allData[allData.length-1]['1M'].atm : null) : null;
+    localStorage.setItem('bmr_data_options', JSON.stringify({
+      date: lastRow.date,
+      summary: 'Cotton Vol: 1M ATM=' + _atm1m + ' | ' + allData.length + ' records | ' + firstRow.date + ' to ' + lastRow.date
+    }));
+  }catch(e){}
 
   setStatus('ok',
     '\u2713 Loaded ' + allData.length.toLocaleString() + ' records'
@@ -1462,6 +1482,7 @@ window.addEventListener('afterprint',  function(){ setTimeout(restoreAfterPrint,
 // AI ASSISTANT
 // ═══════════════════════════════════════════════════════
 function saveAICfg(){
+  try{ var k=document.getElementById('groqKey').value; if(k) localStorage.setItem('bmr_groq_key',k); }catch(e){}
   try{
     localStorage.setItem('opts_ai_cfg', JSON.stringify({
       key:   document.getElementById('groqKey').value,
@@ -1471,6 +1492,7 @@ function saveAICfg(){
 }
 
 function loadAICfg(){
+  try{ var sk=localStorage.getItem('bmr_groq_key'); if(sk&&document.getElementById('groqKey')) document.getElementById('groqKey').value=sk; }catch(e){}
   try{
     const raw = localStorage.getItem('opts_ai_cfg');
     if(!raw) return;
@@ -1929,32 +1951,132 @@ function loadOptionsData(){
   if(window.COTTON_OPTIONS_DATA){
     try{
       parseAndBuild(window.COTTON_OPTIONS_DATA);
-      setStatus('ok', '\u2713 Data loaded from cotton_options_data · Upload CSV or enter values below');
+      setStatus('ok', '\u2713 Data loaded');
     }catch(e){
       setStatus('err', '\u2717 Parse error: ' + e.message);
     }
     return;
   }
-
-  // Fetch the CSV file directly from GitHub Pages
-  // Build script copies CSV to cotton_options/cotton_options_data.csv
   fetch('cotton_options_data.csv')
     .then(function(r){
-      if(!r.ok) throw new Error('HTTP ' + r.status + ' — file not found');
+      if(!r.ok) throw new Error('HTTP ' + r.status + ' \u2014 file not found');
       return r.text();
     })
     .then(function(csvText){
       parseAndBuild(csvText);
-      setStatus('ok', '\u2713 Data loaded from cotton_options_data.csv · '
-        + allData.length.toLocaleString() + ' records · Latest: ' + allData[allData.length-1].date);
+      setStatus('ok', '\u2713 Data loaded from cotton_options_data.csv \u00b7 '
+        + allData.length.toLocaleString() + ' records \u00b7 Latest: ' + allData[allData.length-1].date);
     })
     .catch(function(err){
-      setStatus('err', '\u2717 Could not load cotton_options_data.csv: ' + err.message
-        + ' \u2014 Upload CSV using the button above');
+      setStatus('err', '\u2717 Could not load data: ' + err.message + ' \u2014 Upload CSV above');
       var fl = document.getElementById('fileLabel');
-      if(fl) fl.textContent = 'No data loaded — use Load CSV';
+      if(fl) fl.textContent = 'No data loaded \u2014 use Load CSV';
     });
 }
+
+// ── FLOATING MASTER AI (platform-wide) ─────────────────────────────────────
+var MASTER_AI_HIST_OPTS = [];
+function toggleMasterAI(){
+  var p=document.getElementById('master-ai-panel');
+  p.classList.toggle('open');
+}
+function buildMasterContextOpts(){
+  var parts=['COTTON ANALYTICS PLATFORM · Current page: Options Analytics'];
+  // Options vol data (current page)
+  try{
+    var ctx = buildVolContext();
+    if(ctx && ctx!=='No vol data loaded.'){
+      parts.push(''); parts.push('=== OPTIONS VOL DATA ==='); parts.push(ctx.slice(0,800));
+    }
+  }catch(e){}
+  // COC from localStorage
+  try{
+    var coc=JSON.parse(localStorage.getItem('bmr_data_coc')||'null');
+    if(coc){ parts.push(''); parts.push('=== COTTON ON-CALL (from '+coc.date+') ==='); parts.push((coc.summary||'').slice(0,400)); }
+  }catch(e){}
+  // ESR from localStorage
+  try{
+    var esr=JSON.parse(localStorage.getItem('bmr_data_esr')||'null');
+    if(esr){ parts.push(''); parts.push('=== ESR EXPORT SALES (from '+esr.date+') ==='); parts.push((esr.summary||'').slice(0,400)); }
+  }catch(e){}
+  return parts.join(String.fromCharCode(10));
+}
+async function sendMasterAI(){
+  var ta=document.getElementById('master-ai-ta');
+  var q=ta.value.trim(); if(!q) return;
+  var key=document.getElementById('groqKey').value.trim();
+  if(!key){appendMasterMsgOpts('assistant','Enter your Groq API key in the sidebar first.');return;}
+  appendMasterMsgOpts('user',q); ta.value=''; ta.style.height='auto';
+  MASTER_AI_HIST_OPTS.push({role:'user',content:q});
+  var thkId=appendMasterThinkOpts();
+  document.getElementById('master-send-btn').disabled=true;
+  try{
+    var ctx=buildMasterContextOpts();
+    var sys='You are a comprehensive cotton market AI for BMR Research. '
+      +'Answer questions about implied vol, export sales, and on-call positioning. '
+      +'Cross-reference datasets when useful. Be specific with numbers.'
+      +'\n\nDATA:\n'+ctx;
+    var res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
+      body:JSON.stringify({model:document.getElementById('groqModel').value,
+        messages:[{role:'system',content:sys},...MASTER_AI_HIST_OPTS.slice(-6)],
+        temperature:0.3,max_tokens:1024})
+    });
+    if(!res.ok){var e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
+    var d=await res.json(); var reply=d.choices[0].message.content;
+    MASTER_AI_HIST_OPTS.push({role:'assistant',content:reply});
+    removeMasterThinkOpts(thkId); appendMasterMsgOpts('assistant',reply);
+  }catch(err){removeMasterThinkOpts(thkId);appendMasterMsgOpts('assistant','Error: '+err.message);}
+  document.getElementById('master-send-btn').disabled=false;
+}
+function appendMasterMsgOpts(role,text){
+  var msgs=document.getElementById('master-ai-msgs');
+  var div=document.createElement('div'); div.style.cssText='display:flex;gap:6px';
+  if(role==='user') div.style.flexDirection='row-reverse';
+  var avBg = role==='user' ? 'var(--gold)' : 'var(--s2)';
+  var avCol= role==='user' ? '#1a1400' : 'var(--text)';
+  var bubBg= role==='user' ? 'var(--gold)' : 'var(--s2)';
+  var bubCol=role==='user' ? '#1a1400' : 'var(--text)';
+  div.innerHTML='<div style="width:22px;height:22px;border-radius:50%;background:'+avBg+';display:flex;align-items:center;justify-content:center;font-size:.6rem;flex-shrink:0;margin-top:2px;font-weight:700;color:'+avCol+'">'+(role==='user'?'You':'AI')+'</div>'
+    +'<div style="max-width:78%;padding:8px 11px;border-radius:8px;font-size:.72rem;line-height:1.6;background:'+bubBg+';color:'+bubCol+';border:1px solid var(--border)">'+text.replace(/\n/g,'<br>')+'</div>';
+  msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight;
+}
+function appendMasterThinkOpts(){
+  var msgs=document.getElementById('master-ai-msgs');
+  var id='mth-'+Date.now(); var div=document.createElement('div');
+  div.id=id; div.style.cssText='display:flex;gap:6px';
+  div.innerHTML='<div style="width:22px;height:22px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:.6rem;flex-shrink:0;color:var(--text);font-weight:700">AI</div>'
+    +'<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 11px"><div style="display:flex;gap:4px">'
+    +'<span style="width:5px;height:5px;background:var(--muted);border-radius:50%;animation:bounce .8s infinite"></span>'
+    +'<span style="width:5px;height:5px;background:var(--muted);border-radius:50%;animation:bounce .8s .15s infinite"></span>'
+    +'<span style="width:5px;height:5px;background:var(--muted);border-radius:50%;animation:bounce .8s .3s infinite"></span>'
+    +'</div></div>';
+  msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight; return id;
+}
+function removeMasterThinkOpts(id){var el=document.getElementById(id);if(el)el.remove();}
 </script>
+
+<!-- FLOATING MASTER AI -->
+<button id="master-ai-btn" onclick="toggleMasterAI()" title="Platform AI">&#x1F4AC;</button>
+<div id="master-ai-panel">
+  <div style="background:#1e293b;color:#fff;padding:11px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div>
+      <div style="font-size:.8rem;font-weight:700">&#x1F916; Platform AI Assistant</div>
+      <div style="font-size:.58rem;opacity:.7;margin-top:1px">Covers On-Call, Export Sales &amp; Options</div>
+    </div>
+    <button onclick="toggleMasterAI()" style="background:none;border:none;color:#fff;font-size:1rem;cursor:pointer;opacity:.7;padding:2px 6px">&#x2715;</button>
+  </div>
+  <div id="master-ai-msgs" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;gap:6px"><div style="width:22px;height:22px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:.6rem;flex-shrink:0;font-weight:700;color:#1e293b">AI</div>
+    <div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:.72rem;line-height:1.6">Hi! Ask me anything about cotton across all tabs &mdash; options vol, export sales, or on-call positions.</div></div>
+  </div>
+  <div style="display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--border);background:var(--s1);flex-shrink:0">
+    <textarea id="master-ai-ta" rows="1" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:20px;font-size:.72rem;resize:none;min-height:34px;max-height:80px;outline:none;font-family:inherit;background:var(--s2);color:var(--text)"
+      placeholder="Ask across all cotton data..."
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMasterAI()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+    <button id="master-send-btn" onclick="sendMasterAI()" style="padding:7px 14px;background:var(--gold);color:#1a1400;border:none;border-radius:20px;font-size:.7rem;cursor:pointer;font-weight:700">Send</button>
+  </div>
+</div>
 </body>
 </html>
