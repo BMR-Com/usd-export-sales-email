@@ -730,6 +730,44 @@ function boot(){
   // Falls back to ../data/cotton_oncall.csv for local dev
   var url='cotton_oncall_data.csv?t='+Date.now();
   document.getElementById('lmsg').textContent='Fetching CSV...';
+  // Check sessionStorage cache first — instant on tab switch
+  var _coc_cache = null;
+  try{ _coc_cache = sessionStorage.getItem('coc_csv_cache'); }catch(e){}
+  if(_coc_cache && _coc_cache.length > 200){
+    // Use cached data — parse and render immediately
+    try{
+      document.getElementById('lmsg').textContent='Restoring from session cache...';
+      var _rows = parseCSV(_coc_cache);
+      if(_rows.length){
+        ALL_DATA=_rows; buildData(_rows);
+        ALL_YEARS=Object.keys(DATA).sort();
+        var _maxW=0;
+        for(var _y in DATA) for(var _w in DATA[_y]){var _n=parseInt(_w);if(_n>_maxW)_maxW=_n;}
+        WL=[]; for(var _i=1;_i<=_maxW;_i++) WL.push('W'+_i);
+        var _curY=new Date().getFullYear();
+        var _defY=ALL_YEARS.filter(function(y){var yi=parseInt(y);return yi>=_curY-4&&yi<=_curY&&yi>2005;});
+        for(var _ci=0;_ci<9;_ci++) ST[_ci].years=_defY.slice();
+        renderCW(_rows); generateTraderSummary(_rows);
+        var _wk2=0; for(var _ii=0;_ii<_rows.length;_ii++){try{var _w2=Math.round(parseFloat(_rows[_ii]['Week #']));if(_w2&&!_wk2)_wk2=_w2;}catch(e){}}
+        var _dm2={};
+        for(var _ri=0;_ri<_rows.length;_ri++){var _d2=_rows[_ri]['Report Date'];if(_d2){var _p2=_d2.split('/');if(_p2.length===3){var _t2=new Date(+_p2[2],+_p2[0]-1,+_p2[1]).getTime();_dm2[_t2]=_d2;}}}
+        var _ts2=Object.keys(_dm2).map(Number).sort(function(a,b){return a-b;});
+        var _lat2=_ts2.length?_dm2[_ts2[_ts2.length-1]]:'';
+        var _cr2=_rows.filter(function(r){return r['Report Date']===_lat2;});
+        renderSummary(_cr2,_wk2);
+        for(var _ci2=0;_ci2<9;_ci2++){makeCard(_ci2);makeYChips(_ci2);makeMChips(_ci2);drawChart(_ci2);}
+        var _allD=[];
+        for(var _ri2=0;_ri2<_rows.length;_ri2++){if(_rows[_ri2]['Report Date'])_allD.push(_rows[_ri2]['Report Date']);}
+        _allD.sort(function(a,b){var pa=a.split('/'),pb=b.split('/');return new Date(+pa[2],+pa[0]-1,+pa[1])-new Date(+pb[2],+pb[0]-1,+pb[1]);});
+        document.getElementById('badge').textContent='Last report: '+(_allD[_allD.length-1]||'--');
+        document.getElementById('badge').className='ok';
+        document.getElementById('ai-section').style.display='';
+        document.getElementById('loading').style.display='none';
+        return; // done — no fetch needed
+      }
+    }catch(_e){ console.log('Cache restore failed, fetching fresh:', _e.message); }
+  }
+
   fetch(url).then(function(res){
     if(!res.ok) throw new Error('HTTP '+res.status+' loading '+url);
     return res.text();
@@ -765,6 +803,9 @@ function boot(){
     });
     document.getElementById('badge').textContent='Last report: '+(allDates[allDates.length-1]||'--');
     document.getElementById('badge').className='ok';
+    // Cache CSV for instant restore on tab switch
+    try{ sessionStorage.setItem('coc_csv_cache', text); }catch(e){}
+    document.getElementById('ai-section').style.display='';
     buildCocContext(); // store to localStorage for master AI
   }).catch(function(e){
     showErr('Could not load data: '+e.message);
@@ -931,6 +972,7 @@ async function sendCocAi(){
     var d = await res.json();
     var reply = d.choices[0].message.content;
     COC_AI_HIST.push({role:'assistant',content:reply});
+    try{ sessionStorage.setItem('coc_ai_hist', JSON.stringify(COC_AI_HIST)); }catch(e){}
     removeCocThinking(thinkId);
     appendCocMsg('assistant', reply);
   }catch(err){
@@ -1054,6 +1096,7 @@ async function sendMasterAI(){
     var d=await res.json();
     var reply=d.choices[0].message.content;
     MASTER_AI_HIST.push({role:'assistant',content:reply});
+    try{ sessionStorage.setItem('platform_ai_hist', JSON.stringify(MASTER_AI_HIST)); }catch(e){}
     removeMasterThinking(thinkId);
     appendMasterMsg('assistant', reply);
   }catch(err){
@@ -1091,8 +1134,53 @@ function removeMasterThinking(id){var el=document.getElementById(id);if(el)el.re
 // ═══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function(){
   loadKeyShared();
-  document.getElementById('ai-section').style.display='';
+
+  // Restore master AI chat history
+  try{
+    var _mh = sessionStorage.getItem('platform_ai_hist');
+    if(_mh){
+      var _mm = JSON.parse(_mh);
+      MASTER_AI_HIST = _mm;
+      _mm.forEach(function(m){ if(m.role!=='system') appendMasterMsg(m.role, m.content); });
+    }
+  }catch(e){}
+  // Restore AI chat history
+  try{
+    var _ch = sessionStorage.getItem('coc_ai_hist');
+    if(_ch){
+      var _msgs = JSON.parse(_ch);
+      COC_AI_HIST = _msgs;
+      _msgs.forEach(function(m){ appendCocMsg(m.role, m.content); });
+    }
+  }catch(e){}
+  // ai-section shown by boot() after data loads
 });
 
 </script>
+
+<!-- ── FLOATING MASTER AI ── -->
+<button id="master-ai-btn" onclick="toggleMasterAI()" title="Platform AI Assistant">&#x1F4AC;</button>
+<div id="master-ai-panel">
+  <div class="m-ai-head">
+    <div>
+      <div class="m-ai-title">&#x1F916; Platform AI Assistant</div>
+      <div class="m-ai-sub">Cotton On-Call &middot; Options &middot; Export Sales</div>
+    </div>
+    <button class="m-close" onclick="toggleMasterAI()">&#x2715;</button>
+  </div>
+  <div class="m-ai-msgs" id="master-ai-msgs">
+    <div class="ai-msg-coc assistant">
+      <div class="ai-av-coc">AI</div>
+      <div class="ai-bubble-coc">Hi! Ask me anything about cotton &mdash; on-call positions, export sales, or implied volatility. I can cross-reference data from any tab you have visited.</div>
+    </div>
+  </div>
+  <div class="m-ai-row">
+    <textarea class="m-ai-ta" id="master-ai-ta" rows="1"
+      placeholder="Ask across all cotton data..."
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMasterAI()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+    <button class="m-send" id="master-send-btn" onclick="sendMasterAI()">Send</button>
+  </div>
+</div>
+
 </html>
