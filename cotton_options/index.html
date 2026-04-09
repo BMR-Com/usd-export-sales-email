@@ -602,6 +602,7 @@ let aiChartCnt  = 0;
 function loadCSV(input){
   const file = input.files[0];
   if(!file) return;
+  try{ sessionStorage.removeItem('opts_csv_cache'); }catch(e){} // clear cache on manual load
   document.getElementById('fileLabel').textContent = file.name;
   setStatus('loading', 'Parsing ' + file.name + '...');
   const reader = new FileReader();
@@ -749,6 +750,9 @@ function parseAndBuild(text){
   (function(){var _e=document.getElementById('footerTs');if(_e)_e.textContent='Updated ' + new Date().toLocaleString()})();
   (function(){var _e=document.getElementById('emptyState');if(_e)_e.style.display='none'})();
   (function(){var _e=document.getElementById('fileLabel');if(_e)_e.textContent=allData.length.toLocaleString() + ' records loaded'})();
+
+  // Cache raw CSV so tab-switching restores instantly
+  try{ sessionStorage.setItem('opts_csv_cache', text); }catch(e){}
 
   renderAll();
   updateSummarySubLabel();
@@ -1652,6 +1656,7 @@ async function sendAI(){
     const d     = await res.json();
     const reply = d.choices[0].message.content;
     aiHistory.push({role:'assistant', content:reply});
+    try{ sessionStorage.setItem('opts_ai_hist', JSON.stringify(aiHistory)); }catch(e){}
     removeThinking(thinkId);
 
     const cm = reply.match(/<chart>([\s\S]*?)<\/chart>/);
@@ -1942,10 +1947,40 @@ function autoLoadOptionsData(){
 
 document.addEventListener('DOMContentLoaded', function(){
   loadAICfg();
+  // Restore AI chat history from sessionStorage
+  try{
+    var _hist = sessionStorage.getItem('opts_ai_hist');
+    if(_hist){
+      var _msgs = JSON.parse(_hist);
+      aiHistory = _msgs;
+      // Re-render saved messages
+      _msgs.forEach(function(m){
+        if(m.role !== 'system') appendAIMsg(m.role, m.content);
+      });
+    }
+  }catch(e){}
+  // Restore master AI chat history
+  try{
+    var _mh = sessionStorage.getItem('platform_ai_hist');
+    if(_mh){
+      var _mm = JSON.parse(_mh);
+      MASTER_AI_HIST_OPTS = _mm;
+      _mm.forEach(function(m){ if(m.role!=='system') appendMasterMsgOpts(m.role, m.content); });
+    }
+  }catch(e){}
   loadOptionsData();
 });
 
 function loadOptionsData(){
+  // Check sessionStorage cache first — instant restore on tab switch
+  try{
+    var _cache = sessionStorage.getItem('opts_csv_cache');
+    if(_cache && _cache.length > 100){
+      parseAndBuild(_cache);
+      return;
+    }
+  }catch(e){}
+
   // Try fetch() first — works on GitHub Pages and any HTTP server
   // Falls back to window.COTTON_OPTIONS_DATA if already set (e.g. manual script injection)
   if(window.COTTON_OPTIONS_DATA){
@@ -2025,6 +2060,7 @@ async function sendMasterAI(){
     if(!res.ok){var e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
     var d=await res.json(); var reply=d.choices[0].message.content;
     MASTER_AI_HIST_OPTS.push({role:'assistant',content:reply});
+    try{ sessionStorage.setItem('platform_ai_hist', JSON.stringify(MASTER_AI_HIST_OPTS)); }catch(e){}
     removeMasterThinkOpts(thkId); appendMasterMsgOpts('assistant',reply);
   }catch(err){removeMasterThinkOpts(thkId);appendMasterMsgOpts('assistant','Error: '+err.message);}
   document.getElementById('master-send-btn').disabled=false;
