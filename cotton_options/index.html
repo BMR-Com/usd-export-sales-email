@@ -514,8 +514,43 @@ footer{background:var(--s1);border-top:1px solid var(--border);padding:8px 20px;
           <div class="ai-sidebar-title" style="margin-bottom:6px">Quick Analysis</div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <button class="ai-quick-btn" onclick="aiAsk('Where is 1M ATM vol relative to its 5-year history? Is it cheap or expensive?')">📊 1M ATM vol level</button>
-            <button class="ai-quick-btn" onclick="aiAsk(<script src="cotton_options_data.js" onerror="console.log('cotton_options_data.js not found - upload CSV manually')"></script>
+                        <button class="ai-quick-btn" onclick="aiAsk('Plot a bar chart of current 25D risk reversal across all tenors')">&#x1F4C8; Plot RR term structure</button>
+          </div>
+        </div>
+      </div><!-- /ai-sidebar -->
+      <div class="ai-chat">
+        <div class="ai-messages" id="aiMessages">
+          <div class="ai-msg assistant">
+            <div class="ai-msg-av">AI</div>
+            <div class="ai-msg-bubble">
+              Hello! I am your Cotton Options Analytics assistant. Load data and enter a Groq API key to begin.<br><br>
+              I can analyze ATM vol, risk reversal skew, term structure, and generate trade ideas.
+            </div>
+          </div>
+        </div>
+        <div style="padding:6px 14px 2px;background:var(--s1);border-top:1px solid var(--border)">
+          <div style="font-family:'DM Mono',monospace;font-size:.5rem;color:var(--muted)">&#x270F; Ask anything &middot; Enter to send &middot; Shift+Enter for new line</div>
+        </div>
+        <div class="ai-input-row">
+          <textarea class="ai-textarea" id="aiInput" rows="1"
+            placeholder="e.g. Is 1M vol cheap relative to history? What calendar spread makes sense now?"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
+            oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+          <button class="ai-send-btn" id="aiSendBtn" onclick="sendAI()">Send</button>
+        </div>
+      </div><!-- /ai-chat -->
+    </div><!-- /ai-panel -->
+  </div><!-- /section-block aiSection -->
+
+</div><!-- /content -->
+
+<footer>
+  <span>Cotton Options Analytics &middot; Implied Volatility Dashboard</span>
+  <span id="footerTs">&mdash;</span>
+</footer>
+
 <script>
+
 // ═══════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════
@@ -1852,98 +1887,41 @@ function autoLoadOptionsData(){
 
 document.addEventListener('DOMContentLoaded', function(){
   loadAICfg();
-  // Auto-load from cotton_options_data.js — try immediately, then retry
-  // The data script tag is just before this script, so it may still be loading
+  loadOptionsData();
+});
+
+function loadOptionsData(){
+  // Try fetch() first — works on GitHub Pages and any HTTP server
+  // Falls back to window.COTTON_OPTIONS_DATA if already set (e.g. manual script injection)
   if(window.COTTON_OPTIONS_DATA){
-    autoLoadOptionsData();
-  } else {
-    // Retry a few times in case the data script is still loading
-    var attempts = 0;
-    var timer = setInterval(function(){
-      attempts++;
-      if(window.COTTON_OPTIONS_DATA){
-        clearInterval(timer);
-        autoLoadOptionsData();
-      } else if(attempts >= 20){
-        clearInterval(timer);
-        // Data file not found — show upload prompt
-        setStatus('', 'No data file found. Upload your vol CSV or push data/cotton_options_history.csv to GitHub.');
-      }
-    }, 300);
+    try{
+      parseAndBuild(window.COTTON_OPTIONS_DATA);
+      setStatus('ok', '\u2713 Data loaded from cotton_options_data · Upload CSV or enter values below');
+    }catch(e){
+      setStatus('err', '\u2717 Parse error: ' + e.message);
+    }
+    return;
   }
-});
 
-function appendThinking(){
-  const msgs = document.getElementById('aiMessages');
-  const id   = 'think-' + Date.now();
-  const div  = document.createElement('div');
-  div.className = 'ai-msg assistant'; div.id = id;
-  div.innerHTML = '<div class="ai-msg-av">AI</div>'
-    + '<div class="ai-msg-bubble"><div class="ai-thinking">'
-    + '<span></span><span></span><span></span></div></div>';
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  return id;
-}
-function removeThinking(id){ const el=document.getElementById(id); if(el) el.remove(); }
-
-function renderAIChart(def){
-  const msgs  = document.getElementById('aiMessages');
-  const wrap  = document.createElement('div');
-  wrap.className = 'ai-msg assistant';
-  const cid   = 'aic-' + aiChartCnt++;
-  wrap.innerHTML = '<div class="ai-msg-av">AI</div>'
-    + '<div class="ai-msg-bubble" style="max-width:90%;width:100%">'
-    + '<div style="background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:10px">'
-    + '<canvas id="' + cid + '" height="220"></canvas></div></div>';
-  msgs.appendChild(wrap);
-  msgs.scrollTop = msgs.scrollHeight;
-  setTimeout(function(){
-    const cv = document.getElementById(cid);
-    if(!cv) return;
-    new Chart(cv.getContext('2d'),{
-      type: def.type || 'bar',
-      data: {
-        labels: def.labels,
-        datasets: def.datasets.map(function(ds, i){
-          return Object.assign({}, ds, {
-            backgroundColor: ds.backgroundColor || YEAR_COLORS[i],
-            borderColor:     ds.borderColor     || YEAR_COLORS[i],
-            borderWidth: 2,
-          });
-        })
-      },
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{
-          legend:{labels:{color:'#dde4f0',font:{family:'DM Mono',size:9}}},
-          title:{display:!!def.title,text:def.title,color:'#e8c547',font:{family:'DM Mono',size:10}}
-        },
-        scales: def.type!=='pie' ? {
-          x:{ticks:{color:'#1e293b',font:{family:'DM Mono',size:9}},grid:{color:'#1e2530'}},
-          y:{ticks:{color:'#1e293b',font:{family:'DM Mono',size:9}},grid:{color:'#1e2530'}}
-        } : {}
-      }
+  // Fetch the CSV file directly from GitHub Pages
+  // Build script copies CSV to cotton_options/cotton_options_data.csv
+  fetch('cotton_options_data.csv')
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP ' + r.status + ' — file not found');
+      return r.text();
+    })
+    .then(function(csvText){
+      parseAndBuild(csvText);
+      setStatus('ok', '\u2713 Data loaded from cotton_options_data.csv · '
+        + allData.length.toLocaleString() + ' records · Latest: ' + allData[allData.length-1].date);
+    })
+    .catch(function(err){
+      setStatus('err', '\u2717 Could not load cotton_options_data.csv: ' + err.message
+        + ' \u2014 Upload CSV using the button above');
+      var fl = document.getElementById('fileLabel');
+      if(fl) fl.textContent = 'No data loaded — use Load CSV';
     });
-  }, 50);
 }
-
-// ═══════════════════════════════════════════════════════
-// STATUS HELPERS
-// ═══════════════════════════════════════════════════════
-function setStatus(type, msg){
-  const el = document.getElementById('statusBar');
-  if(!el) return;
-  el.textContent  = msg;
-  el.className    = 'status ' + type;
-}
-
-// ═══════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', function(){
-  loadAICfg();
-});
 </script>
 </body>
 </html>
