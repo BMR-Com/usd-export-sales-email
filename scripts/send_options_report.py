@@ -85,7 +85,11 @@ def render_to_pdf():
 
         log('Loading page...')
         page.goto(f'file://{HTML_FILE}', wait_until='load')
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1000)
+        # Bypass password screen
+        page.evaluate("() => { try { sessionStorage.setItem('bmr_auth','1'); } catch(e){} }")
+        page.evaluate("() => { var o=document.getElementById('auth-overlay'); if(o) o.remove(); }")
+        page.wait_for_timeout(500)
 
         # Check if main script executed (file:// can block inline scripts in some environments)
         defined = page.evaluate("() => typeof parseAndBuild")
