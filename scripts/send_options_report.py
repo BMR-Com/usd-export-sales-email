@@ -83,7 +83,7 @@ def render_to_pdf():
         page.goto(f'file://{HTML_FILE}', wait_until='load')
         page.wait_for_timeout(1000)
         # Bypass password screen
-        page.evaluate("() => { try { sessionStorage.setItem('bmr_auth','1'); } catch(e){} }")
+        page.evaluate("() => { try { localStorage.setItem('bmr_auth_exp', JSON.stringify({ts: Date.now()})); } catch(e){} }")
         page.evaluate("() => { var o=document.getElementById('auth-overlay'); if(o) o.remove(); }")
         page.wait_for_timeout(500)
 
