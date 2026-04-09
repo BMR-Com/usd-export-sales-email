@@ -209,6 +209,8 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
   header,.controls,.status,.debug-box,footer,
   #btnLoad,#btnPDF,.ctrl,button,
   .main-tabs,.csv-panel,#tab-ai,
+  .platform-nav,#master-ai-btn,#master-ai-panel,
+  #auth-overlay,.ai-panel-coc,#ai-section,
   #seasonCard > div:nth-child(2){ display:none!important }
 
   /* WHITE BACKGROUND */
@@ -558,21 +560,17 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
 </style>
 </head>
 <body>
-  
+
 <script>
 (function(){
-  var PASS = '2026cottonBMR'; // ← change this password
+  var PASS = 'BMR2024cotton'; // ← change this password
   var KEY  = 'bmr_auth';
-  
-  // Already authenticated this session
-  if(sessionStorage.getItem(KEY) === '1') return;
-  
+  if(sessionStorage.getItem(KEY) === '1') return; // already authenticated this session
   // Build overlay
   var overlay = document.createElement('div');
   overlay.id = 'auth-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:#060a0e;z-index:99999;'
     + 'display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px';
-  
   overlay.innerHTML =
     '<div style="text-align:center;margin-bottom:8px">'
       + '<div style="font-family:DM Mono,monospace;font-size:1.2rem;font-weight:700;'
@@ -587,33 +585,24 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
       + '<input id="auth-inp" type="password" placeholder="Password" autocomplete="off"'
         + ' style="padding:10px 14px;background:#060a0e;border:1px solid #1e2a38;'
         + 'border-radius:4px;color:#dde4f0;font-family:DM Mono,monospace;font-size:.85rem;'
-        + 'outline:none;letter-spacing:2px;text-align:center">'
+        + 'outline:none;letter-spacing:2px;text-align:center"'
+        + ' onkeydown="if(event.key==='Enter')document.getElementById('auth-btn').click()">'
       + '<button id="auth-btn" style="padding:10px;background:#e8c547;color:#1a1400;'
         + 'border:none;border-radius:4px;font-family:DM Mono,monospace;font-size:.75rem;'
-        + 'font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase">'
-        + 'Access Dashboard</button>'
+        + 'font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase"'
+        + ' onclick="(function(){'
+          + 'var v=document.getElementById('auth-inp').value;'
+          + 'if(v==='' + '"+PASS+"' + ''){'
+            + 'sessionStorage.setItem('' + KEY + '','1');'
+            + 'document.getElementById('auth-overlay').remove();'
+          + '}else{'
+            + 'document.getElementById('auth-inp').style.borderColor='#e74c3c';'
+            + 'document.getElementById('auth-inp').value='';'
+            + 'document.getElementById('auth-inp').placeholder='Incorrect — try again';'
+          + '}'
+        + '})()">Access Dashboard</button>'
     + '</div>';
-  
   document.body.appendChild(overlay);
-  
-  // Attach event listeners properly (escapes the string hell)
-  document.getElementById('auth-btn').onclick = function() {
-    var input = document.getElementById('auth-inp');
-    if (input.value === PASS) {
-      sessionStorage.setItem(KEY, '1');
-      overlay.remove();
-    } else {
-      input.style.borderColor = '#e74c3c';
-      input.value = '';
-      input.placeholder = 'Incorrect — try again';
-      input.focus();
-    }
-  };
-  
-  document.getElementById('auth-inp').onkeydown = function(e) {
-    if (e.key === 'Enter') document.getElementById('auth-btn').click();
-  };
-  
   setTimeout(function(){ document.getElementById('auth-inp').focus(); }, 50);
 })();
 </script>
@@ -836,7 +825,7 @@ footer{padding:12px 32px;border-top:1px solid var(--border);font-family:'DM Mono
       <div class="ai-key-row">
         <label>Groq API Key</label>
         <input type="password" class="ai-key-input" id="groqApiKey"
-          placeholder="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"
+          placeholder="gsk_xxxxxxxxxxxxxxxxxxxx"
           oninput="saveAIConfig()" />
       </div>
       <div class="ai-key-row">
