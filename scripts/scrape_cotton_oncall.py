@@ -323,7 +323,16 @@ def generate_pdf(new_rows, all_rows_for_charts):
             page.on("pageerror", lambda e: errors.append(str(e)[:100]))
 
             page.goto(f"file://{html_file}", wait_until="load")
-            page.wait_for_timeout(2000)
+            page.wait_for_timeout(1000)
+
+            # Bypass password screen — inject auth token into sessionStorage
+            page.evaluate("() => { try { sessionStorage.setItem('bmr_auth','1'); } catch(e){} }")
+            # Remove the overlay if it rendered before we injected
+            page.evaluate("""() => {
+                var o = document.getElementById('auth-overlay');
+                if(o) o.remove();
+            }""")
+            page.wait_for_timeout(500)
 
             # Inject the CSV and trigger the page to render
             js_extract = """
