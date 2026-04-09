@@ -28,15 +28,18 @@ jobs:
           EMAIL_FROM:  ${{ secrets.EMAIL_FROM }}
           EMAIL_TO:    ${{ secrets.EMAIL_TO }}
         run: |
-          # Fix all unicode issues in scrape_cotton_oncall.py
+          # Fix all unicode issues - use only ASCII characters
           sed -i 's/ — / - /g' scripts/scrape_cotton_oncall.py
           sed -i 's/—/-/g' scripts/scrape_cotton_oncall.py
-          sed -i "s/'▲'/'↑'/g" scripts/scrape_cotton_oncall.py
-          sed -i "s/'▼'/'↓'/g" scripts/scrape_cotton_oncall.py
-          sed -i "s/'●'/'•'/g" scripts/scrape_cotton_oncall.py
-          sed -i 's/▲/↑/g' scripts/scrape_cotton_oncall.py
-          sed -i 's/▼/↓/g' scripts/scrape_cotton_oncall.py
-          sed -i 's/●/•/g' scripts/scrape_cotton_oncall.py
+          sed -i "s/'▲'/'H'/g" scripts/scrape_cotton_oncall.py
+          sed -i "s/'▼'/'L'/g" scripts/scrape_cotton_oncall.py
+          sed -i "s/'●'/'M'/g" scripts/scrape_cotton_oncall.py
+          sed -i 's/▲/H/g' scripts/scrape_cotton_oncall.py
+          sed -i 's/▼/L/g' scripts/scrape_cotton_oncall.py
+          sed -i 's/●/M/g' scripts/scrape_cotton_oncall.py
+          sed -i 's/↑/H/g' scripts/scrape_cotton_oncall.py
+          sed -i 's/↓/L/g' scripts/scrape_cotton_oncall.py
+          sed -i 's/•/M/g' scripts/scrape_cotton_oncall.py
           
           cat > scripts/test_real_pdf.py << 'EOF'
           import os, sys
