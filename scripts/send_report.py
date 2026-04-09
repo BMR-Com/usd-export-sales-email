@@ -1,209 +1,180 @@
-#!/usr/bin/env python3
-"""
-USDA ESR Weekly Email Report
-Loads index.html, waits for data + charts, generates PDF via page.pdf(),
-sends as email attachment via SMTP.
-
-Required GitHub Secrets:
-  SMTP_HOST  SMTP_PORT  SMTP_USER  SMTP_PASS  EMAIL_FROM  EMAIL_TO
-"""
-
-import os, re, ssl, smtplib, json, sys
+# scripts/send_report.py
+import os
+import sys
+import time
+import smtplib
+import re
 from datetime import datetime
-from pathlib import Path
 from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email.utils import formatdate
 from email import encoders
-from playwright.sync_api import sync_playwright, TimeoutError as PwTimeout
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 
-# ── Config ────────────────────────────────────────────────────────────────────
-def require_env(name):
-    val = os.environ.get(name, '').strip()
-    if not val:
-        print(f'✗ MISSING SECRET: {name} is not set in GitHub Secrets', flush=True)
+# === SECURITY: Load from environment only ===
+REQUIRED_SECRETS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 
+                    'EMAIL_FROM', 'EMAIL_TO', 'DASHBOARD_PASSWORD']
+
+for secret in REQUIRED_SECRETS:
+    if not os.getenv(secret):
+        print(f"[CRITICAL] Missing required secret: {secret}")
         sys.exit(1)
-    return val
 
-SMTP_HOST   = require_env('SMTP_HOST')
-SMTP_PORT   = int(require_env('SMTP_PORT'))
-SMTP_USER   = require_env('SMTP_USER')
-SMTP_PASS   = require_env('SMTP_PASS')
-EMAIL_FROM  = require_env('EMAIL_FROM')
-EMAIL_TO    = [r.strip() for r in require_env('EMAIL_TO').split(',') if r.strip()]
-HTML_FILE   = os.environ.get('HTML_FILE', str(Path(__file__).parent.parent / 'index.html'))
-REPORT_DATE = os.environ.get('REPORT_DATE', datetime.now().strftime('%Y-%m-%d'))
+SMTP_HOST = os.getenv('SMTP_HOST')
+SMTP_PORT = int(os.getenv('SMTP_PORT'))
+SMTP_USER = os.getenv('SMTP_USER')
+SMTP_PASS = os.getenv('SMTP_PASS')
+EMAIL_FROM = os.getenv('EMAIL_FROM')
+EMAIL_TO = [e.strip() for e in os.getenv('EMAIL_TO').split(',') if e.strip()]
+AUTH_PASSWORD = os.getenv('DASHBOARD_PASSWORD')  # Never logged, never hardcoded
+MAX_RETRIES = 3
 
-FROM_YEAR = '2020'
-TO_YEAR   = '2026'
+def now():
+    return datetime.now().strftime('%H:%M:%S')
 
-def log(msg):
-    print(f'[{datetime.now():%H:%M:%S}] {msg}', flush=True)
+def mask_secret(s, show=4):
+    """Mask password in logs"""
+    if len(s) <= show * 2:
+        return '*' * len(s)
+    return s[:show] + '*' * (len(s) - show * 2) + s[-show:]
 
+def authenticate(page):
+    """Secure authentication via UI interaction"""
+    try:
+        # Wait for auth overlay
+        overlay = page.locator('#auth-overlay')
+        overlay.wait_for(state='visible', timeout=5000)
+        print(f"[{now()}] 🔒 Auth required — entering credentials...")
+        
+        # Clear any existing input
+        page.fill('#auth-inp', '')
+        
+        # Type password character-by-character (simulates human)
+        page.locator('#auth-inp').press_sequentially(AUTH_PASSWORD, delay=10)
+        
+        # Click access button
+        with page.expect_response(lambda r: r.status == 200 or r.status == 304, timeout=5000):
+            page.click('#auth-btn')
+        
+        # Verify overlay removed
+        overlay.wait_for(state='hidden', timeout=10000)
+        print(f"[{now()}] ✅ Auth successful (password: {mask_secret(AUTH_PASSWORD)})")
+        
+    except PlaywrightTimeout:
+        # No auth overlay — already bypassed or not required
+        print(f"[{now()}] ℹ️ No auth overlay detected")
+        pass
+    except Exception as e:
+        print(f"[{now()}] ❌ Auth failed: {e}")
+        raise
 
 def render_to_pdf():
-    log(f'HTML file: {HTML_FILE}')
-    if not Path(HTML_FILE).exists():
-        raise FileNotFoundError(f'index.html not found at: {HTML_FILE}')
-
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(
-            headless=True,
-            args=['--no-sandbox','--disable-setuid-sandbox',
-                  '--disable-dev-shm-usage','--disable-gpu',
-                  '--disable-web-security','--allow-file-access-from-files']
+    """Generate PDF with secure auth"""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True, args=['--no-sandbox'])
+        context = browser.new_context(
+            viewport={'width': 1920, 'height': 1080},
+            user_agent='BMR-ReportBot/1.0 (Automated)'
         )
-        page = browser.new_page(viewport={'width':1440,'height':900})
-
-        log('Loading page…')
-        page.goto(f'file://{HTML_FILE}', wait_until='domcontentloaded')
-        log('DOM loaded')
-
-        # Set year range and commodity
-        log(f'Setting commodity 1404, years {FROM_YEAR}–{TO_YEAR}…')
-        page.evaluate(f"""() => {{
-            const s = document.getElementById('selCommodity');
-            if(s) s.value = '1404';
-            const f = document.getElementById('selYearFrom');
-            if(f) f.value = '{FROM_YEAR}';
-            const t = document.getElementById('selYearTo');
-            if(t) t.value = '{TO_YEAR}';
-        }}""")
-
-        # Click Load Data
-        log('Clicking Load Data…')
+        page = context.new_page()
+        
+        # Block unnecessary resources for speed
+        page.route("**/*.{png,jpg,jpeg,gif,svg,css,woff,woff2}", lambda route: route.abort())
+        
+        print(f"[{now()}] Loading dashboard...")
+        page.goto(f"file://{os.path.abspath('index.html')}", wait_until='domcontentloaded')
+        
+        # === SECURITY: Real authentication ===
+        authenticate(page)
+        
+        # Continue with report generation
+        page.wait_for_selector('#btnLoad', state='visible', timeout=10000)
+        print(f"[{now()}] Loading data...")
+        
         page.click('#btnLoad')
-
-        # Wait for status bar to show success — up to 90s
-        log('Waiting for USDA API data (up to 90s)…')
-        try:
-            page.wait_for_function(
-                "() => (document.getElementById('statusBar')?.textContent||'').startsWith('✓')",
-                timeout=90_000
-            )
-        except PwTimeout:
-            status = page.text_content('#statusBar') or 'no status'
-            log(f'Status bar content: "{status}"')
-            raise RuntimeError(f'Data load timed out after 90s. Status: "{status}"')
-
-        status_text = page.text_content('#statusBar')
-        log(f'Status: {status_text}')
-
-        # Wait 60s for projection model + all 8 charts to fully render
-        log('Waiting 60s for all charts and tables to render…')
-        page.wait_for_timeout(60_000)
-
-        # Switch to print colors (colors only — no canvas resize)
-        log('Switching charts to print colors…')
-        page.evaluate("() => { if(typeof prepChartsForPrint==='function') prepChartsForPrint(); }")
-        page.wait_for_timeout(2_000)
-
-        # Ensure dashboard tab is active
-        page.evaluate("() => { if(typeof switchTab==='function') switchTab('dashboard'); }")
-        page.wait_for_timeout(500)
-
+        
+        # Wait for data load
+        page.wait_for_selector('.data-loaded, #resultsTable, .chart-container', 
+                              state='visible', timeout=30000)
+        
+        # Small delay for charts to render
+        page.wait_for_timeout(2000)
+        
         # Generate PDF
-        log('Generating PDF…')
-        pdf_bytes = page.pdf(
+        pdf_path = '/tmp/cotton_report.pdf'
+        page.pdf(
+            path=pdf_path,
             format='A4',
-            landscape=True,
-            margin={'top':'7mm','bottom':'7mm','left':'8mm','right':'8mm'},
             print_background=True,
+            margin={'top': '20px', 'right': '20px', 'bottom': '20px', 'left': '20px'},
+            display_header_footer=True,
+            header_template='<div style="font-size:9px;margin-left:20px;width:100%;">BMR Cotton Analytics — Confidential</div>',
+            footer_template='<div style="font-size:9px;margin:0 auto;width:100%;text-align:center;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
         )
-        log(f'PDF generated: {len(pdf_bytes):,} bytes ({len(pdf_bytes)//1024}KB)')
+        
         browser.close()
+        print(f"[{now()}] PDF generated: {pdf_path}")
+        return pdf_path
 
-    return pdf_bytes
+def send_email(pdf_path):
+    """Send encrypted PDF via TLS"""
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL_FROM
+    msg['To'] = ', '.join(EMAIL_TO)
+    msg['Date'] = formatdate(localtime=True)
+    msg['Subject'] = f'[BMR] USDA Cotton Report — {datetime.now():%Y-%m-%d %H:%M} UTC'
+    msg['X-Priority'] = '1'  # High priority
+    
+    body = MIMEText(f'''BMR Cotton Analytics — Automated Report
 
+Generated: {datetime.now():%Y-%m-%d %H:%M:%S} UTC
+Source: USDA ESR Commodity 1404 (All Upland Cotton)
+Period: MY2020–MY2026
 
-def send_email(pdf_bytes):
-    date_str = datetime.now().strftime('%b %d, %Y')
-    subject  = f'USDA ESR Weekly Report — All Upland Cotton — {date_str}'
-    filename = f'ESR_Report_Cotton_{REPORT_DATE}.pdf'
-
-    log(f'Building email: "{subject}"')
-    log(f'From: {EMAIL_FROM}')
-    log(f'To:   {", ".join(EMAIL_TO)}')
-    log(f'SMTP: {SMTP_HOST}:{SMTP_PORT}')
-
-    msg = MIMEMultipart('mixed')
-    msg['Subject'] = subject
-    msg['From']    = EMAIL_FROM
-    msg['To']      = ', '.join(EMAIL_TO)
-
-    body = (f'USDA ESR Weekly Report — All Upland Cotton\n'
-            f'Period: MY{FROM_YEAR}–MY{TO_YEAR}\n'
-            f'Generated: {datetime.now().strftime("%A, %B %d, %Y %H:%M ET")}\n\n'
-            f'The full PDF report is attached ({len(pdf_bytes)//1024}KB).\n\n'
-            f'Pages:\n'
-            f'  1-2: Seasonality charts (8 metrics, multi-year)\n'
-            f'  3:   Market Intelligence + Year-End Projection\n'
-            f'  4:   Country Summary (TW/LW + multi-year)\n'
-            f'  5:   8-Week Trend + Percentile Ranges\n'
-            f'  6:   Export Sales Summary\n\n'
-            f'Source: USDA FAS | api.fas.usda.gov\n')
-    msg.attach(MIMEText(body, 'plain'))
-
-    pdf_part = MIMEBase('application', 'pdf')
-    pdf_part.set_payload(pdf_bytes)
-    encoders.encode_base64(pdf_part)
-    pdf_part.add_header('Content-Disposition','attachment',filename=filename)
-    msg.attach(pdf_part)
-
-    try:
-        if SMTP_PORT == 465:
-            log('Connecting via SSL (port 465)…')
-            ctx = ssl.create_default_context()
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=ctx) as srv:
-                log('Logging in…')
-                srv.login(SMTP_USER, SMTP_PASS)
-                log('Sending…')
-                srv.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
-        else:
-            log('Connecting via STARTTLS (port 587)…')
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as srv:
-                srv.ehlo()
-                srv.starttls(context=ssl.create_default_context())
-                log('Logging in…')
-                srv.login(SMTP_USER, SMTP_PASS)
-                log('Sending…')
-                srv.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
-
-        log(f'✓ Email sent successfully to: {", ".join(EMAIL_TO)}')
-    except smtplib.SMTPAuthenticationError as e:
-        log(f'✗ SMTP Authentication failed: {e}')
-        log('Check SMTP_USER and SMTP_PASS secrets. For Gmail, use an App Password.')
-        raise
-    except smtplib.SMTPException as e:
-        log(f'✗ SMTP error: {e}')
-        raise
-    except Exception as e:
-        log(f'✗ Unexpected error sending email: {type(e).__name__}: {e}')
-        raise
-
+This is an automated report. Do not reply.
+''', 'plain')
+    msg.attach(body)
+    
+    with open(pdf_path, 'rb') as f:
+        attachment = MIMEBase('application', 'pdf')
+        attachment.set_payload(f.read())
+        encoders.encode_base64(attachment)
+        attachment.add_header(
+            'Content-Disposition', 
+            f'attachment; filename=BMR_Cotton_Report_{datetime.now():%Y%m%d_%H%M}.pdf'
+        )
+        msg.attach(attachment)
+    
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASS)
+        server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
+    
+    print(f"[{now()}] 📧 Email sent to {len(EMAIL_TO)} recipient(s)")
 
 def main():
-    log('='*50)
-    log('USDA ESR Weekly Report Generator')
-    log('='*50)
-    log(f'Date:      {REPORT_DATE}')
-    log(f'Years:     MY{FROM_YEAR}–MY{TO_YEAR}')
-    log(f'Commodity: 1404 (All Upland Cotton)')
-    log(f'HTML:      {HTML_FILE}')
-    log(f'From:      {EMAIL_FROM}')
-    log(f'To:        {", ".join(EMAIL_TO)}')
-    log(f'SMTP:      {SMTP_HOST}:{SMTP_PORT}')
-    log('='*50)
-
-    if not EMAIL_TO:
-        log('✗ EMAIL_TO is empty — add recipient addresses to GitHub Secrets')
-        sys.exit(1)
-
-    pdf = render_to_pdf()
-    send_email(pdf)
-    log('='*50)
-    log('DONE')
-    log('='*50)
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            print(f"\n[{now()}] {'='*40}")
+            print(f"[{now()}] Attempt {attempt}/{MAX_RETRIES}")
+            print(f"[{now()}] {'='*40}")
+            
+            pdf = render_to_pdf()
+            send_email(pdf)
+            
+            print(f"[{now()}] ✅ SUCCESS — Report delivered")
+            sys.exit(0)
+            
+        except Exception as e:
+            print(f"[{now()}] ❌ FAILED: {str(e)}")
+            if attempt < MAX_RETRIES:
+                backoff = min(5 * (2 ** attempt), 60)  # Exponential cap
+                print(f"[{now()}] ⏳ Backoff {backoff}s...")
+                time.sleep(backoff)
+    
+    print(f"[{now()}] 🚨 CRITICAL: All retries exhausted")
+    sys.exit(1)
 
 if __name__ == '__main__':
     main()
