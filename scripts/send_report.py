@@ -137,13 +137,14 @@ def render_to_pdf():
         page.wait_for_timeout(2000)
         print(f"[{now()}] Data fully loaded, generating PDF...")
         
-        # Generate PDF
+        # Generate PDF without header/footer to remove empty page and header text
         pdf_path = '/tmp/cotton_report.pdf'
-        page.pdf(path=pdf_path, format='A4', print_background=True,
-                 margin={'top': '20px', 'right': '20px', 'bottom': '20px', 'left': '20px'},
-                 display_header_footer=True,
-                 header_template='<div style="font-size:9px;margin-left:20px;">BMR Cotton Analytics — Confidential</div>',
-                 footer_template='<div style="font-size:9px;text-align:center;"><span class="pageNumber"></span></div>')
+        page.pdf(
+            path=pdf_path,
+            format='A4',
+            print_background=True,
+            margin={'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px'}
+        )
         
         browser.close()
         print(f"[{now()}] PDF generated: {pdf_path}")
@@ -178,13 +179,13 @@ This is an automated report. Do not reply.
         attachment.add_header('Content-Disposition', f'attachment; filename=BMR_Cotton_Report_{datetime.now():%Y%m%d_%H%M}.pdf')
         msg.attach(attachment)
     
-    # Gmail SMTP with SSL on port 465 (more reliable than TLS/587 in CI)
-    print(f"[{now()}] Connecting to Gmail SMTP (SSL)...")
+    # Gmail SMTP with SSL on port 465
+    print(f"[{now()}] Connecting to Gmail SMTP (SSL/465)...")
     
     context = ssl.create_default_context()
     
     with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context, timeout=30) as server:
-        print(f"[{now()}] Logging in...")
+        print(f"[{now()}] Logging in as {SMTP_USER}...")
         server.login(SMTP_USER, SMTP_PASS)
         print(f"[{now()}] Sending to {len(EMAIL_TO)} recipient(s)...")
         server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
