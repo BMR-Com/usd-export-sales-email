@@ -326,7 +326,7 @@ def generate_pdf(new_rows, all_rows_for_charts):
             page.wait_for_timeout(1000)
 
             # Bypass password screen — inject auth token into sessionStorage
-            page.evaluate("() => { try { sessionStorage.setItem('bmr_auth','1'); } catch(e){} }")
+            page.evaluate("() => { try { localStorage.setItem('bmr_auth_exp', JSON.stringify({ts: Date.now()})); } catch(e){} }")
             # Remove the overlay if it rendered before we injected
             page.evaluate("""() => {
                 var o = document.getElementById('auth-overlay');
