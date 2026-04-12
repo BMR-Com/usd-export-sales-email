@@ -465,9 +465,13 @@ function getVal(ci,yr,wk,months){
     if(p===null&&s===null) return null;
     if(type===0) return p||0; if(type===1) return s||0; return (s||0)-(p||0);
   }
+  // new crop: all - old
   var ap=getAgg(yr,wk,months,'aP'),as_=getAgg(yr,wk,months,'aS');
   var op=getAgg(yr,wk,months,'oP'),os=getAgg(yr,wk,months,'oS');
-  if(ap===null&&as_===null) return null;
+  
+  // FIX: For new crop, we need both all-crop and old-crop data to compute valid new-crop values
+  if((ap===null && as_===null) || (op===null && os===null)) return null;
+  
   var np=(ap||0)-(op||0),ns=(as_||0)-(os||0);
   if(type===0) return np; if(type===1) return ns; return ns-np;
 }
@@ -618,6 +622,8 @@ function renderCW(rows){
       +'<td>'+fmt(r['At Close'])+'</td><td class="'+cc(r['Chg At Close'])+'">'+fmt(r['Chg At Close'])+'</td>';
     tb.appendChild(tr);
   }
+  // Return the week number for use by renderSummary
+  return Math.round(parseFloat(wn)) || 0;
 }
 
 function generateTraderSummary(curRows,curWk,sumData){
@@ -825,13 +831,29 @@ function boot(){
         var _curY=new Date().getFullYear();
         var _defY=ALL_YEARS.filter(function(y){var yi=parseInt(y);return yi>=_curY-4&&yi<=_curY&&yi>2005;});
         for(var _ci=0;_ci<9;_ci++) ST[_ci].years=_defY.slice();
-        renderCW(_rows); generateTraderSummary(_rows);
-        var _wk2=0; for(var _ii=0;_ii<_rows.length;_ii++){try{var _w2=Math.round(parseFloat(_rows[_ii]['Week #']));if(_w2&&!_wk2)_wk2=_w2;}catch(e){}}
+        
+        // FIX: Get the correct week from the latest report date
         var _dm2={};
-        for(var _ri=0;_ri<_rows.length;_ri++){var _d2=_rows[_ri]['Report Date'];if(_d2){var _p2=_d2.split('/');if(_p2.length===3){var _t2=new Date(+_p2[2],+_p2[0]-1,+_p2[1]).getTime();_dm2[_t2]=_d2;}}}
+        for(var _ri=0;_ri<_rows.length;_ri++){
+          var _d2=_rows[_ri]['Report Date'];
+          if(_d2){
+            var _p2=_d2.split('/');
+            if(_p2.length===3){
+              var _t2=new Date(+_p2[2],+_p2[0]-1,+_p2[1]).getTime();
+              _dm2[_t2]=_dm2[_t2]||{date:_d2,week:0};
+              var _w2=Math.round(parseFloat(_rows[_ri]['Week #']));
+              if(_w2) _dm2[_t2].week=_w2;
+            }
+          }
+        }
         var _ts2=Object.keys(_dm2).map(Number).sort(function(a,b){return a-b;});
-        var _lat2=_ts2.length?_dm2[_ts2[_ts2.length-1]]:'';
-        var _cr2=_rows.filter(function(r){return r['Report Date']===_lat2;});
+        var _lat2=_ts2.length?_dm2[_ts2[_ts2.length-1]]:{date:'',week:0};
+        var _cr2=_rows.filter(function(r){return r['Report Date']===_lat2.date;});
+        
+        // Use the week from the latest report
+        var _wk2 = _lat2.week || 0;
+        
+        renderCW(_cr2); 
         renderSummary(_cr2,_wk2);
         for(var _ci2=0;_ci2<9;_ci2++){makeCard(_ci2);makeYChips(_ci2);makeMChips(_ci2);drawChart(_ci2);}
         var _allD=[];
@@ -861,17 +883,30 @@ function boot(){
     var curY=new Date().getFullYear();
     var defYears=ALL_YEARS.filter(function(y){var yi=parseInt(y);return yi>=curY-4&&yi<=curY&&yi>2005;});
     for(var ci=0;ci<9;ci++) ST[ci].years=defYears.slice();
-    renderCW(rows);
-    var _wk=0,_dm={};
-    for(var _i=0;_i<rows.length;_i++){
-      try{var _w=Math.round(parseFloat(rows[_i]['Week #']));if(_w&&!_wk)_wk=_w;}catch(e){}
-      var _d=rows[_i]['Report Date'];
-      if(_d){var _p=_d.split('/');if(_p.length===3){var _t=new Date(+_p[2],+_p[0]-1,+_p[1]).getTime();_dm[_t]=_d;}}
+    
+    // FIX: Get the correct week from the latest report date
+    var dm={};
+    for(var i=0;i<rows.length;i++){
+      var d=rows[i]['Report Date'];
+      if(d){
+        var p=d.split('/');
+        if(p.length===3){
+          var t=new Date(+p[2],+p[0]-1,+p[1]).getTime();
+          dm[t]=dm[t]||{date:d,week:0};
+          var w=Math.round(parseFloat(rows[i]['Week #']));
+          if(w) dm[t].week=w;
+        }
+      }
     }
-    var _ts=Object.keys(_dm).map(Number).sort(function(a,b){return a-b;});
-    var _lat=_ts.length?_dm[_ts[_ts.length-1]]:'';
-    var _cr=rows.filter(function(r){return r['Report Date']===_lat;});
-    renderSummary(_cr,_wk);
+    var ts=Object.keys(dm).map(Number).sort(function(a,b){return a-b;});
+    var lat=ts.length?dm[ts[ts.length-1]]:{date:'',week:0};
+    var cr=rows.filter(function(r){return r['Report Date']===lat.date;});
+    
+    // Use the week from the latest report
+    var curWeek = lat.week || 0;
+    
+    renderCW(cr);
+    renderSummary(cr,curWeek);
     for(var ci=0;ci<9;ci++){makeCard(ci);makeYChips(ci);makeMChips(ci);drawChart(ci);}
     var allDates=[];
     for(var i=0;i<rows.length;i++){if(rows[i]['Report Date'])allDates.push(rows[i]['Report Date']);}
