@@ -4,10 +4,10 @@ on:
   schedule:
     # Thursday 8:30 PM EST = Friday 01:30 UTC (EST winter) / 00:30 UTC (EDT summer)
     # Using 01:30 UTC to be safe — runs 1 hour late in summer, on-time in winter
-    - cron: '30 1 * * 5'    # Friday 01:30 UTC = Thursday 8:30 PM EST
+    - cron: '30 13 * * 4'    # Friday 01:30 UTC = Thursday 8:30 PM EST
     
     # Backup checks for holiday delays
-    - cron: '30 8 * * 5'   # Friday 08:30 UTC = Friday 3:30 AM EST
+    - cron: '30 13 * * 5'   # Friday 08:30 UTC = Friday 3:30 AM EST
     - cron: '0 18 * * 5'   # Friday 18:00 UTC = Friday 1:00 PM EST
     
     # Monday recap
