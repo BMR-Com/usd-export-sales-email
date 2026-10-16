@@ -340,6 +340,62 @@ def build(cfg):
         if lag:
             t += " Slow to ship vs sales: " + ", ".join(f"{x['c']} ({x['outstanding']:,.2f} outstanding)" for x in lag[:3]) + " — watch for cancellations or roll-overs."
         T.append({"h": "Shipment calendar", "t": t})
+    # ── week-to-week and year-to-date scorecard ──
+    FLOW = [("grossNewSales", "Gross new sales"), ("currentMYNetSales", "Net sales"), ("weeklyExports", "Shipments"), ("nextMYNetSales", "Next-season net sales")]
+    STOCK = [("accumulatedExports", "Shipped to date"), ("outstandingSales", "Outstanding sales"), ("commit", "Total commitments"), ("nextMYOutstandingSales", "Next-season outstanding")]
+    def same_week(y, col):
+        g = tot[(tot.marketYear == y) & (tot.wk <= wk)].sort_values("wk")
+        return float(g[col].iloc[-1]) if len(g) else None
+    def ytd(y, col):
+        g = tot[(tot.marketYear == y) & (tot.wk <= wk)]
+        return float(g[col].sum()) if len(g) else None
+    prev = c.iloc[-2] if len(c) > 1 else None
+    yrs5 = list(H5.y)
+    score = []
+    for col, lab in FLOW:
+        lyv = same_week(cur_y - 1, col); a5 = [same_week(y, col) for y in yrs5]; a5 = [v for v in a5 if v is not None]
+        yt = float(c[col].sum()); yl = ytd(cur_y - 1, col); y5 = [ytd(y, col) for y in yrs5]; y5 = [v for v in y5 if v is not None]
+        score.append({"k": col, "label": lab, "type": "flow", "tw": float(L[col]) / D, "lw": float(prev[col]) / D if prev is not None else None,
+                      "avg4": float(c[col].tail(4).mean()) / D, "ly": lyv / D if lyv is not None else None, "avg5": float(np.mean(a5)) / D if a5 else None,
+                      "ytd": yt / D, "ytd_ly": yl / D if yl is not None else None, "ytd_avg5": float(np.mean(y5)) / D if y5 else None})
+    for col, lab in STOCK:
+        lyv = same_week(cur_y - 1, col); a5 = [same_week(y, col) for y in yrs5]; a5 = [v for v in a5 if v is not None]
+        score.append({"k": col, "label": lab, "type": "stock", "tw": float(L[col]) / D, "lw": float(prev[col]) / D if prev is not None else None,
+                      "ly": lyv / D if lyv is not None else None, "avg5": float(np.mean(a5)) / D if a5 else None})
+    # weekly series (this season + last 5) for interactive charts
+    series = {}
+    for y in [cur_y] + yrs5[::-1]:
+        g = tot[tot.marketYear == y].sort_values("wk")
+        series[labels[y][1]] = {k: [[int(w_) + 1, round(float(v) / D, 4)] for w_, v in zip(g.wk, g[k])] for k, _ in FLOW + STOCK}
+    # countries this week
+    cw = e[(e.marketYear == cur_y)]
+    tw_ = cw[cw.weekEndingDate == last_date].groupby("countryName")[["currentMYNetSales", "weeklyExports", "accumulatedExports", "outstandingSales", "commit", "nextMYOutstandingSales"]].sum()
+    lw_ = cw[cw.weekEndingDate == (prev.weekEndingDate if prev is not None else last_date)].groupby("countryName")[["currentMYNetSales", "weeklyExports"]].sum()
+    lyc = {}
+    gly = e[e.marketYear == cur_y - 1].copy()
+    if len(gly):
+        gly["wk"] = (gly.weekEndingDate - pd.Timestamp(year=labels[cur_y - 1][0], month=cfg["start"], day=1)).dt.days // 7
+        lastw = gly[gly.wk <= wk].weekEndingDate.max()
+        lyc = gly[gly.weekEndingDate == lastw].groupby("countryName")[["commit", "accumulatedExports"]].sum().to_dict("index")
+    ctab = []
+    for nm, r in tw_.sort_values("commit", ascending=False).head(25).iterrows():
+        ctab.append({"c": nm, "net": r.currentMYNetSales / D, "net_lw": float(lw_.currentMYNetSales.get(nm, 0)) / D, "ship": r.weeklyExports / D,
+                     "ship_lw": float(lw_.weeklyExports.get(nm, 0)) / D, "accum": r.accumulatedExports / D, "outst": r.outstandingSales / D,
+                     "commit": r.commit / D, "commit_ly": (lyc.get(nm, {}).get("commit", 0)) / D, "accum_ly": (lyc.get(nm, {}).get("accumulatedExports", 0)) / D,
+                     "next": r.nextMYOutstandingSales / D})
+    sc = {x["k"]: x for x in score}
+    def ch(a, b):
+        return (lambda r: "0%" if abs(r) < 0.005 else f"{r:+.0%}")(a / b - 1) if a is not None and b not in (None, 0) else "n/a"
+    ns, sh_ = sc["currentMYNetSales"], sc["weeklyExports"]
+    T.insert(2, {"h": "Week on week", "t": (
+        f"Net sales {ns['tw']:,.3f} vs {ns['lw'] or 0:,.3f} the week before ({ch(ns['tw'], ns['lw'])}), {ch(ns['tw'], ns['ly'])} vs the same week last year and "
+        f"{ch(ns['tw'], ns['avg5'])} vs the 5-yr average. Shipments {sh_['tw']:,.3f} vs {sh_['lw'] or 0:,.3f} ({ch(sh_['tw'], sh_['lw'])}), "
+        f"{ch(sh_['tw'], sh_['ly'])} vs last year, {ch(sh_['tw'], sh_['avg5'])} vs the 5-yr average.")})
+    T.insert(3, {"h": "Season to date", "t": (
+        f"Net sales {ns['ytd']:,.2f} ({ch(ns['ytd'], ns['ytd_ly'])} y/y, {ch(ns['ytd'], ns['ytd_avg5'])} vs 5-yr avg); shipments {sc['accumulatedExports']['tw']:,.2f} "
+        f"({ch(sc['accumulatedExports']['tw'], sc['accumulatedExports']['ly'])} y/y); outstanding sales {sc['outstandingSales']['tw']:,.2f} "
+        f"({ch(sc['outstandingSales']['tw'], sc['outstandingSales']['ly'])} y/y); next-season sales on the books {sc['nextMYOutstandingSales']['tw']:,.2f}.")})
+
     # bottom line: weigh sales pace, destinations and competitor supply
     sig = []
     if implied:
@@ -366,7 +422,7 @@ def build(cfg):
             "pace": pace, "pace_norm": pace_n, "ship_pct": ship, "ship_norm": ship_n, "implied": implied, "ly_commit": round(ly_commit / D, 3) if ly_commit else None,
             "net": round(L.currentMYNetSales / D, 3), "net4": round(net4 / D, 3), "net4_5y": round(net4_5y / D, 3), "ship_wk": round(L.weeklyExports / D, 3), "ship4": round(ship4 / D, 3),
             "need_ship": round(need_ship / D, 3), "need_sales": round(max(need_sales, 0) / D, 3), "weeks_left": weeks_left, "tilt": tilt,
-            "buyers": top_buy, "cancels": cancels, "shippers": top_ship, "dest": dest, "brief": T, "seas": seas, "months": months_order, "supply": S,
+            "score": score, "series": series, "countries": ctab, "buyers": top_buy, "cancels": cancels, "shippers": top_ship, "dest": dest, "brief": T, "seas": seas, "months": months_order, "supply": S,
             "curve": {"cur": [[int(r.wk) + 1, round(r.commit / t_esr, 4)] for r in c.itertuples()],
                       "hist": {h.my: [[int(r.wk) + 1, round(r.commit / h.fin_esr, 4)] for r in tot[tot.marketYear == h.y].sort_values("wk").itertuples()] for h in H5.itertuples()}}}
 

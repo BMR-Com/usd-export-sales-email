@@ -6,128 +6,191 @@
 <title>BMR-Com · US Cotton Export Sales</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root{--ink:#1a2333;--muted:#667085;--line:#e6e8ec;--bg:#f6f7f9;--card:#fff;--brand:#13315c;--up:#166534;--dn:#b91c1c;--upbg:#dcfce7;--dnbg:#fee2e2;--neu:#f1f2f4}
+:root{--ink:#1a2333;--muted:#667085;--line:#e6e8ec;--bg:#f6f7f9;--card:#fff;--brand:#13315c;--accent:#c2410c;--up:#166534;--dn:#b91c1c;--upbg:#dcfce7;--dnbg:#fee2e2;--neu:#f1f2f4}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
 .bar{background:var(--brand);color:#fff;padding:.85rem 1.4rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
-.bar h1{font-size:1.05rem;font-weight:600;letter-spacing:.01em}
+.bar h1{font-size:1.05rem;font-weight:600}
 .bar .sub{font-size:11.5px;opacity:.75}
 .wrap{max-width:1400px;margin:0 auto;padding:1rem 1.2rem 2rem}
 .pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.9rem}
-.pill{padding:5px 13px;border-radius:99px;border:1px solid #cfd4dc;background:#fff;font-size:12.5px;cursor:pointer}
-.pill.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.pill,.seg button{padding:5px 13px;border-radius:99px;border:1px solid #cfd4dc;background:#fff;font-size:12.5px;cursor:pointer;color:var(--ink)}
+.pill.on,.seg button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
 .head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.7rem}
 .head h2{font-size:1.25rem;font-weight:650}
 .head .meta{font-size:12px;color:var(--muted)}
 .tag{display:inline-block;border-radius:5px;padding:4px 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .tag.strong{background:var(--upbg);color:var(--up)}.tag.weak{background:var(--dnbg);color:var(--dn)}.tag.on{background:var(--neu);color:#444}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:.6rem;margin-bottom:.9rem}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(175px,100%),1fr));gap:.6rem;margin-bottom:1rem}
 .k{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:.65rem .8rem}
-.k span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
-.k b{font-size:1.25rem;font-weight:650;font-variant-numeric:tabular-nums}
-.k small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
-.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:1rem;margin-bottom:1rem}
-@media(max-width:950px){.grid{grid-template-columns:1fr}}
+.k>span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
+.k b{font-size:1.3rem;font-weight:650;font-variant-numeric:tabular-nums}
+.k i{font-style:normal;font-size:11px;color:var(--muted);margin-left:3px}
+.k small{display:block;font-size:11.5px;color:var(--muted);margin-top:3px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;margin-bottom:1rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+@media(max-width:950px){.grid,.two{grid-template-columns:1fr}}
 .grid>*,.two>*{min-width:0}
-@media(max-width:600px){.wrap{padding:.8rem 1rem 1.5rem}.card{padding:.8rem}}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem}
-.sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--brand);margin:0 0 .55rem;border-left:3px solid var(--brand);padding-left:.45rem}
-.brief .h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand);margin-top:.5rem}
-.brief p{font-size:13.5px;line-height:1.6;margin-bottom:.35rem}
-.chartbox{position:relative;height:330px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;margin-bottom:1rem}
+.grid>.card,.two>.card{margin-bottom:0}
+.sec{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--brand);margin:0 0 .6rem;border-left:3px solid var(--brand);padding-left:.45rem}
+.ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;text-transform:none;letter-spacing:0;font-weight:400}
+.ctl select{padding:4px 8px;border:1px solid #cfd4dc;border-radius:6px;font-size:12px;background:#fff}
+.seg{display:inline-flex;gap:4px}.seg button{padding:3px 10px;font-size:11.5px}
+.brief .h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand);margin-top:.55rem}
+.brief p{font-size:13.5px;line-height:1.6;margin-bottom:.3rem}
+.chartbox{position:relative;height:340px}.chartbox.s{height:300px}
 .scroll{overflow-x:auto}
 table.t{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
-table.t th{background:var(--brand);color:#fff;font-weight:500;font-size:11px;padding:6px 8px;text-align:right;white-space:nowrap}
+table.t th{background:var(--brand);color:#fff;font-weight:500;font-size:11px;padding:7px 9px;text-align:right;white-space:nowrap}
 table.t th.l,table.t td.l{text-align:left}
-table.t td{padding:5px 8px;border-bottom:1px solid #eef0f3;text-align:right;white-space:nowrap}
+table.t th.sort{cursor:pointer;user-select:none}table.t th.sort:after{content:' ↕';opacity:.5}
+table.t td{padding:6px 9px;border-bottom:1px solid #eef0f3;text-align:right;white-space:nowrap}
 table.t tbody tr:nth-child(even) td{background:#fafbfc}
+table.t tbody tr:hover td{background:#eef3fb}
+table.t tr.grp td{background:#eef1f6!important;font-weight:700;color:var(--brand);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+table.t td.b{font-weight:650}
 .up{color:var(--up)}.dn{color:var(--dn)}.mut{color:#9aa1ad}
 .chip{display:inline-block;border-radius:4px;padding:1px 7px;font-size:10.5px;font-weight:700;text-transform:uppercase}
 .chip.more{background:var(--upbg);color:var(--up)}.chip.less{background:var(--dnbg);color:var(--dn)}.chip.norm{background:var(--neu);color:#555}
-.note{font-size:11px;color:var(--muted);margin-top:.4rem;line-height:1.5}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
-@media(max-width:950px){.two{grid-template-columns:1fr}}
+.barcell{position:relative;min-width:90px}.barcell .bf{position:absolute;right:0;top:22%;bottom:22%;background:rgba(194,65,12,.14);border-radius:2px}.barcell span{position:relative}
+.note{font-size:11px;color:var(--muted);margin-top:.45rem;line-height:1.5}
 .heat td.m{width:46px;text-align:center;font-size:11.5px}
-.heat td.now{outline:2px solid var(--brand);outline-offset:-2px}
+.heat td.now{outline:2px solid var(--accent);outline-offset:-2px}
 footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
 .spinner{padding:2rem;text-align:center;color:var(--muted)}
+@media(max-width:600px){.wrap{padding:.8rem 1rem 1.5rem}.card{padding:.8rem}.chartbox{height:280px}}
 </style>
 </head>
 <body>
 <div class="bar"><h1>BMR-Com · US Cotton Export Sales</h1><div class="sub" id="gen">USDA FAS weekly export sales vs USDA WASDE</div></div>
 <div class="wrap">
-  <div class="pills" id="pills"></div>
+  <div class="pills" id="pills" style="display:none"></div>
   <div id="body"><div class="spinner">Loading…</div></div>
 </div>
-<footer>BMR-Com · independent commodity research · Data: USDA FAS Export Sales Reporting, USDA WASDE · Not investment advice.</footer>
+<footer>BMR-Com · independent commodity research · Data: USDA FAS Export Sales Reporting (upland + Pima), USDA WASDE · Not investment advice.</footer>
 <script>
 (function(){
-  var D=null, cur=null, chart=null;
+  var D=null,B=null,cur=null,charts={},sortKey='commit',sortDir=-1,seasMetric='commit',seasMode='abs';
   var $=function(id){return document.getElementById(id);};
   var md=function(t){return String(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');};
   function n(v,d){if(v==null||isNaN(v))return '–';return (+v).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});}
-  function dp(v){return v==null?2:(Math.abs(v)>=100?0:Math.abs(v)>=10?1:2);}
   function pc(v,d){return v==null||isNaN(v)?'–':(v*100).toFixed(d==null?0:d)+'%';}
-  function sg(v){if(v==null||isNaN(v))return '–';var c=v>0?'up':v<0?'dn':'mut';return '<span class="'+c+'">'+(v>0?'+':'')+(v*100).toFixed(0)+'%</span>';}
-  function kpi(l,v,s){return '<div class="k"><span>'+l+'</span><b>'+v+'</b><small>'+(s||'')+'</small></div>';}
+  function rel(a,b){if(a==null||b==null||b===0)return '<span class="mut">–</span>';var r=a/b-1;if(Math.abs(r)<0.005)return '<span class="mut">0%</span>';return '<span class="'+(r>0?'up':'dn')+'">'+(r>0?'+':'')+(r*100).toFixed(0)+'%</span>';}
+  function dif(a,b,d){if(a==null||b==null)return '<span class="mut">–</span>';var r=a-b;if(Math.abs(r)<Math.pow(10,-d)/2)return '<span class="mut">0</span>';return '<span class="'+(r>0?'up':'dn')+'">'+(r>0?'+':'')+n(r,d)+'</span>';}
+  function kpi(l,v,u,s){return '<div class="k"><span>'+l+'</span><b>'+v+'</b><i>'+(u||'')+'</i><small>'+(s||'')+'</small></div>';}
+  var METRICS={commit:'Total commitments',accumulatedExports:'Shipped to date',outstandingSales:'Outstanding sales',currentMYNetSales:'Net sales (weekly)',weeklyExports:'Shipments (weekly)',grossNewSales:'Gross new sales (weekly)',nextMYOutstandingSales:'Next-season outstanding',nextMYNetSales:'Next-season net sales (weekly)'};
+  var FLOWS={currentMYNetSales:1,weeklyExports:1,grossNewSales:1,nextMYNetSales:1};
+
+  function scorecard(){
+    var S=B.score,flows=S.filter(function(x){return x.type==='flow';}),stocks=S.filter(function(x){return x.type==='stock';});
+    var h='<table class="t"><thead><tr><th class="l">'+B.unit+'</th><th>This week</th><th>Last week</th><th>w/w</th><th>4-wk avg</th><th>Same week LY</th><th>vs LY</th><th>5-yr avg</th><th>vs 5-yr</th><th>Season to date</th><th>vs LY</th><th>vs 5-yr</th></tr></thead><tbody>';
+    h+='<tr class="grp"><td class="l" colspan="12">Weekly activity</td></tr>';
+    flows.forEach(function(x){h+='<tr><td class="l b">'+x.label+'</td><td class="b">'+n(x.tw,3)+'</td><td>'+n(x.lw,3)+'</td><td>'+rel(x.tw,x.lw)+'</td><td>'+n(x.avg4,3)+'</td><td>'+n(x.ly,3)+'</td><td>'+rel(x.tw,x.ly)+'</td><td>'+n(x.avg5,3)+'</td><td>'+rel(x.tw,x.avg5)+'</td><td class="b">'+n(x.ytd,2)+'</td><td>'+rel(x.ytd,x.ytd_ly)+'</td><td>'+rel(x.ytd,x.ytd_avg5)+'</td></tr>';});
+    h+='<tr class="grp"><td class="l" colspan="12">Book position</td></tr>';
+    stocks.forEach(function(x){h+='<tr><td class="l b">'+x.label+'</td><td class="b">'+n(x.tw,2)+'</td><td>'+n(x.lw,2)+'</td><td>'+dif(x.tw,x.lw,3)+'</td><td></td><td>'+n(x.ly,2)+'</td><td>'+rel(x.tw,x.ly)+'</td><td>'+n(x.avg5,2)+'</td><td>'+rel(x.tw,x.avg5)+'</td><td></td><td></td><td></td></tr>';});
+    return h+'</tbody></table><div class="note">“Same week LY” and “5-yr avg” are taken at the same week of the marketing year. Season to date sums the weekly figures since August 1; shipped to date and commitments also include sales carried in from earlier seasons.</div>';
+  }
+  function countryTable(){
+    var rows=(B.countries||[]).map(function(r){r.yy=r.commit_ly?r.commit/r.commit_ly-1:null;return r;});
+    rows.sort(function(a,b){var x=a[sortKey],y=b[sortKey];if(typeof x==='string')return sortDir*x.localeCompare(y);return sortDir*((x==null?-1e9:x)-(y==null?-1e9:y));});
+    var mx=Math.max.apply(null,rows.map(function(r){return r.commit;}))||1;
+    var cols=[['c','Destination','l'],['net','Net sales'],['net_lw','Last week'],['ship','Shipments'],['ship_lw','Last week'],['accum','Shipped to date'],['outst','Outstanding'],['commit','Commitments'],['commit_ly','Same week LY'],['yy','vs LY'],['next','Next season']];
+    var h='<table class="t"><thead><tr>'+cols.map(function(c){return '<th class="sort '+(c[2]||'')+'" data-k="'+c[0]+'">'+c[1]+(sortKey===c[0]?(sortDir>0?' ▲':' ▼'):'')+'</th>';}).join('')+'</tr></thead><tbody>';
+    rows.forEach(function(r){h+='<tr><td class="l b">'+r.c+'</td><td>'+(r.net<0?'<span class="dn">'+n(r.net,3)+'</span>':n(r.net,3))+'</td><td class="mut">'+n(r.net_lw,3)+'</td><td>'+n(r.ship,3)+'</td><td class="mut">'+n(r.ship_lw,3)+'</td><td>'+n(r.accum,3)+'</td><td>'+n(r.outst,3)+'</td><td class="barcell b"><div class="bf" style="width:'+(r.commit/mx*100).toFixed(0)+'%"></div><span>'+n(r.commit,3)+'</span></td><td>'+n(r.commit_ly,3)+'</td><td>'+rel(r.commit,r.commit_ly)+'</td><td>'+n(r.next,3)+'</td></tr>';});
+    return h+'</tbody></table><div class="note">'+B.unit+' · click a column heading to sort.</div>';
+  }
   function render(){
-    var B=D.commodities.filter(function(c){return c.name===cur;})[0]; if(!B)return;
+    B=D.commodities.filter(function(c){return c.name===cur;})[0]; if(!B)return;
     $('pills').style.display=D.commodities.length>1?'':'none';
     $('pills').innerHTML=D.commodities.map(function(c){return '<button class="pill'+(c.name===cur?' on':'')+'" data-c="'+c.name+'">'+c.name+'</button>';}).join('');
-    var tl={strong:['strong','Running ahead of USDA'],weak:['weak','Running behind USDA'],'on track':['on','On track with USDA']}[B.tilt];
-    var wf=B.w_fmt!=null?B.w_fmt:2;
-    var h='<div class="head"><div><h2>'+B.name+' · '+B.my+'</h2><div class="meta">Export sales week ending '+B.week+' (week '+B.wk+' of the marketing year) · USDA forecast from the '+B.report+' WASDE</div></div><span class="tag '+tl[0]+'">'+tl[1]+'</span></div>';
+    var tl={strong:['strong','Running ahead of USDA'],weak:['weak','Running behind USDA'],'on track':['on','On track with USDA']}[B.tilt],wf=B.w_fmt!=null?B.w_fmt:2;
+    var S={};B.score.forEach(function(x){S[x.k]=x;});
+    var h='<div class="head"><div><h2>US '+B.name.toLowerCase()+' exports · '+B.my+'</h2><div class="meta">Week ending '+B.week+' (week '+B.wk+' of the marketing year) · USDA forecast from the '+B.report+' WASDE · upland + Pima</div></div><span class="tag '+tl[0]+'">'+tl[1]+'</span></div>';
     h+='<div class="kpis">'+
-      kpi('Commitments',n(B.commit,dp(B.commit))+' <small style="display:inline">'+B.unit+'</small>',pc(B.pace)+' of USDA · norm '+pc(B.pace_norm)+(B.ly_commit?' · '+((B.commit/B.ly_commit-1)>=0?'+':'')+((B.commit/B.ly_commit-1)*100).toFixed(0)+'% y/y':''))+
-      kpi('Shipped',n(B.shipped,dp(B.shipped)),pc(B.ship_pct)+' of USDA · norm '+pc(B.ship_norm))+
-      kpi('USDA forecast',n(B.target,wf)+' <small style="display:inline">'+B.w_unit+'</small>',B.target_prev!=null&&B.target_prev!==B.target?((B.target-B.target_prev)>0?'+':'')+n(B.target-B.target_prev,wf)+' vs prior report':'unchanged vs prior report')+
-      kpi('Pace implies',B.implied==null?'–':n(B.implied,wf)+' <small style="display:inline">'+B.w_unit+'</small>',B.implied==null?'':sg(B.implied/B.target-1)+' vs USDA')+
-      kpi('Shipments needed / wk',n(B.need_ship,3),'last 4 wks avg '+n(B.ship4,3)+' · '+B.weeks_left+' wks left')+
-      kpi('Net sales this week',n(B.net,3),'4-wk avg '+n(B.net4,3)+' · 5-yr avg '+n(B.net4_5y,3))+'</div>';
+      kpi('Net sales this week',n(S.currentMYNetSales.tw,3),B.unit,rel(S.currentMYNetSales.tw,S.currentMYNetSales.lw)+' w/w · '+rel(S.currentMYNetSales.tw,S.currentMYNetSales.avg5)+' vs 5-yr')+
+      kpi('Shipments this week',n(S.weeklyExports.tw,3),'',rel(S.weeklyExports.tw,S.weeklyExports.lw)+' w/w · need '+n(B.need_ship,3)+'/wk')+
+      kpi('Total commitments',n(B.commit,2),'',pc(B.pace)+' of USDA · norm '+pc(B.pace_norm)+' · '+rel(B.commit,B.ly_commit)+' y/y')+
+      kpi('Shipped to date',n(B.shipped,2),'',pc(B.ship_pct)+' of USDA · norm '+pc(B.ship_norm))+
+      kpi('USDA forecast',n(B.target,wf),B.w_unit,B.target_prev!=null&&B.target_prev!==B.target?((B.target-B.target_prev)>0?'+':'')+n(B.target-B.target_prev,wf)+' vs prior report':'unchanged vs prior report')+
+      kpi('Pace implies',B.implied==null?'–':n(B.implied,wf),B.w_unit,B.implied==null?'':rel(B.implied,B.target)+' vs USDA')+'</div>';
+    h+='<div class="card"><div class="sec">Week on week and season to date</div><div class="scroll">'+scorecard()+'</div></div>';
     h+='<div class="grid"><div class="card brief"><div class="sec">Brief</div>'+B.brief.map(function(b){return '<div class="h">'+b.h+'</div><p>'+md(b.t)+'</p>';}).join('')+'</div>'+
-       '<div class="card"><div class="sec">Commitments as % of the season\'s final shipments</div><div class="chartbox"><canvas id="pace"></canvas></div><div class="note">This season is shown against USDA\'s forecast (export-sales basis); past seasons against their final shipments.</div></div></div>';
-    // destinations
-    var dd=B.dest||[];
+      '<div class="card"><div class="sec"><span>Seasonal comparison</span><span class="ctl"><select id="seasMetric" aria-label="Metric">'+Object.keys(METRICS).map(function(k){return '<option value="'+k+'"'+(k===seasMetric?' selected':'')+'>'+METRICS[k]+'</option>';}).join('')+
+      '</select><span class="seg" id="seasMode"><button data-m="abs" class="'+(seasMode==='abs'?'on':'')+'">Volume</button><button data-m="pct" class="'+(seasMode==='pct'?'on':'')+'">% of season</button></span></span></div><div class="chartbox"><canvas id="seas"></canvas></div>'+
+      '<div class="note">Hover for values; click a season in the legend to hide or show it. “% of season” shows commitments as a share of each season\'s final shipments (this season: USDA\'s forecast).</div>'+
+      '<div class="sec" style="margin-top:1rem">This season, week by week</div><div class="chartbox s"><canvas id="weekly"></canvas></div></div></div>';
+    var dd=(B.dest||[]).filter(function(d){return d.c!=='Unknown destinations';});
     if(dd.length){
-      h+='<div class="card" style="margin-bottom:1rem"><div class="sec">Destinations — commitments vs import forecasts</div><div class="scroll"><table class="t"><thead><tr><th class="l">Destination</th><th>Commitments</th><th>Share</th><th>Same week LY</th><th>5-yr avg</th><th>Usually booked by now</th><th>Import forecast</th><th>US share 5-yr</th><th>US share 10-yr</th><th>Pace-implied share</th><th class="l">Read</th></tr></thead><tbody>'+
-      dd.map(function(d){var r=d.vs_usual==null||isNaN(d.vs_usual)?'':(d.vs_usual>0.15?'<span class="chip more">more US</span>':d.vs_usual<-0.15?'<span class="chip less">less US</span>':'<span class="chip norm">normal</span>');
-        return '<tr><td class="l">'+d.c+'</td><td>'+n(d.commit,3)+'</td><td>'+pc(d.share_now)+'</td><td>'+n(d.ly,3)+'</td><td>'+n(d.avg5,3)+'</td><td>'+pc(d.norm_pct)+'</td><td>'+(d.imports!=null?n(d.imports,2):'<span class="mut">–</span>')+'</td><td>'+pc(d.us_share5)+'</td><td>'+pc(d.us_share10)+'</td><td>'+pc(d.implied_share)+'</td><td class="l">'+r+'</td></tr>';}).join('')+
-      '</tbody></table></div><div class="note">Commitments in '+B.unit+'. Import forecasts are USDA\'s for each country ('+(B.name==='Cotton'?'million 480-lb bales':'million metric tons')+'). US share = US shipments to the country ÷ its total imports in past seasons. Pace-implied share projects this season\'s sales to the country at its usual seasonal pace; shown once the country has usually booked a quarter of its purchases.</div></div>';
+      h+='<div class="grid"><div class="card"><div class="sec">Top destinations — commitments vs last year and 5-yr average</div><div class="chartbox"><canvas id="dest"></canvas></div></div>';
+      h+='<div class="card"><div class="sec">Destinations vs USDA import forecasts</div><div class="scroll"><table class="t"><thead><tr><th class="l">Destination</th><th>Import forecast</th><th>Usually booked by now</th><th>US share 5-yr</th><th>10-yr</th><th>Pace-implied</th><th class="l">Read</th></tr></thead><tbody>'+
+      dd.filter(function(d){return d.imports!=null;}).map(function(d){var r=d.vs_usual==null||isNaN(d.vs_usual)?'<span class="mut">too early</span>':(d.vs_usual>0.15?'<span class="chip more">more US</span>':d.vs_usual<-0.15?'<span class="chip less">less US</span>':'<span class="chip norm">normal</span>');
+        return '<tr><td class="l b">'+d.c+'</td><td>'+n(d.imports,2)+'</td><td>'+pc(d.norm_pct)+'</td><td>'+pc(d.us_share5)+'</td><td>'+pc(d.us_share10)+'</td><td class="b">'+pc(d.implied_share)+'</td><td class="l">'+r+'</td></tr>';}).join('')+
+      '</tbody></table></div><div class="note">Import forecasts in million 480-lb bales (USDA). US share = US shipments to the country ÷ its imports in past seasons. Pace-implied projects this season\'s sales at the country\'s usual seasonal pace, once it has usually booked a quarter of its purchases.</div></div></div>';
     }
-    // supply
-    var S=B.supply;
-    if(S&&S.exporters&&S.exporters.length){
-      var u=B.name==='Cotton'?'m 480-lb bales':'MMT';
-      h+='<div class="two"><div class="card"><div class="sec">Competing exporters ('+u+')</div><div class="scroll"><table class="t"><thead><tr><th class="l">Exporter</th><th>Beg. stocks</th><th>Crop</th><th>Exportable surplus</th><th>vs '+S.pmy+'</th><th>Exports</th><th>vs '+S.pmy+'</th></tr></thead><tbody>'+
-        S.exporters.map(function(x){var d=x.surplus-x.surplus_ly;return '<tr><td class="l">'+x.r+'</td><td>'+n(x.bs,2)+'</td><td>'+n(x.prod,2)+'</td><td>'+n(x.surplus,2)+'</td><td class="'+(d<0?'up':'dn')+'">'+(d>0?'+':'')+n(d,2)+'</td><td>'+n(x.exp,2)+'</td><td>'+(x.exp!=null&&x.exp_ly!=null?(x.exp-x.exp_ly>0?'+':'')+n(x.exp-x.exp_ly,2):'–')+'</td></tr>';}).join('')+
-        '</tbody></table></div><div class="note">Exportable surplus = beginning stocks + crop − domestic use. Green = less competition for US exports.</div></div>';
-      h+='<div class="card"><div class="sec">Major importers — own supply vs use ('+u+')</div><div class="scroll"><table class="t"><thead><tr><th class="l">Importer</th><th>Supply</th><th>Use</th><th>Supply − use vs '+S.pmy+'</th><th>Imports</th><th>vs '+S.pmy+'</th></tr></thead><tbody>'+
-        S.importers.map(function(x){return '<tr><td class="l">'+x.r+'</td><td>'+n(x.supply,2)+'</td><td>'+n(x.use,2)+'</td><td class="'+(x.gap<0?'up':'dn')+'">'+(x.gap>0?'+':'')+n(x.gap,2)+'</td><td>'+n(x.imp,2)+'</td><td>'+(x.imp!=null&&x.imp_ly!=null?(x.imp-x.imp_ly>0?'+':'')+n(x.imp-x.imp_ly,2):'–')+'</td></tr>';}).join('')+
-        '</tbody></table></div><div class="note">Supply = beginning stocks + crop. Green = tighter own supply, more import need.'+(S.us_share&&S.us_share_ly?' USDA has the US at '+pc(S.us_share)+' of world exports vs '+pc(S.us_share_ly)+' last season.':'')+'</div></div></div>';
+    h+='<div class="card"><div class="sec">By destination this week</div><div class="scroll" id="ctab">'+countryTable()+'</div></div>';
+    var Sp=B.supply;
+    if(Sp&&Sp.exporters&&Sp.exporters.length){
+      h+='<div class="two"><div class="card"><div class="sec">Competing exporters (m 480-lb bales)</div><div class="scroll"><table class="t"><thead><tr><th class="l">Exporter</th><th>Beg. stocks</th><th>Crop</th><th>Exportable surplus</th><th>vs '+Sp.pmy+'</th><th>Exports</th><th>vs '+Sp.pmy+'</th></tr></thead><tbody>'+
+        Sp.exporters.map(function(x){var d=x.surplus-x.surplus_ly;return '<tr><td class="l b">'+x.r+'</td><td>'+n(x.bs,2)+'</td><td>'+n(x.prod,2)+'</td><td class="b">'+n(x.surplus,2)+'</td><td class="'+(d<0?'up':'dn')+'">'+(d>0?'+':'')+n(d,2)+'</td><td>'+n(x.exp,2)+'</td><td>'+(x.exp!=null&&x.exp_ly!=null?(x.exp-x.exp_ly>0?'+':'')+n(x.exp-x.exp_ly,2):'–')+'</td></tr>';}).join('')+
+        '</tbody></table></div><div class="note">Exportable surplus = beginning stocks + crop − domestic use. Green = less competition for US cotton.</div></div>';
+      h+='<div class="card"><div class="sec">Major importers — own supply vs use (m 480-lb bales)</div><div class="scroll"><table class="t"><thead><tr><th class="l">Importer</th><th>Supply</th><th>Use</th><th>Supply − use vs '+Sp.pmy+'</th><th>Imports</th><th>vs '+Sp.pmy+'</th></tr></thead><tbody>'+
+        Sp.importers.map(function(x){return '<tr><td class="l b">'+x.r+'</td><td>'+n(x.supply,2)+'</td><td>'+n(x.use,2)+'</td><td class="'+(x.gap<0?'up':'dn')+'">'+(x.gap>0?'+':'')+n(x.gap,2)+'</td><td class="b">'+n(x.imp,2)+'</td><td>'+(x.imp!=null&&x.imp_ly!=null?(x.imp-x.imp_ly>0?'+':'')+n(x.imp-x.imp_ly,2):'–')+'</td></tr>';}).join('')+
+        '</tbody></table></div><div class="note">Supply = beginning stocks + crop. Green = tighter own supply, more import need.'+(Sp.us_share&&Sp.us_share_ly?' USDA has the US at '+pc(Sp.us_share)+' of world exports vs '+pc(Sp.us_share_ly)+' last season.':'')+'</div></div></div>';
     }
-    // seasonality heatmap
     if(B.seas&&B.seas.length){
-      var mNow=new Date(B.week+'T00:00:00').getMonth(), names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      h+='<div class="card"><div class="sec">Shipment calendar — share of each destination\'s season shipped by month (last 5 seasons)</div><div class="scroll"><table class="t heat"><thead><tr><th class="l">Destination</th>'+B.months.map(function(m){return '<th>'+m+'</th>';}).join('')+'<th>Usually shipped by now</th><th>Shipped of commitments</th><th>Outstanding</th></tr></thead><tbody>'+
-        B.seas.map(function(x){return '<tr><td class="l">'+x.c+'</td>'+x.share.map(function(v,i){var a=Math.min(1,v/0.25);return '<td class="m'+(B.months[i]===names[mNow]?' now':'')+'" style="background:rgba(19,49,92,'+(a*0.75).toFixed(2)+');color:'+(a>0.55?'#fff':'#333')+'">'+(v>=0.005?(v*100).toFixed(0):'')+'</td>';}).join('')+
-        '<td>'+pc(x.norm_shipped)+'</td><td>'+pc(x.shipped_of_commit)+'</td><td>'+n(x.outstanding,3)+'</td></tr>';}).join('')+'</tbody></table></div><div class="note">Percent of each destination\'s season shipments made in that month; outlined column is the current month.</div></div>';
+      var mNow=new Date(B.week+'T00:00:00').getMonth(),names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      h+='<div class="card"><div class="sec">Shipment calendar — % of each destination\'s season shipped by month (last 5 seasons)</div><div class="scroll"><table class="t heat"><thead><tr><th class="l">Destination</th>'+B.months.map(function(m){return '<th>'+m+'</th>';}).join('')+'<th>Usually shipped by now</th><th>Shipped of commitments</th><th>Outstanding</th></tr></thead><tbody>'+
+        B.seas.map(function(x){return '<tr><td class="l b">'+x.c+'</td>'+x.share.map(function(v,i){var a=Math.min(1,v/0.2);return '<td class="m'+(B.months[i]===names[mNow]?' now':'')+'" style="background:rgba(19,49,92,'+(a*0.8).toFixed(2)+');color:'+(a>0.55?'#fff':'#333')+'" title="'+x.c+' · '+B.months[i]+': '+(v*100).toFixed(1)+'% of season">'+(v>=0.005?(v*100).toFixed(0):'')+'</td>';}).join('')+
+        '<td>'+pc(x.norm_shipped)+'</td><td>'+pc(x.shipped_of_commit)+'</td><td>'+n(x.outstanding,3)+'</td></tr>';}).join('')+'</tbody></table></div><div class="note">Outlined column = current month. Hover a cell for the exact share.</div></div>';
     }
     $('body').innerHTML=h;
-    // chart
-    if(chart){chart.destroy();chart=null;}
-    var cols=['#c7cdd6','#b4bcc8','#9ea8b7','#8692a5','#6d7a90'], ds=[], i=0;
-    Object.keys(B.curve.hist).forEach(function(k){ds.push({label:k,data:B.curve.hist[k].map(function(p){return {x:p[0],y:p[1]*100};}),borderColor:cols[i++%cols.length],borderWidth:1.5,pointRadius:0,tension:.2});});
-    ds.push({label:B.my+' (vs USDA)',data:B.curve.cur.map(function(p){return {x:p[0],y:p[1]*100};}),borderColor:'#c2410c',borderWidth:3,pointRadius:2,tension:.2});
-    chart=new Chart($('pace'),{type:'line',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'nearest',intersect:false},
-      plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y.toFixed(0)+'% (wk '+c.parsed.x+')';}}}},
-      scales:{x:{type:'linear',min:1,max:52,title:{display:true,text:'Week of marketing year'},ticks:{stepSize:4}},y:{min:0,suggestedMax:110,ticks:{callback:function(v){return v+'%';}}}}}});
+    drawSeas(); drawWeekly(); if(dd.length) drawDest(dd);
   }
-  document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.pill');if(b){cur=b.getAttribute('data-c');render();try{localStorage.setItem('esr_tab',cur);}catch(x){}}});
+  function kill(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+  var GREYS=['#cbd5e1','#a3b1c4','#7c8ba1','#5b6b82','#3b4a63'];
+  function drawSeas(){
+    kill('seas'); var ds=[],keys=Object.keys(B.series),cy=keys[0],i=0;
+    if(seasMode==='pct'){
+      Object.keys(B.curve.hist).forEach(function(k){ds.push({label:k,data:B.curve.hist[k].map(function(p){return {x:p[0],y:p[1]*100};}),borderColor:GREYS[i++%5],borderWidth:1.6,pointRadius:0,tension:.25});});
+      ds.push({label:B.my+' (vs USDA)',data:B.curve.cur.map(function(p){return {x:p[0],y:p[1]*100};}),borderColor:'#c2410c',backgroundColor:'#c2410c',borderWidth:3,pointRadius:2.5,tension:.25});
+    } else {
+      keys.slice(1).reverse().forEach(function(k){ds.push({label:k,data:(B.series[k][seasMetric]||[]).map(function(p){return {x:p[0],y:p[1]};}),borderColor:GREYS[i++%5],borderWidth:1.6,pointRadius:0,tension:.25});});
+      ds.push({label:cy,data:(B.series[cy][seasMetric]||[]).map(function(p){return {x:p[0],y:p[1]};}),borderColor:'#c2410c',backgroundColor:'#c2410c',borderWidth:3,pointRadius:2.5,tension:.25});
+    }
+    charts.seas=new Chart($('seas'),{type:'line',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:{duration:250},interaction:{mode:'x',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},tooltip:{itemSort:function(a,b){return b.parsed.y-a.parsed.y;},callbacks:{title:function(c){return 'Week '+c[0].parsed.x;},label:function(c){return ' '+c.dataset.label+': '+(seasMode==='pct'?c.parsed.y.toFixed(0)+'%':n(c.parsed.y,3));}}}},
+      scales:{x:{type:'linear',min:1,max:52,title:{display:true,text:'Week of marketing year (Aug 1 = week 1)'},ticks:{stepSize:4}},y:{beginAtZero:seasMode==='pct'||!FLOWS[seasMetric],title:{display:true,text:seasMode==='pct'?'% of season':METRICS[seasMetric]+', '+B.unit},ticks:{callback:function(v){return seasMode==='pct'?v+'%':v;}}}}}});
+  }
+  function drawWeekly(){
+    kill('weekly'); var cy=Object.keys(B.series)[0],ns=B.series[cy].currentMYNetSales,sh=B.series[cy].weeklyExports,hk=Object.keys(B.series).slice(1),lim=Math.max(ns.length+6,12);
+    var avg=function(m){var o={};hk.forEach(function(k){(B.series[k][m]||[]).forEach(function(p){(o[p[0]]=o[p[0]]||[]).push(p[1]);});});return Object.keys(o).map(Number).sort(function(a,b){return a-b;}).filter(function(w){return w<=lim;}).map(function(w){var a=o[w];return {x:w,y:a.reduce(function(s,v){return s+v;},0)/a.length};});};
+    charts.weekly=new Chart($('weekly'),{data:{datasets:[
+      {type:'bar',label:'Net sales',data:ns.map(function(p){return {x:p[0],y:p[1]};}),backgroundColor:'rgba(19,49,92,.8)',borderRadius:3,barPercentage:.9,categoryPercentage:.8},
+      {type:'bar',label:'Shipments',data:sh.map(function(p){return {x:p[0],y:p[1]};}),backgroundColor:'rgba(194,65,12,.75)',borderRadius:3,barPercentage:.9,categoryPercentage:.8},
+      {type:'line',label:'Net sales, 5-yr avg',data:avg('currentMYNetSales'),borderColor:'#13315c',borderDash:[5,4],borderWidth:1.5,pointRadius:0,tension:.25},
+      {type:'line',label:'Shipments, 5-yr avg',data:avg('weeklyExports'),borderColor:'#c2410c',borderDash:[5,4],borderWidth:1.5,pointRadius:0,tension:.25}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:{duration:250},interaction:{mode:'x',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:function(c){return 'Week '+c[0].parsed.x;},label:function(c){return ' '+c.dataset.label+': '+n(c.parsed.y,3);}}}},
+      scales:{x:{type:'linear',offset:true,min:.5,max:lim+.5,ticks:{stepSize:1,callback:function(v){return Number.isInteger(v)?v:'';}},title:{display:true,text:'Week of marketing year'}},y:{title:{display:true,text:B.unit}}}}});
+  }
+  function drawDest(dd){
+    kill('dest'); var top=dd.slice().sort(function(a,b){return b.commit-a.commit;}).slice(0,10);
+    charts.dest=new Chart($('dest'),{type:'bar',data:{labels:top.map(function(d){return d.c;}),datasets:[
+      {label:B.my,data:top.map(function(d){return d.commit;}),backgroundColor:'#c2410c',borderRadius:3},
+      {label:'Same week last year',data:top.map(function(d){return d.ly;}),backgroundColor:'#7c8ba1',borderRadius:3},
+      {label:'5-yr average',data:top.map(function(d){return d.avg5;}),backgroundColor:'#cbd5e1',borderRadius:3}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:{duration:250},interaction:{mode:'y',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+n(c.parsed.x,3);}}}},
+      scales:{x:{title:{display:true,text:'Commitments, '+B.unit}}}}});
+  }
+  document.addEventListener('click',function(e){
+    var p=e.target.closest&&e.target.closest('.pill');if(p){cur=p.getAttribute('data-c');render();return;}
+    var m=e.target.closest&&e.target.closest('#seasMode button');if(m){seasMode=m.getAttribute('data-m');[].forEach.call(document.querySelectorAll('#seasMode button'),function(b){b.classList.toggle('on',b===m);});drawSeas();return;}
+    var th=e.target.closest&&e.target.closest('th.sort');if(th){var k=th.getAttribute('data-k');sortDir=(sortKey===k)?-sortDir:(k==='c'?1:-1);sortKey=k;$('ctab').innerHTML=countryTable();}
+  });
+  document.addEventListener('change',function(e){if(e.target.id==='seasMetric'){seasMetric=e.target.value;seasMode='abs';[].forEach.call(document.querySelectorAll('#seasMode button'),function(b){b.classList.toggle('on',b.getAttribute('data-m')==='abs');});drawSeas();}});
   fetch('data/brief.json?t='+Date.now()).then(function(r){return r.json();}).then(function(d){
-    D=d; $('gen').textContent='Updated '+d.generated+' · USDA FAS export sales vs USDA WASDE';
-    var saved=null; try{saved=localStorage.getItem('esr_tab');}catch(x){}
-    cur=d.commodities.some(function(c){return c.name===saved;})?saved:d.commodities[0].name; render();
-  }).catch(function(){ $('body').innerHTML='<div class="spinner">Brief not available yet.</div>'; });
+    D=d;$('gen').textContent='Updated '+d.generated+' · USDA FAS export sales vs USDA WASDE';cur=d.commodities[0].name;render();
+  }).catch(function(){$('body').innerHTML='<div class="spinner">Brief not available yet.</div>';});
 })();
 </script>
 </body>
