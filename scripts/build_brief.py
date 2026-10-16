@@ -38,7 +38,10 @@ REGION = {"Bangladesh": "Bangladesh", "Vietnam": "Vietnam", "China": "China", "T
 ALIAS = {"Ending stocks": "Ending Stocks", "Domestic use": "Domestic Use", "Domestic, Total": "Domestic Use", "Domestic Total": "Domestic Use",
          "Total  Domestic": "Domestic Use", "Beginning stocks": "Beginning Stocks"}
 # competing exporters and big importers for the supply read
-SUPPLY = {"cotton": (["Brazil", "Australia", "India", "Central Asia", "Afr. Fr. Zone"], ["China", "India", "Pakistan", "Turkey", "Bangladesh", "Vietnam", "Indonesia"]),
+# Cotton: the US competes mainly with Brazil, Australia and the African Franc Zone. India counts only in seasons when its
+# own supply (beginning stocks + crop) is at least 1.5x its use — otherwise it is a net importer. China does not export.
+INDIA_EXPORT_RATIO = 1.5
+SUPPLY = {"cotton": (["Brazil", "Australia", "Afr. Fr. Zone", "India"], ["China", "India", "Pakistan", "Turkey", "Bangladesh", "Vietnam", "Indonesia"]),
           "corn": (["Brazil", "Argentina", "Ukraine", "South Africa", "Russia"], ["Mexico", "Japan", "South Korea", "Egypt", "China", "Southeast Asia", "European Union"]),
           "soybeans": (["Brazil", "Argentina", "Paraguay"], ["China", "European Union", "Mexico", "Japan", "Southeast Asia"]),
           "wheat": (["European Union", "Russia", "Canada", "Australia", "Argentina", "Ukraine", "Kazakhstan"], ["Egypt", "Indonesia", "China", "N. Africa", "Sel. Mideast", "Japan", "Southeast Asia", "Brazil"])}
@@ -55,7 +58,11 @@ def supply_context(cfg, w, my):
         n = [g(r, a, my) for a in ("Beginning Stocks", "Production", "Domestic Use", "Exports")]; o = [g(r, a, pmy) for a in ("Beginning Stocks", "Production", "Domestic Use", "Exports")]
         if None in n[:3] or None in o[:3]:
             continue
-        ex.append({"r": r, "surplus": n[0] + n[1] - n[2], "surplus_ly": o[0] + o[1] - o[2], "prod": n[1], "prod_ly": o[1], "bs": n[0], "bs_ly": o[0], "exp": n[3], "exp_ly": o[3]})
+        ratio = (n[0] + n[1]) / n[2] if n[2] else None; ratio_ly = (o[0] + o[1]) / o[2] if o[2] else None
+        active = not (cfg["key"] == "cotton" and r == "India" and (ratio or 0) < INDIA_EXPORT_RATIO)
+        ex.append({"r": r, "surplus": n[0] + n[1] - n[2], "surplus_ly": o[0] + o[1] - o[2], "prod": n[1], "prod_ly": o[1], "bs": n[0], "bs_ly": o[0], "exp": n[3], "exp_ly": o[3],
+                   "ratio": ratio, "ratio_ly": ratio_ly, "active": active,
+                   "active_ly": not (cfg["key"] == "cotton" and r == "India" and (ratio_ly or 0) < INDIA_EXPORT_RATIO)})
     for r in IMP:
         n = [g(r, a, my) for a in ("Beginning Stocks", "Production", "Domestic Use", "Imports")]; o = [g(r, a, pmy) for a in ("Beginning Stocks", "Production", "Domestic Use", "Imports")]
         if None in n[:3] or None in o[:3]:
@@ -75,13 +82,16 @@ def supply_text(S, cfg, fu):
     if not S or not S["exporters"]:
         return None
     t = ""
-    d = sum(x["surplus"] - x["surplus_ly"] for x in S["exporters"])
-    movers = sorted(S["exporters"], key=lambda x: x["surplus"] - x["surplus_ly"])
-    tl = [f"{x['r']} {x['surplus'] - x['surplus_ly']:+.2f}" for x in movers if abs(x["surplus"] - x["surplus_ly"]) >= (0.2 if cfg["key"] == "cotton" else 1)][:4]
-    t += (f"Competing exporters' exportable surplus (beginning stocks + crop − domestic use) is {d:+.2f} vs {S['pmy']}"
-          + (f" ({', '.join(tl)})" if tl else "") + " — "
-          + (("less competition, which tends to shift trade to the US. " if d < 0 else "more competition for US exports. ") if cfg["key"] != "wheat"
-             else ("tighter competitor supply, though in wheat US share has followed price competitiveness more than rivals' supply. " if d < 0 else "more competitor supply. ")))
+    act = [x for x in S["exporters"] if x["active"] or x["active_ly"]]
+    d = sum((x["surplus"] if x["active"] else 0) - (x["surplus_ly"] if x["active_ly"] else 0) for x in act)
+    dx = sum(((x["exp"] or 0) if x["active"] else 0) - ((x["exp_ly"] or 0) if x["active_ly"] else 0) for x in act)
+    names = ", ".join(x["r"] for x in S["exporters"] if x["active"])
+    tl = [f"{x['r']} {x['surplus'] - x['surplus_ly']:+.2f}" for x in sorted([x for x in act if x["active"]], key=lambda x: x["surplus"] - x["surplus_ly"]) if abs(x["surplus"] - x["surplus_ly"]) >= 0.2][:4]
+    t += (f"Main competitors ({names}): exportable surplus {d:+.2f} vs {S['pmy']}" + (f" ({', '.join(tl)})" if tl else "")
+          + f", and USDA has their combined exports {dx:+.2f} — " + ("less competition for US cotton. " if dx < -0.2 else "more competition for US cotton. " if dx > 0.2 else "little change in competition. "))
+    ind = next((x for x in S["exporters"] if x["r"] == "India"), None)
+    if ind and not ind["active"] and ind.get("ratio"):
+        t += f"India is not competing for export business this season: supply is {ind['ratio']:.2f}× its own use (it exports in volume only when this is about 1.5× or more), so it is counted as an importer. "
     tight = [x for x in S["importers"] if x["gap"] < -0.3 * (1 if cfg["key"] == "cotton" else 3)]
     loose = [x for x in S["importers"] if x["gap"] > 0.3 * (1 if cfg["key"] == "cotton" else 3)]
     if tight:
@@ -98,9 +108,9 @@ def supply_text(S, cfg, fu):
         t += f"USDA has the US at {S['us_share'] * 100:.0f}% of world exports vs {S['us_share_ly'] * 100:.0f}% last season"
         if cfg["key"] == "wheat":
             t += "."
-        elif d < 0 and S["us_share"] <= S["us_share_ly"]:
+        elif dx < -0.2 and S["us_share"] <= S["us_share_ly"]:
             t += " — **with competitors tighter, that share looks conservative.**"
-        elif d > 0 and S["us_share"] > S["us_share_ly"]:
+        elif dx > 0.2 and S["us_share"] > S["us_share_ly"]:
             t += " — **with competitors better supplied, that share looks ambitious.**"
         else:
             t += "."
@@ -403,8 +413,8 @@ def build(cfg):
     if dd:
         sig.append(("destination buying", -1 if xs < -0.03 * target else 1 if xs > 0.03 * target else 0))
     if S and S.get("exporters"):
-        dsur = sum(x["surplus"] - x["surplus_ly"] for x in S["exporters"])
-        sig.append(("competitor supply", 1 if dsur < -0.03 * target else -1 if dsur > 0.03 * target else 0))
+        dxc = sum(((x["exp"] or 0) if x["active"] else 0) - ((x["exp_ly"] or 0) if x["active_ly"] else 0) for x in S["exporters"])
+        sig.append(("competitor exports", 1 if dxc < -0.03 * target else -1 if dxc > 0.03 * target else 0))
     neg = [a for a, v in sig if v < 0]; pos = [a for a, v in sig if v > 0]; net = sum(v for _, v in sig)
     bl = ("Export outlook vs USDA: **" + ("below" if net < 0 else "above" if net > 0 else "balanced around") + f" USDA's {fu(target)} {cfg['w_unit']}**. ")
     if neg:
@@ -412,7 +422,7 @@ def build(cfg):
     if pos:
         bl += "Pointing higher: " + ", ".join(pos) + ". "
     if neg and pos:
-        bl += ("Tighter competitor supply usually shows up later in the season, once rival origins run short — "
+        bl += ("Less competition usually shows up later in the season, once rival origins run short — "
                "watch whether US sales accelerate into the new year before reading the slow start as lost demand.")
     T.append({"h": "Bottom line", "t": bl})
     tilt = "strong" if implied and implied / target > 1.04 else "weak" if implied and implied / target < 0.96 else "on track"

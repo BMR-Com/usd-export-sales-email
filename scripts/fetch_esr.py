@@ -10,7 +10,9 @@ import csv, json, os, time, urllib.request, urllib.error
 from datetime import datetime
 from pathlib import Path
 
-API_KEY = os.getenv("FAS_API_KEY") or "p5rJTNhEZbSmIPVyRxEixuZrVfgKraUAhCNo8Kmg"
+API_KEY = os.getenv("FAS_API_KEY")
+if not API_KEY:
+    raise SystemExit("FAS_API_KEY is not set — add it under Settings → Secrets and variables → Actions")
 BASE = "https://api.fas.usda.gov/api/esr"
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "esr"

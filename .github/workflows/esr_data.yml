@@ -22,8 +22,12 @@ jobs:
           python-version: '3.11'
       - run: pip install pandas numpy requests -q
       - name: Upland cotton history
+        env:
+          FAS_API_KEY: ${{ secrets.FAS_API_KEY }}
         run: python scripts/fetch_cotton_history.py
-      - name: Other commodities
+      - name: Pima cotton
+        env:
+          FAS_API_KEY: ${{ secrets.FAS_API_KEY }}
         run: python scripts/fetch_esr.py
       - name: Build brief
         run: |

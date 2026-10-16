@@ -13,6 +13,7 @@ No browser needed — pure Python, uses only the standard library.
 """
 
 import json
+import os
 import csv
 import time
 import urllib.request
@@ -21,7 +22,9 @@ from datetime import datetime
 from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────────────────────
-API_KEY      = 'p5rJTNhEZbSmIPVyRxEixuZrVfgKraUAhCNo8Kmg'
+API_KEY      = os.getenv('FAS_API_KEY')
+if not API_KEY:
+    raise SystemExit('FAS_API_KEY is not set — add it under Settings → Secrets and variables → Actions')
 USDA_BASE    = 'https://api.fas.usda.gov/api/esr'
 COMM_CODE    = 1404          # All Upland Cotton
 START_YEAR   = 1991          # Earliest available
