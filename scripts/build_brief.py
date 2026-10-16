@@ -142,6 +142,30 @@ def w_latest(w, reg, attr, my, upto=None):
     return (float(x.val.iloc[-1]), x.rd.iloc[-1]) if len(x) else (None, None)
 
 
+PRICE_RAW = "https://raw.githubusercontent.com/BMR-Com/cftc-cot-full/main/data/prices/daily.csv"
+PRICE_LOCAL = os.getenv("PRICE_LOCAL")
+# buyers whose weekly purchases historically respond most to price moves in the reporting week
+PRICE_SENSITIVE = ["Vietnam", "Turkey", "Pakistan", "China", "Taiwan", "Thailand", "India", "Indonesia"]
+
+
+def ice_cotton():
+    try:
+        if PRICE_LOCAL:
+            p = pd.read_csv(PRICE_LOCAL, parse_dates=["date"])
+        else:
+            import requests
+            r = requests.get(PRICE_RAW, timeout=120); r.raise_for_status(); p = pd.read_csv(io.BytesIO(r.content), parse_dates=["date"])
+        return p[p.ticker == "CT"].set_index("date").sort_index()[["close", "low", "high"]].dropna()
+    except Exception as ex:
+        print("price data unavailable:", ex); return None
+
+
+def week_px(px, we):
+    """ICE cotton (front month) over the export-sales reporting week: Friday to Thursday ending `we`."""
+    s = px[(px.index > we - pd.Timedelta(days=7)) & (px.index <= we)]
+    return {"avg": float(s.close.mean()), "low": float(s.low.min()), "high": float(s.high.max()), "close": float(s.close.iloc[-1]), "days": len(s)} if len(s) else None
+
+
 def esr(codes):
     parts = []
     for c in codes:
@@ -449,6 +473,78 @@ def build(cfg):
         f"({ch(sc['accumulatedExports']['tw'], sc['accumulatedExports']['ly'])} y/y); outstanding sales {q(sc['outstandingSales']['tw'])} "
         f"({ch(sc['outstandingSales']['tw'], sc['outstandingSales']['ly'])} y/y); next-season sales on the books {q(sc['nextMYOutstandingSales']['tw'])}.")})
 
+    # ── price in the reporting week ──
+    px = ice_cotton() if cfg["key"] == "cotton" else None
+    price = None
+    if px is not None:
+        lyd = gly[gly.wk <= wk].weekEndingDate.max() if len(gly) else None
+        tw_p, lw_p = week_px(px, last_date), week_px(px, last_date - pd.Timedelta(days=7))
+        ly_p = week_px(px, lyd) if lyd is not None and pd.notna(lyd) else None
+        p4 = px[(px.index > last_date - pd.Timedelta(days=35)) & (px.index <= last_date - pd.Timedelta(days=7))]
+        if tw_p and lw_p:
+            wk_series = []
+            for r in c.itertuples():
+                wp = week_px(px, r.weekEndingDate)
+                wk_series.append([int(r.wk) + 1, round(wp["avg"], 2) if wp else None])
+            price = {"tw": tw_p, "lw": lw_p, "ly": ly_p, "avg4": float(p4.close.mean()) if len(p4) else None,
+                     "chg": tw_p["avg"] / lw_p["avg"] - 1, "low_vs_lw": tw_p["low"] / lw_p["avg"] - 1,
+                     "yoy": tw_p["avg"] / ly_p["avg"] - 1 if ly_p else None, "weekly": wk_series}
+            cc_ = c[c.wk >= 2]                      # skip the first weeks of the season (carry-in from the old crop)
+            trend = float(cc_.currentMYNetSales.iloc[-9:-1].mean()) if len(cc_) > 3 else None
+            ns_now = float(L.currentMYNetSales)
+            rel_ = ns_now / trend - 1 if trend else None
+            t = (f"ICE cotton averaged {tw_p['avg']:.2f}¢ in the reporting week (Fri–Thu; low {tw_p['low']:.2f}, high {tw_p['high']:.2f}), "
+                 f"{price['chg']:+.1%} vs the week before ({lw_p['avg']:.2f}¢)"
+                 + (f" and {price['yoy']:+.1%} vs the same week last year ({ly_p['avg']:.2f}¢)" if ly_p else "") + ". "
+                 f"The week's low was {price['low_vs_lw']:+.1%} vs last week's average. ")
+            a5_ = [x for x in score if x["k"] == "currentMYNetSales"][0]["avg5"] if score else None
+            rel5 = (ns_now / D) / a5_ - 1 if a5_ else None
+            if rel_ is not None:
+                t += (f"Net sales were {rel_:+.0%} vs their recent trend" + (f" and {rel5:+.0%} vs the 5-yr average for this week" if rel5 is not None else "") + ". ")
+                rel_ = (rel_ + rel5) / 2 if rel5 is not None else rel_
+                if price["chg"] <= -0.015:
+                    t += ("**Buyers stepped in on the price dip — a sign of underlying demand.** " if rel_ > 0.2 else
+                          "Some buying came in on the dip, though not strongly. " if rel_ > 0.05 else
+                          "**Lower prices failed to pull in buying — demand looks soft.** " if rel_ < -0.1 else "Buying held steady on the dip. ")
+                elif price["chg"] >= 0.015:
+                    t += ("**Sales held up despite higher prices — firm demand.** " if rel_ > -0.05 else
+                          "Buyers stepped back as prices rose, as they usually do. ")
+                else:
+                    t += "Prices were little changed, so the week's sales mostly reflect underlying demand. "
+            sens = [b for b in top_buy if b["c"] in PRICE_SENSITIVE]
+            if sens:
+                t += "Price-sensitive buyers active this week: " + ", ".join(f"{b['c']} {q(b['v'])}" for b in sens) + "."
+            T.insert(4, {"h": "Price and buying", "t": t})
+            for r_ in ctab:
+                r_["price_sensitive"] = r_["c"] in PRICE_SENSITIVE
+
+    # ── historical profile at the same week: 5 / 10 / 20 seasons ──
+    PROF = [("accumulatedExports", "Shipped to date"), ("outstandingSales", "Outstanding sales"), ("commit", "Total commitments"), ("nextMYOutstandingSales", "Next-season sales")]
+    past = [y for y in sorted(tot.marketYear.unique()) if y < cur_y][-20:]
+    def at_week(df_y, y):
+        g = df_y.copy(); g["wk"] = (g.weekEndingDate - pd.Timestamp(year=labels[y][0], month=cfg["start"], day=1)).dt.days // 7
+        g = g[g.wk <= wk]
+        return g[g.weekEndingDate == g.weekEndingDate.max()] if len(g) else g.iloc[0:0]
+    snap = {y: at_week(e[e.marketYear == y], y) for y in past}
+    cur_snap = e[(e.marketYear == cur_y) & (e.weekEndingDate == last_date)]
+    profile = {}
+    for col, lab_ in PROF:
+        rows_ = []
+        for nm in ["Total"] + top12:
+            def val(df):
+                d_ = df if nm == "Total" else df[df.countryName == nm]
+                return float(d_[col].sum()) / D
+            hist_ = [val(snap[y]) for y in past]
+            now_ = val(cur_snap)
+            rec = {"c": nm, "now": now_}
+            for n_ in (5, 10, 20):
+                h_ = hist_[-n_:]
+                if h_:
+                    rec[f"min{n_}"], rec[f"max{n_}"], rec[f"avg{n_}"] = min(h_), max(h_), float(np.mean(h_))
+            rec["rank"] = int(sum(v > now_ for v in hist_) + 1); rec["of"] = len(hist_) + 1
+            rows_.append(rec)
+        profile[col] = {"label": lab_, "rows": rows_}
+
     # bottom line: weigh sales pace, destinations and competitor supply
     sig = []
     if implied:
@@ -475,7 +571,7 @@ def build(cfg):
             "pace": pace, "pace_norm": pace_n, "ship_pct": ship, "ship_norm": ship_n, "implied": implied, "ly_commit": round(ly_commit / D, 3) if ly_commit else None,
             "net": round(L.currentMYNetSales / D, 3), "net4": round(net4 / D, 3), "net4_5y": round(net4_5y / D, 3), "ship_wk": round(L.weeklyExports / D, 3), "ship4": round(ship4 / D, 3),
             "need_ship": round(need_ship / D, 3), "need_sales": round(max(need_sales, 0) / D, 3), "weeks_left": weeks_left, "tilt": tilt,
-            "score": score, "series": series, "countries": ctab, "buyers": top_buy, "cancels": cancels, "shippers": top_ship, "dest": dest, "brief": T, "seas": seas, "months": months_order, "supply": S,
+            "score": score, "series": series, "countries": ctab, "price": price, "profile": profile, "profile_years": len(past), "buyers": top_buy, "cancels": cancels, "shippers": top_ship, "dest": dest, "brief": T, "seas": seas, "months": months_order, "supply": S,
             "curve": {"cur": [[int(r.wk) + 1, round(r.commit / t_esr, 4)] for r in c.itertuples()],
                       "hist": {h.my: [[int(r.wk) + 1, round(r.commit / h.fin_esr, 4)] for r in tot[tot.marketYear == h.y].sort_values("wk").itertuples()] for h in H5.itertuples()}}}
 
