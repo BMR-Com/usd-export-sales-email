@@ -1,0 +1,149 @@
+name: Test Email with Real PDF
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 fpdf2 matplotlib
+
+      - name: Download Unicode fonts from reliable source
+        run: |
+          mkdir -p fonts
+          # Use Debian package fonts (reliable)
+          curl -sL -o /tmp/dejavu.zip https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.zip
+          unzip -q /tmp/dejavu.zip -d /tmp/
+          cp /tmp/dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf fonts/
+          cp /tmp/dejavu-fonts-ttf-2.37/ttf/DejaVuSans-Bold.ttf fonts/
+          ls -la fonts/
+
+      - name: Create and run PDF test
+        env:
+          SMTP_HOST:   ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:   ${{ secrets.SMTP_PORT }}
+          SMTP_USER:   ${{ secrets.SMTP_USER }}
+          SMTP_PASS:   ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM:  ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:    ${{ secrets.EMAIL_TO }}
+        run: |
+          cat > scripts/test_pdf.py << 'EOFPY'
+          import os, sys, io
+          from datetime import datetime
+          
+          sys.path.insert(0, os.path.dirname(__file__))
+          from scrape_cotton_oncall import read_all_rows, CSV_PATH, now
+          
+          try:
+              from fpdf import FPDF
+          except ImportError as e:
+              print(f"[{now()}] PDF lib missing: {e}")
+              sys.exit(1)
+          
+          print(f"[{now()}] Reading CSV...")
+          all_rows, count = read_all_rows(CSV_PATH)
+          print(f"[{now()}] Found {count} rows")
+          
+          if count == 0:
+              print(f"[{now()}] No data")
+              sys.exit(1)
+          
+          # Simple PDF test with Unicode font
+          pdf = FPDF(orientation='L', unit='mm', format='A4')
+          
+          font_dir = os.path.join(os.path.dirname(__file__), "..", "fonts")
+          regular = os.path.join(font_dir, "DejaVuSans.ttf")
+          bold = os.path.join(font_dir, "DejaVuSans-Bold.ttf")
+          
+          print(f"[{now()}] Loading fonts from {font_dir}...")
+          pdf.add_font("DejaVu", "", regular)
+          pdf.add_font("DejaVu", "B", bold)
+          
+          pdf.add_page()
+          pdf.set_font("DejaVu", "B", 16)
+          pdf.cell(0, 10, "CFTC Cotton On-Call Report - Test", ln=True, align='C')
+          pdf.set_font("DejaVu", "", 12)
+          pdf.cell(0, 10, "Report Date: 04/09/2026", ln=True)
+          pdf.cell(0, 10, "This is a test with Unicode: 100% H/L/M indicators", ln=True)
+          
+          # Add some data
+          pdf.set_font("DejaVu", "", 10)
+          pdf.ln(5)
+          pdf.cell(0, 8, "Sample Data Row:", ln=True)
+          pdf.cell(40, 8, "Old Crop", border=1)
+          pdf.cell(30, 8, "Sales: 50,000", border=1)
+          pdf.cell(30, 8, "Purch: 45,000", border=1)
+          pdf.cell(30, 8, "Imb: 5,000", border=1)
+          pdf.ln()
+          
+          pdf_path = '/tmp/test_report.pdf'
+          pdf.output(pdf_path)
+          
+          with open(pdf_path, 'rb') as f:
+              pdf_bytes = f.read()
+          
+          print(f"[{now()}] PDF generated: {len(pdf_bytes)} bytes")
+          
+          # Send email
+          import smtplib, ssl
+          from email.mime.multipart import MIMEMultipart
+          from email.mime.text import MIMEText
+          from email.mime.base import MIMEBase
+          from email import encoders
+          
+          smtp_host = os.environ.get('SMTP_HOST', '')
+          smtp_port = int(os.environ.get('SMTP_PORT', 465))
+          smtp_user = os.environ.get('SMTP_USER', '')
+          smtp_pass = os.environ.get('SMTP_PASS', '')
+          email_from = os.environ.get('EMAIL_FROM', '')
+          email_to = os.environ.get('EMAIL_TO', '')
+          
+          if not all([smtp_host, smtp_user, smtp_pass, email_from, email_to]):
+              print(f"[{now()}] Missing email config")
+              sys.exit(1)
+          
+          recipients = [e.strip() for e in email_to.split(',') if e.strip()]
+          
+          msg = MIMEMultipart()
+          msg['From'] = email_from
+          msg['To'] = ', '.join(recipients)
+          msg['Subject'] = "[BMR] Cotton On-Call Report - TEST 04/09/2026"
+          msg['X-Priority'] = '1'
+          msg.attach(MIMEText(
+              "BMR Cotton Analytics - TEST EMAIL\n\n"
+              "This is a test of the PDF email system.\n"
+              "Report Date: 04/09/2026\n\n"
+              "This is an automated test. Do not reply.\n", 'plain'))
+          
+          part = MIMEBase('application', 'pdf')
+          part.set_payload(pdf_bytes)
+          encoders.encode_base64(part)
+          part.add_header('Content-Disposition', 'attachment; filename="test_report.pdf"')
+          msg.attach(part)
+          
+          try:
+              ctx = ssl.create_default_context()
+              print(f"[{now()}] Connecting to {smtp_host}:{smtp_port}...")
+              with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx, timeout=30) as srv:
+                  srv.login(smtp_user, smtp_pass)
+                  srv.sendmail(email_from, recipients, msg.as_string())
+              print(f"[{now()}] ✅ Email sent to {', '.join(recipients)}")
+          except Exception as e:
+              print(f"[{now()}] ❌ Email failed: {e}")
+              raise
+          
+          print(f"[{now()}] Done")
+          EOFPY
+          
+          python scripts/test_pdf.py

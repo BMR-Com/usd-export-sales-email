@@ -15,8 +15,9 @@ BASE = "https://api.fas.usda.gov/api/esr"
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "esr"
 FIRST_YEAR = 2011
-COMMODITIES = {1301: "Cotton, American Pima", 401: "Corn", 801: "Soybeans", 107: "All Wheat", 901: "Soybean Cake & Meal",
-               902: "Soybean Oil", 701: "Sorghum", 1505: "All Rice"}
+COMMODITIES = {1301: "Cotton, American Pima"}   # upland (1404) is in cotton_history_1404.csv
+# Disabled for now (kept for future use) — add back to COMMODITIES to fetch again:
+DISABLED = {401: "Corn", 801: "Soybeans", 107: "All Wheat", 901: "Soybean Cake & Meal", 902: "Soybean Oil", 701: "Sorghum", 1505: "All Rice"}
 FIELDS = ["weekEndingDate", "marketYear", "commodityCode", "countryCode", "countryName", "grossNewSales", "currentMYNetSales",
           "weeklyExports", "accumulatedExports", "outstandingSales", "currentMYTotalCommitment", "nextMYNetSales", "nextMYOutstandingSales"]
 

@@ -1,0 +1,390 @@
+#!/usr/bin/env python3
+"""
+build_brief.py — weekly Export Sales brief (data/brief.json).
+
+For each commodity: US commitments and shipments vs the latest USDA WASDE export forecast, pace vs
+past seasons at the same week, what is needed per week to reach USDA's number, this week's buyers,
+and — for destinations USDA forecasts — each importer's commitments vs its import forecast and the
+US's usual share of it.
+"""
+import io, json, os
+from pathlib import Path
+import numpy as np
+import pandas as pd
+
+ROOT = Path(__file__).resolve().parent.parent
+ESR = ROOT / "data" / "esr"
+OUT = ROOT / "data" / "brief.json"
+WASDE_RAW = "https://raw.githubusercontent.com/BMR-Com/wasde-analytics/main/data"
+WASDE_LOCAL = os.getenv("WASDE_LOCAL")
+
+COMMS = [
+    {"key": "cotton", "to_world": 1.0, "name": "Cotton", "codes": [1404, 1301], "wasde": "Cotton.json", "start": 8, "esr_unit": "running bales",
+     "disp": 1e6, "disp_unit": "m running bales", "w_unit": "m 480-lb bales", "w_fmt": 2},
+    # Disabled for now (kept for future use): USDA WASDE and export-sales categories need reconciling first.
+    {"key": "corn", "enabled": False, "to_world": 0.0254012, "name": "Corn", "codes": [401], "wasde": "Corn.json", "start": 9, "esr_unit": "MT", "disp": 1e6, "disp_unit": "MMT", "w_unit": "m bu", "w_fmt": 0},
+    {"key": "soybeans", "enabled": False, "to_world": 0.0272155, "name": "Soybeans", "codes": [801], "wasde": "Oilseed,_Soybean.json", "start": 9, "esr_unit": "MT", "disp": 1e6, "disp_unit": "MMT", "w_unit": "m bu", "w_fmt": 0},
+    {"key": "wheat", "enabled": False, "to_world": 0.0272155, "name": "Wheat", "codes": [107], "wasde": "Wheat.json", "start": 6, "esr_unit": "MT", "disp": 1e6, "disp_unit": "MMT", "w_unit": "m bu", "w_fmt": 0},
+    {"key": "soymeal", "enabled": False, "name": "Soybean Meal", "codes": [901], "wasde": "Meal,_Soybean.json", "start": 10, "esr_unit": "MT", "disp": 1e6, "disp_unit": "MMT", "w_unit": "k short tons", "w_fmt": 0},
+    {"key": "soyoil", "enabled": False, "name": "Soybean Oil", "codes": [902], "wasde": "Oil,_Soybean.json", "start": 10, "esr_unit": "MT", "disp": 1e3, "disp_unit": "k MT", "w_unit": "m lb", "w_fmt": 0},
+    {"key": "sorghum", "enabled": False, "to_world": 0.0254012, "name": "Sorghum", "codes": [701], "wasde": "Sorghum.json", "start": 9, "esr_unit": "MT", "disp": 1e6, "disp_unit": "MMT", "w_unit": "m bu", "w_fmt": 0},
+    {"key": "rice", "enabled": False, "to_world": 1.0, "name": "Rice", "codes": [1505], "wasde": "Rice.json", "start": 8, "esr_unit": "MT", "disp": 1e6, "disp_unit": "MMT", "w_unit": "MMT", "w_fmt": 2},
+]
+# ESR destination name → WASDE region name
+REGION = {"Bangladesh": "Bangladesh", "Vietnam": "Vietnam", "China": "China", "Turkey": "Turkey", "Pakistan": "Pakistan",
+          "Indonesia": "Indonesia", "Mexico": "Mexico", "India": "India", "Thailand": "Thailand", "Egypt": "Egypt",
+          "Japan": "Japan", "South Korea": "South Korea", "Korea, South": "South Korea", "Philippines": "Philippines",
+          "Nigeria": "Nigeria", "Brazil": "Brazil", "Canada": "Canada", "Burma/Myanmar": "Burma"}
+ALIAS = {"Ending stocks": "Ending Stocks", "Domestic use": "Domestic Use", "Domestic, Total": "Domestic Use", "Domestic Total": "Domestic Use",
+         "Total  Domestic": "Domestic Use", "Beginning stocks": "Beginning Stocks"}
+# competing exporters and big importers for the supply read
+SUPPLY = {"cotton": (["Brazil", "Australia", "India", "Central Asia", "Afr. Fr. Zone"], ["China", "India", "Pakistan", "Turkey", "Bangladesh", "Vietnam", "Indonesia"]),
+          "corn": (["Brazil", "Argentina", "Ukraine", "South Africa", "Russia"], ["Mexico", "Japan", "South Korea", "Egypt", "China", "Southeast Asia", "European Union"]),
+          "soybeans": (["Brazil", "Argentina", "Paraguay"], ["China", "European Union", "Mexico", "Japan", "Southeast Asia"]),
+          "wheat": (["European Union", "Russia", "Canada", "Australia", "Argentina", "Ukraine", "Kazakhstan"], ["Egypt", "Indonesia", "China", "N. Africa", "Sel. Mideast", "Japan", "Southeast Asia", "Brazil"])}
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def supply_context(cfg, w, my):
+    if cfg["key"] not in SUPPLY:
+        return None
+    EXP, IMP = SUPPLY[cfg["key"]]; y0 = int(my[:4]); pmy = f"{y0 - 1}/{str(y0)[-2:]}"
+    g = lambda r, a, m: w_latest(w, r, a, m)[0]
+    ex, im = [], []
+    for r in EXP:
+        n = [g(r, a, my) for a in ("Beginning Stocks", "Production", "Domestic Use", "Exports")]; o = [g(r, a, pmy) for a in ("Beginning Stocks", "Production", "Domestic Use", "Exports")]
+        if None in n[:3] or None in o[:3]:
+            continue
+        ex.append({"r": r, "surplus": n[0] + n[1] - n[2], "surplus_ly": o[0] + o[1] - o[2], "prod": n[1], "prod_ly": o[1], "bs": n[0], "bs_ly": o[0], "exp": n[3], "exp_ly": o[3]})
+    for r in IMP:
+        n = [g(r, a, my) for a in ("Beginning Stocks", "Production", "Domestic Use", "Imports")]; o = [g(r, a, pmy) for a in ("Beginning Stocks", "Production", "Domestic Use", "Imports")]
+        if None in n[:3] or None in o[:3]:
+            continue
+        im.append({"r": r, "supply": n[0] + n[1], "supply_ly": o[0] + o[1], "use": n[2], "use_ly": o[2], "imp": n[3], "imp_ly": o[3],
+                   "gap": (n[0] + n[1] - n[2]) - (o[0] + o[1] - o[2])})
+    wu, wu_ly = g("World", "Domestic Use", my), g("World", "Domestic Use", pmy)
+    wt, wt_ly = g("World", "Imports", my), g("World", "Imports", pmy)
+    cv = cfg.get("to_world", 1.0)
+    us, us_ly = (g("United States", "Exports", my) or 0) * cv, (g("United States", "Exports", pmy) or 0) * cv
+    wex = g("World", "Exports", my) or wt; wex_ly = g("World", "Exports", pmy) or wt_ly
+    return {"exporters": ex, "importers": im, "world_use": wu, "world_use_ly": wu_ly, "world_trade": wt, "world_trade_ly": wt_ly,
+            "us_share": us / wex if us and wex else None, "us_share_ly": us_ly / wex_ly if us_ly and wex_ly else None, "my": my, "pmy": pmy}
+
+
+def supply_text(S, cfg, fu):
+    if not S or not S["exporters"]:
+        return None
+    t = ""
+    d = sum(x["surplus"] - x["surplus_ly"] for x in S["exporters"])
+    movers = sorted(S["exporters"], key=lambda x: x["surplus"] - x["surplus_ly"])
+    tl = [f"{x['r']} {x['surplus'] - x['surplus_ly']:+.2f}" for x in movers if abs(x["surplus"] - x["surplus_ly"]) >= (0.2 if cfg["key"] == "cotton" else 1)][:4]
+    t += (f"Competing exporters' exportable surplus (beginning stocks + crop − domestic use) is {d:+.2f} vs {S['pmy']}"
+          + (f" ({', '.join(tl)})" if tl else "") + " — "
+          + (("less competition, which tends to shift trade to the US. " if d < 0 else "more competition for US exports. ") if cfg["key"] != "wheat"
+             else ("tighter competitor supply, though in wheat US share has followed price competitiveness more than rivals' supply. " if d < 0 else "more competitor supply. ")))
+    tight = [x for x in S["importers"] if x["gap"] < -0.3 * (1 if cfg["key"] == "cotton" else 3)]
+    loose = [x for x in S["importers"] if x["gap"] > 0.3 * (1 if cfg["key"] == "cotton" else 3)]
+    if tight:
+        t += "Importers with tighter own supply vs use than last year: " + ", ".join(
+            f"{x['r']} ({x['gap']:+.2f}" + (f"; imports {x['imp']:.2f} vs {x['imp_ly']:.2f}" if x["imp"] is not None and x["imp_ly"] is not None else "") + ")" for x in sorted(tight, key=lambda x: x["gap"])[:4]) + ". "
+    if loose:
+        t += "Better supplied: " + ", ".join(f"{x['r']} ({x['gap']:+.2f})" for x in sorted(loose, key=lambda x: -x["gap"])[:3]) + ". "
+    if S["world_use"] and S["world_use_ly"]:
+        t += f"World use {S['world_use']:,.2f} ({S['world_use'] / S['world_use_ly'] - 1:+.1%} y/y)"
+        if S["world_trade"] and S["world_trade_ly"]:
+            t += f", world trade {S['world_trade']:,.2f} ({S['world_trade'] / S['world_trade_ly'] - 1:+.1%})"
+        t += ". "
+    if S["us_share"] and S["us_share_ly"]:
+        t += f"USDA has the US at {S['us_share'] * 100:.0f}% of world exports vs {S['us_share_ly'] * 100:.0f}% last season"
+        if cfg["key"] == "wheat":
+            t += "."
+        elif d < 0 and S["us_share"] <= S["us_share_ly"]:
+            t += " — **with competitors tighter, that share looks conservative.**"
+        elif d > 0 and S["us_share"] > S["us_share_ly"]:
+            t += " — **with competitors better supplied, that share looks ambitious.**"
+        else:
+            t += "."
+    return t
+
+
+# ─────────────────────────── data ───────────────────────────
+def wasde(fname):
+    if WASDE_LOCAL:
+        d = json.load(open(Path(WASDE_LOCAL) / fname))
+    else:
+        import requests
+        r = requests.get(f"{WASDE_RAW}/{fname}", timeout=120); r.raise_for_status(); d = r.json()
+    rows = []
+    for k, vals in d["data"].items():
+        reg, attr, my = k.split("||")
+        for v in vals:
+            if v.get("value") is not None:
+                rows.append((reg, ALIAS.get(attr, attr), my, pd.Timestamp(year=v["forecastYear"], month=v["forecastMonth"], day=1), float(v["value"])))
+    w = pd.DataFrame(rows, columns=["reg", "attr", "my", "rd", "val"])
+    return w.drop_duplicates(["reg", "attr", "my", "rd"], keep="last")
+
+
+def w_latest(w, reg, attr, my, upto=None):
+    x = w[(w.reg == reg) & (w.attr == attr) & (w.my == my)]
+    if upto is not None:
+        x = x[x.rd <= upto]
+    x = x.sort_values("rd")
+    return (float(x.val.iloc[-1]), x.rd.iloc[-1]) if len(x) else (None, None)
+
+
+def esr(codes):
+    parts = []
+    for c in codes:
+        f = ROOT / "cotton_history_1404.csv" if c == 1404 else ESR / f"{c}.csv"
+        if f.exists():
+            parts.append(pd.read_csv(f, low_memory=False))
+    if not parts:
+        return None
+    e = pd.concat(parts)
+    e["weekEndingDate"] = pd.to_datetime(e.weekEndingDate)
+    for c in ["grossNewSales", "currentMYNetSales", "weeklyExports", "accumulatedExports", "outstandingSales", "nextMYNetSales", "nextMYOutstandingSales"]:
+        e[c] = pd.to_numeric(e[c], errors="coerce").fillna(0)
+    cn = json.load(open(ESR / "countries.json")) if (ESR / "countries.json").exists() else {}
+    e["countryName"] = [cn.get(str(int(c)), str(n).strip().title()) for c, n in zip(pd.to_numeric(e.countryCode, errors="coerce").fillna(0), e.countryName)]
+    e = e[e.countryCode.astype(str) != "0"]
+    e["commit"] = e.accumulatedExports + e.outstandingSales
+    return e
+
+
+def my_label(e, start_month):
+    """ESR marketYear → WASDE 'YYYY/YY' using the first week of each year's data."""
+    out = {}
+    for y, g in e.groupby("marketYear"):
+        d0 = g.weekEndingDate.min()
+        sy = d0.year if d0.month >= start_month else d0.year - 1
+        out[y] = (sy, f"{sy}/{str(sy + 1)[-2:]}")
+    return out
+
+
+# ─────────────────────────── analysis ───────────────────────────
+def build(cfg):
+    e = esr(cfg["codes"])
+    if e is None or e.empty:
+        return None
+    w = wasde(cfg["wasde"])
+    labels = my_label(e, cfg["start"])
+    tot = e.groupby(["marketYear", "weekEndingDate"])[["commit", "accumulatedExports", "outstandingSales", "currentMYNetSales", "weeklyExports",
+                                                       "grossNewSales", "nextMYOutstandingSales", "nextMYNetSales"]].sum().reset_index()
+    tot["wk"] = tot.apply(lambda r: (r.weekEndingDate - pd.Timestamp(year=labels[r.marketYear][0], month=cfg["start"], day=1)).days // 7, axis=1)
+    cur_y = int(tot.marketYear.max()); sy, my = labels[cur_y]
+    c = tot[tot.marketYear == cur_y].sort_values("weekEndingDate")
+    if c.empty:
+        return None
+    L = c.iloc[-1]; wk = int(L.wk); last_date = L.weekEndingDate
+    target, rd = w_latest(w, "United States", "Exports", my)
+    if target is None:
+        return None
+    prev_t, _ = w_latest(w, "United States", "Exports", my, rd - pd.Timedelta(days=20))
+
+    # ratio ESR final shipments / WASDE final exports (per completed season), and same-week pace history
+    hist = []
+    for y in sorted(tot.marketYear.unique()):
+        if y >= cur_y or y < cur_y - 10:
+            continue
+        g = tot[tot.marketYear == y].sort_values("wk")
+        if g.empty:
+            continue
+        fin_esr = float(g.accumulatedExports.iloc[-1]); wfin, _ = w_latest(w, "United States", "Exports", labels[y][1])
+        at = g[g.wk <= wk]
+        if not len(at) or not wfin or not fin_esr:
+            continue
+        a = at.iloc[-1]
+        hist.append({"y": y, "my": labels[y][1], "ratio": fin_esr / wfin, "fin_esr": fin_esr, "wfin": wfin,
+                     "commit_pct": a.commit / fin_esr, "ship_pct": a.accumulatedExports / fin_esr, "commit": a.commit,
+                     "net4": float(g[(g.wk > wk - 4) & (g.wk <= wk)].currentMYNetSales.mean())})
+    H = pd.DataFrame(hist)
+    if H.empty:
+        return None
+    H5 = H.tail(5)
+    ratio = float(H5.ratio.median()); t_esr = target * ratio
+    pace = L.commit / t_esr; pace_n = float(H5.commit_pct.mean()); ship = L.accumulatedExports / t_esr; ship_n = float(H5.ship_pct.mean())
+    implied = L.commit / pace_n / ratio if pace_n > 0 else None
+    weeks_left = max(1, 52 - (wk + 1))
+    need_ship = (t_esr - L.accumulatedExports) / weeks_left
+    need_sales = (t_esr - L.commit) / weeks_left
+    rec = c.tail(4); net4 = float(rec.currentMYNetSales.mean()); ship4 = float(rec.weeklyExports.mean())
+    ly = H[H.y == cur_y - 1]; ly_commit = float(ly.commit.iloc[0]) if len(ly) else None
+    net4_5y = float(H5.net4.mean())
+    D = cfg["disp"]
+
+    # this week's buyers
+    tw = e[(e.marketYear == cur_y) & (e.weekEndingDate == last_date)]
+    by = tw.groupby("countryName")[["currentMYNetSales", "weeklyExports", "nextMYNetSales"]].sum()
+    buyers = by.currentMYNetSales.sort_values(ascending=False)
+    top_buy = [{"c": k, "v": round(v / D, 3)} for k, v in buyers.head(5).items() if v > 0]
+    cancels = [{"c": k, "v": round(v / D, 3)} for k, v in buyers.tail(3).items() if v / D <= -0.0005]
+    top_ship = [{"c": k, "v": round(v / D, 3)} for k, v in by.weeklyExports.sort_values(ascending=False).head(5).items() if v > 0]
+
+    # destinations
+    cy = e[e.marketYear == cur_y]
+    cn = cy[cy.weekEndingDate == last_date].groupby("countryName").commit.sum()
+    dest = []
+    names = list(cn.sort_values(ascending=False).head(12).index)
+    for reg in sorted(set(REGION.values())):
+        imp, _ = w_latest(w, reg, "Imports", my)
+        if imp and imp > (0.5 if cfg["key"] == "cotton" else 0.3):
+            for k_, v_ in REGION.items():
+                if v_ == reg and k_ in set(cy.countryName) and k_ not in names:
+                    names.append(k_)
+    for nm in names:
+        row = {"c": nm, "commit": round(float(cn.get(nm, 0)) / D, 3), "share_now": float(cn.get(nm, 0)) / L.commit if L.commit else None}
+        hh = []
+        for _, h in H.iterrows():
+            g = e[(e.marketYear == h.y) & (e.countryName == nm)]
+            if g.empty:
+                hh.append({"y": h.y, "my": h.my, "same": 0.0, "fin": 0.0}); continue
+            gw = g.groupby("weekEndingDate")[["commit", "accumulatedExports"]].sum().reset_index()
+            gw["wk"] = (gw.weekEndingDate - pd.Timestamp(year=labels[h.y][0], month=cfg["start"], day=1)).dt.days // 7
+            at = gw[gw.wk <= wk]
+            hh.append({"y": h.y, "my": h.my, "same": float(at.commit.iloc[-1]) if len(at) else 0.0, "fin": float(gw.sort_values("wk").accumulatedExports.iloc[-1]),
+                       "ratio": h.ratio})
+        hh = pd.DataFrame(hh)
+        last5 = hh.tail(5)
+        row["ly"] = round(float(hh.same.iloc[-1]) / D, 3) if len(hh) else None
+        row["avg5"] = round(float(last5.same.mean()) / D, 3) if len(last5) else None
+        fin5 = last5.fin.sum()
+        row["norm_pct"] = float(last5.same.sum() / fin5) if fin5 > 0 else None   # share of final usually committed by now
+        reg = REGION.get(nm)
+        if reg:
+            imp, _ = w_latest(w, reg, "Imports", my)
+            sh = []
+            for _, x in hh.iterrows():
+                ii, _ = w_latest(w, reg, "Imports", x.my)
+                if ii and ii > 0 and x.get("ratio"):
+                    sh.append(x.fin / x.ratio * cfg.get("to_world", 1.0) / ii)
+            if imp and sh:
+                s5, s10 = float(np.mean(sh[-5:])), float(np.mean(sh))
+                exp_us = imp * s5                             # usual US-origin volume (WASDE units)
+                row.update({"imports": imp, "us_share5": s5, "us_share10": s10, "exp_us": round(exp_us, 3)})
+                if row["norm_pct"] and row["norm_pct"] >= 0.25:
+                    impl = float(cn.get(nm, 0)) / row["norm_pct"] / ratio * cfg.get("to_world", 1.0)
+                    row["implied_us"] = round(impl, 3); row["implied_share"] = impl / imp
+                    row["vs_usual"] = impl / exp_us - 1 if exp_us else None
+        dest.append(row)
+
+    # shipment seasonality by destination: share of the season's shipments by calendar month (last 5 seasons)
+    seas = []
+    ye = e[e.marketYear.isin(H5.y)].copy(); ye["m"] = ye.weekEndingDate.dt.month
+    top = ye.groupby("countryName").weeklyExports.sum().sort_values(ascending=False)
+    for nm in [n for n in top.index if n not in ("Unknown", "Code 9990", "Unknown destinations")][:10]:
+        g = ye[ye.countryName == nm].groupby("m").weeklyExports.sum()
+        if g.sum() <= 0:
+            continue
+        sh = (g / g.sum()).reindex(range(1, 13), fill_value=0)
+        order = [((cfg["start"] - 1 + i) % 12) + 1 for i in range(12)]
+        cum = np.cumsum([sh[m] for m in order])
+        mi = order.index(last_date.month)
+        cy_c = cy[(cy.countryName == nm) & (cy.weekEndingDate == last_date)]
+        acc = float(cy_c.accumulatedExports.sum()); com = float(cy_c.commit.sum())
+        seas.append({"c": nm, "share": [round(float(sh[m]), 3) for m in order], "peak": [MONTHS[m - 1] for m in sh.sort_values(ascending=False).index[:3]],
+                     "norm_shipped": round(float(cum[mi]), 3), "shipped_of_commit": round(acc / com, 3) if com else None,
+                     "next3": round(float(sum(sh[order[(mi + k) % 12]] for k in range(1, 4))), 3), "outstanding": round((com - acc) / D, 3)})
+    months_order = [MONTHS[((cfg["start"] - 1 + i) % 12)] for i in range(12)]
+    S = supply_context(cfg, w, my)
+
+    # narrative
+    fu = lambda v: f"{v:,.{cfg['w_fmt']}f}"
+    T = []
+    head = (f"Week ending {last_date:%b %d}: {cfg['name'].lower()} commitments {L.commit / D:,.2f} {cfg['disp_unit']} for {my} "
+            f"({L.accumulatedExports / D:,.2f} shipped, {L.outstandingSales / D:,.2f} outstanding) = **{pace*100:.0f}% of USDA's {fu(target)} {cfg['w_unit']}** "
+            f"export forecast, vs a 5-yr norm of {pace_n*100:.0f}% by week {wk + 1}. ")
+    if ly_commit:
+        head += f"Commitments are {L.commit / ly_commit - 1:+.0%} vs a year ago. "
+    if implied:
+        gap = implied / target - 1
+        head += (f"At the usual seasonal pace that points to about **{fu(implied)} {cfg['w_unit']}** ({gap:+.0%} vs USDA)"
+                 + ((" — early-season sales are a weak guide to the final number for this crop, so treat this as a direction, not a forecast." if cfg["key"] in ("corn", "sorghum") and abs(gap) > 0.04 else "")
+                    or (" — USDA looks too high; risk of a cut." if gap < -0.04 else " — room for USDA to raise." if gap > 0.04 else " — in line with USDA.")))
+    T.append({"h": "Pace vs USDA", "t": head})
+    t = (f"Shipments {ship*100:.0f}% of target (norm {ship_n*100:.0f}%). To reach USDA's number, shipments need to average "
+         f"{need_ship / D:,.3f} {cfg['disp_unit']}/week for the remaining {weeks_left} weeks vs {ship4 / D:,.3f} over the last 4 weeks; "
+         f"new sales need {max(need_sales, 0) / D:,.3f}/week vs {net4 / D:,.3f} recently (5-yr avg for these weeks {net4_5y / D:,.3f}).")
+    T.append({"h": "What USDA's number requires", "t": t})
+    if prev_t is not None and abs(target - prev_t) > 1e-9:
+        T.append({"h": "Latest WASDE", "t": f"USDA {'raised' if target > prev_t else 'cut'} the {my} export forecast to {fu(target)} {cfg['w_unit']} ({target - prev_t:+,.{cfg['w_fmt']}f}) in the {rd:%B} report."})
+    wkline = f"Net sales {L.currentMYNetSales / D:,.3f} {cfg['disp_unit']} (4-wk avg {net4 / D:,.3f}); shipments {L.weeklyExports / D:,.3f}."
+    if top_buy:
+        wkline += " Main buyers: " + ", ".join(f"{b['c']} {b['v']:,.3f}" for b in top_buy[:4]) + "."
+    if cancels:
+        wkline += " Net reductions: " + ", ".join(f"{b['c']} {b['v']:,.3f}" for b in cancels) + "."
+    if L.nextMYOutstandingSales > 0 and wk > 30:
+        wkline += f" Next-season sales on the books {L.nextMYOutstandingSales / D:,.3f}."
+    T.append({"h": "This week", "t": wkline})
+    xs = 0.0
+    dd = [d for d in dest if d.get("vs_usual") is not None and d.get("imports") and np.isfinite(d["vs_usual"])]
+    if dd:
+        ahead = sorted([d for d in dd if d["vs_usual"] > 0.15], key=lambda d: -d["vs_usual"])[:3]
+        behind = sorted([d for d in dd if d["vs_usual"] < -0.15], key=lambda d: d["vs_usual"])[:3]
+        t = ""
+        if ahead:
+            t += "Buying more US than usual: " + "; ".join(f"{d['c']} (pace implies {d['implied_share']*100:.0f}% US share of its {d['imports']:,.2f} import forecast vs {d['us_share5']*100:.0f}% usual)" for d in ahead) + ". "
+        if behind:
+            t += "Buying less US than usual: " + "; ".join(f"{d['c']} ({d['implied_share']*100:.0f}% vs {d['us_share5']*100:.0f}% usual)" for d in behind) + "."
+        xs = sum((d["implied_us"] - d["exp_us"]) for d in dd) / cfg.get("to_world", 1.0)
+        t += (f" Across these destinations, the sales pace adds up to {fu(xs) if abs(xs) >= 10 else f'{xs:+.2f}'} {cfg['w_unit']} vs their usual US-origin volumes"
+              + (" — supports a higher US export forecast." if xs > 0.03 * target else " — argues against raising USDA's number." if xs < -0.03 * target else "."))
+        if t:
+            T.append({"h": "Destinations vs import forecasts", "t": t})
+    st = supply_text(S, cfg, fu)
+    if st:
+        T.append({"h": "Competition and import need", "t": st})
+    if seas:
+        nxt = sorted(seas, key=lambda x: -x["next3"])[:3]
+        lag = [x for x in seas if x["shipped_of_commit"] is not None and x["outstanding"] > 0 and x["norm_shipped"] > 0.25 and x["shipped_of_commit"] < 0.5 * x["norm_shipped"]]
+        t = ("Shipments usually concentrate in the next three months for " + ", ".join(f"{x['c']} ({x['next3']*100:.0f}% of its season)" for x in nxt) + ".")
+        if lag:
+            t += " Slow to ship vs sales: " + ", ".join(f"{x['c']} ({x['outstanding']:,.2f} outstanding)" for x in lag[:3]) + " — watch for cancellations or roll-overs."
+        T.append({"h": "Shipment calendar", "t": t})
+    # bottom line: weigh sales pace, destinations and competitor supply
+    sig = []
+    if implied:
+        g_ = implied / target - 1; sig.append(("sales pace", -1 if g_ < -0.04 else 1 if g_ > 0.04 else 0))
+    if dd:
+        sig.append(("destination buying", -1 if xs < -0.03 * target else 1 if xs > 0.03 * target else 0))
+    if S and S.get("exporters"):
+        dsur = sum(x["surplus"] - x["surplus_ly"] for x in S["exporters"])
+        sig.append(("competitor supply", 1 if dsur < -0.03 * target else -1 if dsur > 0.03 * target else 0))
+    neg = [a for a, v in sig if v < 0]; pos = [a for a, v in sig if v > 0]; net = sum(v for _, v in sig)
+    bl = ("Export outlook vs USDA: **" + ("below" if net < 0 else "above" if net > 0 else "balanced around") + f" USDA's {fu(target)} {cfg['w_unit']}**. ")
+    if neg:
+        bl += "Pointing lower: " + ", ".join(neg) + ". "
+    if pos:
+        bl += "Pointing higher: " + ", ".join(pos) + ". "
+    if neg and pos:
+        bl += ("Tighter competitor supply usually shows up later in the season, once rival origins run short — "
+               "watch whether US sales accelerate into the new year before reading the slow start as lost demand.")
+    T.append({"h": "Bottom line", "t": bl})
+    tilt = "strong" if implied and implied / target > 1.04 else "weak" if implied and implied / target < 0.96 else "on track"
+    return {"name": cfg["name"], "w_fmt": cfg["w_fmt"], "my": my, "week": f"{last_date:%Y-%m-%d}", "wk": wk + 1, "unit": cfg["disp_unit"], "w_unit": cfg["w_unit"],
+            "report": f"{rd:%B %Y}", "target": target, "target_prev": prev_t, "target_esr": round(t_esr / D, 3),
+            "commit": round(L.commit / D, 3), "shipped": round(L.accumulatedExports / D, 3), "outstanding": round(L.outstandingSales / D, 3),
+            "pace": pace, "pace_norm": pace_n, "ship_pct": ship, "ship_norm": ship_n, "implied": implied, "ly_commit": round(ly_commit / D, 3) if ly_commit else None,
+            "net": round(L.currentMYNetSales / D, 3), "net4": round(net4 / D, 3), "net4_5y": round(net4_5y / D, 3), "ship_wk": round(L.weeklyExports / D, 3), "ship4": round(ship4 / D, 3),
+            "need_ship": round(need_ship / D, 3), "need_sales": round(max(need_sales, 0) / D, 3), "weeks_left": weeks_left, "tilt": tilt,
+            "buyers": top_buy, "cancels": cancels, "shippers": top_ship, "dest": dest, "brief": T, "seas": seas, "months": months_order, "supply": S,
+            "curve": {"cur": [[int(r.wk) + 1, round(r.commit / t_esr, 4)] for r in c.itertuples()],
+                      "hist": {h.my: [[int(r.wk) + 1, round(r.commit / h.fin_esr, 4)] for r in tot[tot.marketYear == h.y].sort_values("wk").itertuples()] for h in H5.itertuples()}}}
+
+
+def main():
+    out = {"generated": pd.Timestamp.now("UTC").strftime("%Y-%m-%d %H:%M UTC"), "commodities": []}
+    for cfg in [c for c in COMMS if c.get("enabled", True)]:
+        try:
+            b = build(cfg)
+        except Exception as ex:
+            print(cfg["name"], "failed:", repr(ex)); b = None
+        if b:
+            out["commodities"].append(b)
+            print(f"\n== {b['name']} {b['my']} wk{b['wk']} ({b['week']})")
+            for x in b["brief"]:
+                print(f"[{x['h']}] {x['t']}")
+    OUT.write_text(json.dumps(out, separators=(",", ":"), default=lambda o: None if (isinstance(o, float) and np.isnan(o)) else float(o)))
+
+
+if __name__ == "__main__":
+    main()
