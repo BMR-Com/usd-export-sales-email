@@ -247,7 +247,9 @@ def build(cfg):
     implied = L.commit / pace_n / ratio if pace_n > 0 else None
     weeks_left = max(1, 52 - (wk + 1))
     need_ship = (t_esr - L.accumulatedExports) / weeks_left
-    need_sales = (t_esr - L.commit) / weeks_left
+    CARRY = 1_000_000 if cfg["key"] == "cotton" else 0      # assumed sales carried into next season (running bales)
+    sales_left = t_esr + CARRY - L.commit; ship_left = t_esr - L.accumulatedExports
+    need_sales = sales_left / weeks_left
     rec = c.tail(4); net4 = float(rec.currentMYNetSales.mean()); ship4 = float(rec.weeklyExports.mean())
     ly = H[H.y == cur_y - 1]; ly_commit = float(ly.commit.iloc[0]) if len(ly) else None
     net4_5y = float(H5.net4.mean())
@@ -345,7 +347,7 @@ def build(cfg):
     T.append({"h": "Pace vs USDA", "t": head})
     t = (f"Shipments {ship*100:.0f}% of target (norm {ship_n*100:.0f}%). To reach USDA's number, shipments need to average "
          f"{q(need_ship / D)} {cfg['disp_unit']}/week for the remaining {weeks_left} weeks vs {q(ship4 / D)} over the last 4 weeks; "
-         f"new sales need {q(max(need_sales, 0) / D)}/week vs {q(net4 / D)} recently (5-yr avg for these weeks {q(net4_5y / D)}).")
+         f"new sales need {q(max(need_sales, 0) / D)}/week (allowing for about {q(CARRY / D)} carried into next season) vs {q(net4 / D)} recently (5-yr avg for these weeks {q(net4_5y / D)}).")
     T.append({"h": "What USDA's number requires", "t": t})
     if prev_t is not None and abs(target - prev_t) > 1e-9:
         T.append({"h": "Latest WASDE", "t": f"USDA {'raised' if target > prev_t else 'cut'} the {my} export forecast to {fu(target)} {cfg['w_unit']} ({target - prev_t:+,.{cfg['w_fmt']}f}) in the {rd:%B} report."})
@@ -385,25 +387,44 @@ def build(cfg):
     # ── week-to-week and year-to-date scorecard ──
     FLOW = [("grossNewSales", "Gross new sales"), ("currentMYNetSales", "Net sales"), ("weeklyExports", "Shipments"), ("nextMYNetSales", "Next-season net sales")]
     STOCK = [("accumulatedExports", "Shipped to date"), ("outstandingSales", "Outstanding sales"), ("commit", "Total commitments"), ("nextMYOutstandingSales", "Next-season outstanding")]
-    def same_week(y, col):
-        g = tot[(tot.marketYear == y) & (tot.wk <= wk)].sort_values("wk")
-        return float(g[col].iloc[-1]) if len(g) else None
-    def ytd(y, col):
-        g = tot[(tot.marketYear == y) & (tot.wk <= wk)]
-        return float(g[col].sum()) if len(g) else None
-    prev = c.iloc[-2] if len(c) > 1 else None
     yrs5 = list(H5.y)
-    score = []
-    for col, lab in FLOW:
-        lyv = same_week(cur_y - 1, col); a5 = [same_week(y, col) for y in yrs5]; a5 = [v for v in a5 if v is not None]
-        yt = float(c[col].sum()); yl = ytd(cur_y - 1, col); y5 = [ytd(y, col) for y in yrs5]; y5 = [v for v in y5 if v is not None]
-        score.append({"k": col, "label": lab, "type": "flow", "tw": float(L[col]) / D, "lw": float(prev[col]) / D if prev is not None else None,
-                      "avg4": float(c[col].tail(4).mean()) / D, "ly": lyv / D if lyv is not None else None, "avg5": float(np.mean(a5)) / D if a5 else None,
-                      "ytd": yt / D, "ytd_ly": yl / D if yl is not None else None, "ytd_avg5": float(np.mean(y5)) / D if y5 else None})
-    for col, lab in STOCK:
-        lyv = same_week(cur_y - 1, col); a5 = [same_week(y, col) for y in yrs5]; a5 = [v for v in a5 if v is not None]
-        score.append({"k": col, "label": lab, "type": "stock", "tw": float(L[col]) / D, "lw": float(prev[col]) / D if prev is not None else None,
-                      "ly": lyv / D if lyv is not None else None, "avg5": float(np.mean(a5)) / D if a5 else None})
+    def make_score(tt):
+        cc = tt[tt.marketYear == cur_y].sort_values("weekEndingDate")
+        cc = cc[cc.weekEndingDate <= last_date]
+        if cc.empty:
+            return []
+        LL = cc.iloc[-1]; pv = cc.iloc[-2] if len(cc) > 1 else None
+        def same_week(y, col):
+            g = tt[(tt.marketYear == y) & (tt.wk <= wk)].sort_values("wk")
+            return float(g[col].iloc[-1]) if len(g) else None
+        def ytd(y, col):
+            g = tt[(tt.marketYear == y) & (tt.wk <= wk)]
+            return float(g[col].sum()) if len(g) else None
+        out_ = []
+        for col, lab in FLOW:
+            lyv = same_week(cur_y - 1, col); a5 = [v for v in (same_week(y, col) for y in yrs5) if v is not None]
+            yt = float(cc[col].sum()); yl = ytd(cur_y - 1, col); y5 = [v for v in (ytd(y, col) for y in yrs5) if v is not None]
+            out_.append({"k": col, "label": lab, "type": "flow", "tw": float(LL[col]) / D, "lw": float(pv[col]) / D if pv is not None else None,
+                         "avg4": float(cc[col].tail(4).mean()) / D, "ly": lyv / D if lyv is not None else None, "avg5": float(np.mean(a5)) / D if a5 else None,
+                         "ytd": yt / D, "ytd_ly": yl / D if yl is not None else None, "ytd_avg5": float(np.mean(y5)) / D if y5 else None})
+        for col, lab in STOCK:
+            lyv = same_week(cur_y - 1, col); a5 = [v for v in (same_week(y, col) for y in yrs5) if v is not None]
+            out_.append({"k": col, "label": lab, "type": "stock", "tw": float(LL[col]) / D, "lw": float(pv[col]) / D if pv is not None else None,
+                         "ly": lyv / D if lyv is not None else None, "avg5": float(np.mean(a5)) / D if a5 else None})
+        return out_
+    prev = c.iloc[-2] if len(c) > 1 else None
+    score = make_score(tot)
+    score_by = {"All": score}
+    if len(cfg["codes"]) > 1:
+        names_ = {1404: "Upland", 1301: "Pima"}
+        for code in cfg["codes"]:
+            sub = e[e.commodityCode.astype(int) == code]
+            if sub.empty:
+                continue
+            ts = sub.groupby(["marketYear", "weekEndingDate"])[["commit", "accumulatedExports", "outstandingSales", "currentMYNetSales", "weeklyExports",
+                                                                 "grossNewSales", "nextMYOutstandingSales", "nextMYNetSales"]].sum().reset_index()
+            ts["wk"] = [(d - pd.Timestamp(year=labels[y][0], month=cfg["start"], day=1)).days // 7 for y, d in zip(ts.marketYear, ts.weekEndingDate)]
+            score_by[names_.get(code, str(code))] = make_score(ts)
     # weekly series (this season + last 5) for interactive charts
     series = {}
     yrs20 = [y for y in sorted(tot.marketYear.unique()) if y < cur_y][-20:]
@@ -572,7 +593,8 @@ def build(cfg):
             "pace": pace, "pace_norm": pace_n, "ship_pct": ship, "ship_norm": ship_n, "implied": implied, "ly_commit": round(ly_commit / D, 3) if ly_commit else None,
             "net": round(L.currentMYNetSales / D, 3), "net4": round(net4 / D, 3), "net4_5y": round(net4_5y / D, 3), "ship_wk": round(L.weeklyExports / D, 3), "ship4": round(ship4 / D, 3),
             "need_ship": round(need_ship / D, 3), "need_sales": round(max(need_sales, 0) / D, 3), "weeks_left": weeks_left, "tilt": tilt,
-            "score": score, "series": series, "countries": ctab, "price": price, "profile": profile, "profile_years": len(past), "buyers": top_buy, "cancels": cancels, "shippers": top_ship, "dest": dest, "brief": T, "seas": seas, "months": months_order, "supply": S,
+            "score": score, "score_by": score_by, "sales_left": sales_left / D, "ship_left": ship_left / D, "carry": CARRY / D,
+            "target_ly": w_latest(w, "United States", "Exports", f"{int(my[:4]) - 1}/{my[2:4]}")[0], "series": series, "countries": ctab, "price": price, "profile": profile, "profile_years": len(past), "buyers": top_buy, "cancels": cancels, "shippers": top_ship, "dest": dest, "brief": T, "seas": seas, "months": months_order, "supply": S,
             "curve": {"cur": [[int(r.wk) + 1, round(r.commit / t_esr, 4)] for r in c.itertuples()],
                       "hist": {labels[y][1]: [[int(r.wk) + 1, round(r.commit / float(tot[tot.marketYear == y].accumulatedExports.max()), 4)]
                                               for r in tot[tot.marketYear == y].sort_values("wk").itertuples()]

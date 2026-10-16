@@ -21,7 +21,7 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:v
 .head .meta{font-size:12px;color:var(--muted)}
 .tag{display:inline-block;border-radius:5px;padding:4px 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .tag.strong{background:var(--upbg);color:var(--up)}.tag.weak{background:var(--dnbg);color:var(--dn)}.tag.on{background:var(--neu);color:#444}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(175px,100%),1fr));gap:.6rem;margin-bottom:1rem}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem;margin-bottom:1rem}
 .k{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:.65rem .8rem}
 .k>span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
 .k b{font-size:1.3rem;font-weight:650;font-variant-numeric:tabular-nums}
@@ -29,7 +29,7 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:v
 .k small{display:block;font-size:11.5px;color:var(--muted);margin-top:3px}
 .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;margin-bottom:1rem}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
-@media(max-width:950px){.grid,.two{grid-template-columns:1fr}}
+@media(max-width:950px){.grid,.two{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .grid>*,.two>*{min-width:0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;margin-bottom:1rem}
 .grid>.card,.two>.card{margin-bottom:0}
@@ -102,14 +102,17 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
   function shade(a,b){if(a==null||b==null||isNaN(a)||isNaN(b)||(Math.abs(b)<1e-9&&Math.abs(a)<1e-9))return '';var r=Math.abs(b)<1e-9?1:(a-b)/Math.abs(b);if(Math.abs(r)<0.02)return '';
     var t=Math.min(1,Math.abs(r)/0.5),al=(0.12+0.5*t).toFixed(2);return ' style="background:'+(r>0?'rgba(34,139,84,'+al+')':'rgba(214,40,40,'+al+')')+(t>0.75?';color:#fff':'')+'"';}
   function pc(v,d){return v==null||isNaN(v)?'–':(v*100).toFixed(d==null?0:d)+'%';}
-  function rel(a,b){if(a==null||b==null||b===0)return '<span class="mut">–</span>';var r=a/b-1;if(Math.abs(r)<0.005)return '<span class="mut">0%</span>';return '<span class="'+(r>0?'up':'dn')+'">'+(r>0?'+':'')+(r*100).toFixed(0)+'%</span>';}
+  function rel(a,b){if(a==null||b==null)return '<span class="mut">–</span>';if(b<=0){var dd=a-b;return Math.abs(dd)<0.05?'<span class="mut">0</span>':'<span class="'+(dd>0?'up':'dn')+'">'+(dd>0?'+':'')+q(dd)+'</span>';}var r=a/b-1;if(Math.abs(r)<0.005)return '<span class="mut">0%</span>';return '<span class="'+(r>0?'up':'dn')+'">'+(r>0?'+':'')+(r*100).toFixed(0)+'%</span>';}
   function dif(a,b,d){if(a==null||b==null)return '<span class="mut">–</span>';var r=a-b;if(Math.abs(r)<Math.pow(10,-d)/2)return '<span class="mut">0</span>';return '<span class="'+(r>0?'up':'dn')+'">'+(r>0?'+':'')+n(r,d)+'</span>';}
-  function kpi(l,v,u,s){return '<div class="k"><span>'+l+'</span><b>'+v+'</b><i>'+(u||'')+'</i><small>'+(s||'')+'</small></div>';}
+  function tint(a,b){if(a==null||b==null||!b)return '';var r=(a-b)/Math.abs(b);if(Math.abs(r)<0.02)return '';var t=Math.min(1,Math.abs(r)/0.5),al=(0.10+0.32*t).toFixed(2);
+    return 'background:'+(r>0?'rgba(34,139,84,'+al+')':'rgba(214,40,40,'+al+')')+';border-color:'+(r>0?'rgba(34,139,84,.55)':'rgba(214,40,40,.55)');}
+  function kpi(l,v,u,s,st){return '<div class="k" style="'+(st||'')+'"><span>'+l+'</span><b>'+v+'</b><i>'+(u||'')+'</i><small>'+(s||'')+'</small></div>';}
   var METRICS={commit:'Total commitments',accumulatedExports:'Shipped to date',outstandingSales:'Outstanding sales',currentMYNetSales:'Net sales (weekly)',weeklyExports:'Shipments (weekly)',grossNewSales:'Gross new sales (weekly)',nextMYOutstandingSales:'Next-season outstanding',nextMYNetSales:'Next-season net sales (weekly)'};
   var FLOWS={currentMYNetSales:1,weeklyExports:1,grossNewSales:1,nextMYNetSales:1};
 
+  var scoreKey='All';
   function scorecard(){
-    var S=B.score,flows=S.filter(function(x){return x.type==='flow';}),stocks=S.filter(function(x){return x.type==='stock';});
+    var S=(B.score_by&&B.score_by[scoreKey])||B.score,flows=S.filter(function(x){return x.type==='flow';}),stocks=S.filter(function(x){return x.type==='stock';});
     var h='<table class="t"><thead><tr><th class="l">'+B.unit+'</th><th>This week</th><th>Last week</th><th>w/w</th><th>4-wk avg</th><th>Same week LY</th><th>vs LY</th><th>5-yr avg</th><th>vs 5-yr</th><th>Season to date</th><th>vs LY</th><th>vs 5-yr</th></tr></thead><tbody>';
     h+='<tr class="grp"><td class="l" colspan="12">Weekly activity</td></tr>';
     flows.forEach(function(x){h+='<tr><td class="l b">'+x.label+'</td><td class="b"'+shade(x.tw,x.ly)+'>'+q(x.tw)+'</td><td>'+q(x.lw)+'</td><td>'+rel(x.tw,x.lw)+'</td><td>'+q(x.avg4)+'</td><td>'+q(x.ly)+'</td><td>'+rel(x.tw,x.ly)+'</td><td>'+q(x.avg5)+'</td><td>'+rel(x.tw,x.avg5)+'</td><td class="b"'+shade(x.ytd,x.ytd_ly)+'>'+q(x.ytd)+'</td><td>'+rel(x.ytd,x.ytd_ly)+'</td><td>'+rel(x.ytd,x.ytd_avg5)+'</td></tr>';});
@@ -158,14 +161,18 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
     var tl={strong:['strong','Running ahead of USDA'],weak:['weak','Running behind USDA'],'on track':['on','On track with USDA']}[B.tilt],wf=B.w_fmt!=null?B.w_fmt:2;
     var S={};B.score.forEach(function(x){S[x.k]=x;});
     var h='<div class="head"><div><h2>US '+B.name.toLowerCase()+' exports · '+B.my+'</h2><div class="meta">Week ending '+B.week+' (week '+B.wk+' of the marketing year) · USDA forecast from the '+B.report+' WASDE · upland + Pima</div></div><span class="tag '+tl[0]+'">'+tl[1]+'</span></div>';
+    var SL=S;
     h+='<div class="kpis">'+
-      kpi('Net sales this week',q(S.currentMYNetSales.tw),B.unit,rel(S.currentMYNetSales.tw,S.currentMYNetSales.lw)+' w/w · '+rel(S.currentMYNetSales.tw,S.currentMYNetSales.avg5)+' vs 5-yr')+
-      kpi('Shipments this week',q(S.weeklyExports.tw),B.unit,rel(S.weeklyExports.tw,S.weeklyExports.lw)+' w/w · need '+q(B.need_ship)+'/wk for USDA')+
-      kpi('Total commitments',q(B.commit),B.unit,pc(B.pace)+' of USDA · norm '+pc(B.pace_norm)+' · '+rel(B.commit,B.ly_commit)+' y/y')+
-      kpi('Shipped to date',q(B.shipped),B.unit,pc(B.ship_pct)+' of USDA · norm '+pc(B.ship_norm))+
-      kpi('USDA forecast',n(B.target,wf),B.w_unit,'≈ '+q(B.target_esr)+' '+B.unit+' (×'+(B.ratio||0).toFixed(3)+') · '+(B.target_prev!=null&&B.target_prev!==B.target?((B.target-B.target_prev)>0?'+':'')+n(B.target-B.target_prev,wf)+' vs prior report':'unchanged vs prior report'))+
-      kpi('Pace implies',B.implied==null?'–':n(B.implied,wf),B.w_unit,B.implied==null?'':rel(B.implied,B.target)+' vs USDA')+'</div>';
-    h+='<div class="card"><div class="sec">Week on week and season to date</div><div class="scroll">'+scorecard()+'</div></div>';
+      kpi('Net sales this week',q(SL.currentMYNetSales.tw),B.unit,rel(SL.currentMYNetSales.tw,SL.currentMYNetSales.ly)+' vs same wk LY · '+rel(SL.currentMYNetSales.tw,SL.currentMYNetSales.lw)+' w/w',tint(SL.currentMYNetSales.tw,SL.currentMYNetSales.ly))+
+      kpi('Shipments this week',q(SL.weeklyExports.tw),B.unit,rel(SL.weeklyExports.tw,SL.weeklyExports.ly)+' vs same wk LY · '+rel(SL.weeklyExports.tw,SL.weeklyExports.lw)+' w/w',tint(SL.weeklyExports.tw,SL.weeklyExports.ly))+
+      kpi('Total commitments',q(B.commit),B.unit,rel(B.commit,B.ly_commit)+' y/y · '+pc(B.pace)+' of USDA (norm '+pc(B.pace_norm)+')',tint(B.commit,B.ly_commit))+
+      kpi('Shipped to date',q(B.shipped),B.unit,rel(B.shipped,SL.accumulatedExports.ly)+' y/y · '+pc(B.ship_pct)+' of USDA (norm '+pc(B.ship_norm)+')',tint(B.shipped,SL.accumulatedExports.ly))+
+      kpi('Sales still needed',q(B.sales_left),B.unit,'for USDA + '+q(B.carry)+' carry-over · '+q(B.need_sales)+'/wk needed vs '+q(B.net4)+' last 4 wks',tint(B.net4,B.need_sales))+
+      kpi('Shipments still needed',q(B.ship_left),B.unit,q(B.need_ship)+'/wk needed vs '+q(B.ship4)+' last 4 wks · '+B.weeks_left+' wks left',tint(B.ship4,B.need_ship))+
+      kpi('USDA forecast',n(B.target,wf),B.w_unit,'≈ '+q(B.target_esr)+' '+B.unit+' (×'+(B.ratio||0).toFixed(3)+') · '+(B.target_ly?rel(B.target,B.target_ly)+' vs last season':''),tint(B.target,B.target_ly))+
+      kpi('Pace implies',B.implied==null?'–':n(B.implied,wf),B.w_unit,B.implied==null?'':rel(B.implied,B.target)+' vs USDA',tint(B.implied,B.target))+'</div>'+
+      '<div class="note" style="margin:-.6rem 0 1rem">Cards are shaded vs the same point last year (green above, red below; deeper = bigger gap). “Still needed” cards compare the recent weekly pace with what USDA\'s forecast requires (converted to running bales); “Pace implies” and “USDA forecast” compare with USDA and last season.</div>';
+    h+='<div class="card"><div class="sec"><span>Week on week and season to date</span>'+(B.score_by&&Object.keys(B.score_by).length>1?'<span class="ctl"><span class="seg" id="scoreSeg">'+Object.keys(B.score_by).map(function(k){return '<button data-s="'+k+'" class="'+(k===scoreKey?'on':'')+'">'+(k==='All'?'Upland + Pima':k)+'</button>';}).join('')+'</span></span>':'')+'</div><div class="scroll" id="scoreTab">'+scorecard()+'</div></div>';
     var P=B.price;
     if(P){var pr=function(l,x,cmp){return '<tr><td class="l b">'+l+'</td><td class="b">'+(x?x.avg.toFixed(2):'–')+'</td><td>'+(x?x.low.toFixed(2):'–')+'</td><td>'+(x?x.high.toFixed(2):'–')+'</td><td>'+(x?x.close.toFixed(2):'–')+'</td><td>'+(cmp&&x?rel(P.tw.avg,x.avg):'')+'</td></tr>';};
       h+='<div class="card"><div class="sec">ICE cotton in the reporting week (front month, ¢/lb, Friday–Thursday)</div><div class="scroll"><table class="t" style="max-width:820px"><thead><tr><th class="l"></th><th>Average</th><th>Low</th><th>High</th><th>Close</th><th>This week vs</th></tr></thead><tbody>'+
@@ -247,6 +254,7 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
   document.addEventListener('click',function(e){
     var p=e.target.closest&&e.target.closest('.pill');if(p){cur=p.getAttribute('data-c');render();return;}
     var m=e.target.closest&&e.target.closest('#seasMode button');if(m){seasMode=m.getAttribute('data-m');[].forEach.call(document.querySelectorAll('#seasMode button'),function(b){b.classList.toggle('on',b===m);});drawSeas();return;}
+    var sb=e.target.closest&&e.target.closest('#scoreSeg button');if(sb){scoreKey=sb.getAttribute('data-s');[].forEach.call(document.querySelectorAll('#scoreSeg button'),function(b){b.classList.toggle('on',b===sb);});$('scoreTab').innerHTML=scorecard();return;}
     var yc=e.target.closest&&e.target.closest('.ychip[data-y]');if(yc){var k=yc.getAttribute('data-y');hidden[k]=!hidden[k];drawSeas();return;}
     var ya=e.target.closest&&e.target.closest('.ylinks a');if(ya){var a=ya.getAttribute('data-a'),L=seasonList();hidden={};if(a==='none')L.past.forEach(function(k){hidden[k]=true;});if(a==='ly')L.past.slice(1).forEach(function(k){hidden[k]=true;});drawSeas();return;}
     var pb=e.target.closest&&e.target.closest('#profSeg button');if(pb){profKey=pb.getAttribute('data-p');[].forEach.call(document.querySelectorAll('#profSeg button'),function(b){b.classList.toggle('on',b===pb);});$('profTab').innerHTML=profTable();return;}
