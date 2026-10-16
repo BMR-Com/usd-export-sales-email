@@ -3,11 +3,21 @@ name: Export sales data + brief
 # USDA releases export sales Thursdays 8:30 AM ET (Friday or later in holiday weeks).
 on:
   schedule:
-    - cron: '50 12 * * 4'   # Thu 8:50 AM EDT / 7:50 AM EST
-    - cron: '50 13 * * 4'   # Thu 9:50 AM EDT / 8:50 AM EST
-    - cron: '0 15 * * 5'    # Fri catch-up (holiday weeks)
-    - cron: '0 15 * * 1'    # Mon catch-up (picks up the latest WASDE too)
+    # USDA releases Thursdays 8:30 AM ET (12:30 UTC in summer time, 13:30 UTC in winter); holiday weeks move to Friday.
+    # Poll every 10 minutes through the release window; each run stops at once if the new week is already archived.
+    - cron: '30,40,50 12 * * 4,5'
+    - cron: '*/10 13-15 * * 4,5'
+    - cron: '0 15 * * 1'    # Monday catch-up (later releases, new WASDE)
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Rebuild even if the latest week is already archived'
+        required: false
+        default: 'true'
+
+concurrency:
+  group: esr-data
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -21,18 +31,27 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install pandas numpy requests -q
+      - name: Is a new report due?
+        id: due
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force || (github.event.schedule == '0 15 * * 1' && 'true' || 'false') }}
+        run: python scripts/need_update.py
       - name: Upland cotton history
+        if: steps.due.outputs.state == 'update'
         env:
           FAS_API_KEY: ${{ secrets.FAS_API_KEY }}
         run: python scripts/fetch_cotton_history.py
       - name: Pima cotton
+        if: steps.due.outputs.state == 'update'
         env:
           FAS_API_KEY: ${{ secrets.FAS_API_KEY }}
         run: python scripts/fetch_esr.py
       - name: Build brief
+        if: steps.due.outputs.state == 'update'
         run: |
           if [ -f scripts/build_brief.py ]; then python scripts/build_brief.py; fi
       - name: Commit
+        if: steps.due.outputs.state == 'update'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
