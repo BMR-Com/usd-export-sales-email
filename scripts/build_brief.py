@@ -406,7 +406,8 @@ def build(cfg):
                       "ly": lyv / D if lyv is not None else None, "avg5": float(np.mean(a5)) / D if a5 else None})
     # weekly series (this season + last 5) for interactive charts
     series = {}
-    for y in [cur_y] + yrs5[::-1]:
+    yrs20 = [y for y in sorted(tot.marketYear.unique()) if y < cur_y][-20:]
+    for y in [cur_y] + yrs20[::-1]:
         g = tot[tot.marketYear == y].sort_values("wk")
         series[labels[y][1]] = {k: [[int(w_) + 1, round(float(v) / D, 4)] for w_, v in zip(g.wk, g[k])] for k, _ in FLOW + STOCK}
     # countries this week
@@ -573,7 +574,9 @@ def build(cfg):
             "need_ship": round(need_ship / D, 3), "need_sales": round(max(need_sales, 0) / D, 3), "weeks_left": weeks_left, "tilt": tilt,
             "score": score, "series": series, "countries": ctab, "price": price, "profile": profile, "profile_years": len(past), "buyers": top_buy, "cancels": cancels, "shippers": top_ship, "dest": dest, "brief": T, "seas": seas, "months": months_order, "supply": S,
             "curve": {"cur": [[int(r.wk) + 1, round(r.commit / t_esr, 4)] for r in c.itertuples()],
-                      "hist": {h.my: [[int(r.wk) + 1, round(r.commit / h.fin_esr, 4)] for r in tot[tot.marketYear == h.y].sort_values("wk").itertuples()] for h in H5.itertuples()}}}
+                      "hist": {labels[y][1]: [[int(r.wk) + 1, round(r.commit / float(tot[tot.marketYear == y].accumulatedExports.max()), 4)]
+                                              for r in tot[tot.marketYear == y].sort_values("wk").itertuples()]
+                               for y in yrs20[::-1] if tot[tot.marketYear == y].accumulatedExports.max() > 0}}}
 
 
 def main():

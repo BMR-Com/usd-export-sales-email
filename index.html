@@ -50,6 +50,10 @@ table.t tbody tr:nth-child(even) td{background:#fafbfc}
 table.t tbody tr:hover td{background:#eef3fb}
 table.t tr.grp td{background:#eef1f6!important;font-weight:700;color:var(--brand);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
 table.t td.b{font-weight:650}
+.ychips{display:flex;flex-wrap:wrap;gap:4px;margin:-.1rem 0 .5rem;align-items:center}
+.ychip{border:1.5px solid var(--c);color:#fff;background:var(--c);border-radius:99px;padding:1px 8px;font-size:11px;cursor:pointer}
+.ychip.off{background:#fff;color:#8a93a3;border-color:#d4d8de}.ychip.cur{--c:#d62828;cursor:default;font-weight:700}
+.ylinks{font-size:11px;color:var(--muted);margin-left:6px}.ylinks a{cursor:pointer;color:var(--brand);text-decoration:underline}
 .rbar{position:relative;height:16px;min-width:240px}.rbar div{position:absolute;top:3px;height:10px;border-radius:3px}
 .rbar .b20{background:#dbe4f0}.rbar .b10{background:#a9bfdc;top:4px;height:8px}.rbar .b5{background:#4a6fa5;top:5px;height:6px}
 .rbar .avg{width:2px;top:0;height:16px;background:#13315c;border-radius:0}
@@ -78,7 +82,7 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
 <footer>BMR-Com · independent commodity research · Data: USDA FAS Export Sales Reporting (upland + Pima), USDA WASDE · Not investment advice.</footer>
 <script>
 (function(){
-  var D=null,B=null,cur=null,charts={},sortKey='commit',sortDir=-1,seasMetric='commit',seasMode='abs';
+  var D=null,B=null,cur=null,charts={},seasN=5,hidden={},sortKey='commit',sortDir=-1,seasMetric='commit',seasMode='abs';
   var $=function(id){return document.getElementById(id);};
   var md=function(t){return String(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');};
   function n(v,d){if(v==null||isNaN(v))return '–';return (+v).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});}
@@ -150,8 +154,8 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
         '<div class="note">Export sales cover Friday to Thursday; prices are averaged over the same days. The week\'s low was '+(P.low_vs_lw*100).toFixed(1)+'% vs last week\'s average.</div></div>';}
     h+='<div class="grid"><div class="card brief"><div class="sec">Brief</div>'+B.brief.map(function(b){return '<div class="h">'+b.h+'</div><p>'+md(b.t)+'</p>';}).join('')+'</div>'+
       '<div class="card"><div class="sec"><span>Seasonal comparison</span><span class="ctl"><select id="seasMetric" aria-label="Metric">'+Object.keys(METRICS).map(function(k){return '<option value="'+k+'"'+(k===seasMetric?' selected':'')+'>'+METRICS[k]+'</option>';}).join('')+
-      '</select><span class="seg" id="seasMode"><button data-m="abs" class="'+(seasMode==='abs'?'on':'')+'">Volume</button><button data-m="pct" class="'+(seasMode==='pct'?'on':'')+'">% of season</button></span></span></div><div class="chartbox"><canvas id="seas"></canvas></div>'+
-      '<div class="note">Hover for values; click a season in the legend to hide or show it. “% of season” shows commitments as a share of each season\'s final shipments (this season: USDA\'s forecast).</div>'+
+      '</select><select id="seasYears" aria-label="Seasons"><option value="5"'+(seasN===5?' selected':'')+'>Last 5 seasons</option><option value="10"'+(seasN===10?' selected':'')+'>Last 10 seasons</option><option value="20"'+(seasN===20?' selected':'')+'>Last 20 seasons</option></select><span class="seg" id="seasMode"><button data-m="abs" class="'+(seasMode==='abs'?'on':'')+'">Volume</button><button data-m="pct" class="'+(seasMode==='pct'?'on':'')+'">% of season</button></span></span></div><div class="ychips" id="ychips"></div><div class="chartbox"><canvas id="seas"></canvas></div>'+
+      '<div class="note">Hover for values. Pick 5, 10 or 20 seasons, then click season chips (or the legend) to show only the years you want. “% of season” shows commitments as a share of each season\'s final shipments (this season: USDA\'s forecast).</div>'+
       '<div class="sec" style="margin-top:1rem">This season, week by week</div><div class="chartbox s"><canvas id="weekly"></canvas></div></div></div>';
     var dd=(B.dest||[]).filter(function(d){return d.c!=='Unknown destinations';});
     if(dd.length){
@@ -186,17 +190,19 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
   function heat(a){var x=a*(HSTOPS.length-1),i=Math.min(HSTOPS.length-2,Math.floor(x)),f=x-i,c=HSTOPS[i].map(function(v,k){return Math.round(v+(HSTOPS[i+1][k]-v)*f);});return 'rgb('+c.join(',')+')';}
   function kill(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
   var GREYS=['#2a9d8f','#e9c46a','#8e7cc3','#4a90d9','#7a8899'];
+  function seasColor(i,n){var h=Math.round(200+ (i/(Math.max(n,2)-1))*300)%360;return 'hsl('+h+',62%,'+(n>10?52:48)+'%)';}
+  function seasonList(){var keys=Object.keys(B.series),cy=keys[0];return {cy:cy,past:keys.slice(1,1+seasN)};}
+  function drawChips(){var L=seasonList(),h='';L.past.slice().reverse().forEach(function(k,i){var col=seasColor(i,L.past.length);h+='<button class="ychip'+(hidden[k]?' off':'')+'" data-y="'+k+'" style="--c:'+col+'">'+k+'</button>';});
+    h+='<button class="ychip cur" disabled>'+L.cy+'</button><span class="ylinks"><a data-a="all">all</a> · <a data-a="none">none</a> · <a data-a="ly">last year only</a></span>';$('ychips').innerHTML=h;}
   function drawSeas(){
-    kill('seas'); var ds=[],keys=Object.keys(B.series),cy=keys[0],i=0;
-    if(seasMode==='pct'){
-      Object.keys(B.curve.hist).forEach(function(k){ds.push({label:k,data:B.curve.hist[k].map(function(p){return {x:p[0],y:p[1]*100};}),borderColor:GREYS[i%5],backgroundColor:GREYS[i++%5],borderWidth:2,pointRadius:0,pointHoverRadius:4,tension:.25});});
-      ds.push({label:B.my+' (vs USDA)',data:B.curve.cur.map(function(p){return {x:p[0],y:p[1]*100};}),borderColor:'#d62828',backgroundColor:'#d62828',borderWidth:3.5,pointRadius:3,tension:.25});
-    } else {
-      keys.slice(1).reverse().forEach(function(k){ds.push({label:k,data:(B.series[k][seasMetric]||[]).map(function(p){return {x:p[0],y:p[1]};}),borderColor:GREYS[i%5],backgroundColor:GREYS[i++%5],borderWidth:2,pointRadius:0,pointHoverRadius:4,tension:.25});});
-      ds.push({label:cy,data:(B.series[cy][seasMetric]||[]).map(function(p){return {x:p[0],y:p[1]};}),borderColor:'#d62828',backgroundColor:'#d62828',borderWidth:3.5,pointRadius:3,tension:.25});
-    }
+    kill('seas'); drawChips(); var L=seasonList(),ds=[],past=L.past.slice().reverse();
+    var src=seasMode==='pct'?B.curve.hist:null;
+    past.forEach(function(k,i){var pts=seasMode==='pct'?(src[k]||[]).map(function(p){return {x:p[0],y:p[1]*100};}):(B.series[k][seasMetric]||[]).map(function(p){return {x:p[0],y:p[1]};});
+      var col=seasColor(i,past.length);ds.push({label:k,data:pts,hidden:!!hidden[k],borderColor:col,backgroundColor:col,borderWidth:past.length>10?1.4:2,pointRadius:0,pointHoverRadius:4,tension:.25});});
+    var curPts=seasMode==='pct'?B.curve.cur.map(function(p){return {x:p[0],y:p[1]*100};}):(B.series[L.cy][seasMetric]||[]).map(function(p){return {x:p[0],y:p[1]};});
+    ds.push({label:L.cy+(seasMode==='pct'?' (vs USDA)':''),data:curPts,borderColor:'#d62828',backgroundColor:'#d62828',borderWidth:3.5,pointRadius:3,tension:.25});
     charts.seas=new Chart($('seas'),{type:'line',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:{duration:250},interaction:{mode:'x',intersect:false},
-      plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},tooltip:{itemSort:function(a,b){return b.parsed.y-a.parsed.y;},callbacks:{title:function(c){return 'Week '+c[0].parsed.x;},label:function(c){return ' '+c.dataset.label+': '+(seasMode==='pct'?c.parsed.y.toFixed(0)+'%':q(c.parsed.y));}}}},
+      plugins:{legend:{display:false},tooltip:{itemSort:function(a,b){return b.parsed.y-a.parsed.y;},filter:function(it){return !it.dataset.hidden;},callbacks:{title:function(c){return 'Week '+c[0].parsed.x;},label:function(c){return ' '+c.dataset.label+': '+(seasMode==='pct'?c.parsed.y.toFixed(0)+'%':q(c.parsed.y));}}}},
       scales:{x:{type:'linear',min:1,max:52,title:{display:true,text:'Week of marketing year (Aug 1 = week 1)'},ticks:{stepSize:4}},y:{beginAtZero:seasMode==='pct'||!FLOWS[seasMetric],title:{display:true,text:seasMode==='pct'?'% of season':METRICS[seasMetric]+', '+B.unit},ticks:{callback:function(v){return seasMode==='pct'?v+'%':v;}}}}}});
   }
   function drawWeekly(){
@@ -222,10 +228,12 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
   document.addEventListener('click',function(e){
     var p=e.target.closest&&e.target.closest('.pill');if(p){cur=p.getAttribute('data-c');render();return;}
     var m=e.target.closest&&e.target.closest('#seasMode button');if(m){seasMode=m.getAttribute('data-m');[].forEach.call(document.querySelectorAll('#seasMode button'),function(b){b.classList.toggle('on',b===m);});drawSeas();return;}
+    var yc=e.target.closest&&e.target.closest('.ychip[data-y]');if(yc){var k=yc.getAttribute('data-y');hidden[k]=!hidden[k];drawSeas();return;}
+    var ya=e.target.closest&&e.target.closest('.ylinks a');if(ya){var a=ya.getAttribute('data-a'),L=seasonList();hidden={};if(a==='none')L.past.forEach(function(k){hidden[k]=true;});if(a==='ly')L.past.slice(1).forEach(function(k){hidden[k]=true;});drawSeas();return;}
     var pb=e.target.closest&&e.target.closest('#profSeg button');if(pb){profKey=pb.getAttribute('data-p');[].forEach.call(document.querySelectorAll('#profSeg button'),function(b){b.classList.toggle('on',b===pb);});$('profTab').innerHTML=profTable();return;}
     var th=e.target.closest&&e.target.closest('th.sort');if(th){var k=th.getAttribute('data-k');sortDir=(sortKey===k)?-sortDir:(k==='c'?1:-1);sortKey=k;$('ctab').innerHTML=countryTable();}
   });
-  document.addEventListener('change',function(e){if(e.target.id==='seasMetric'){seasMetric=e.target.value;seasMode='abs';[].forEach.call(document.querySelectorAll('#seasMode button'),function(b){b.classList.toggle('on',b.getAttribute('data-m')==='abs');});drawSeas();}});
+  document.addEventListener('change',function(e){if(e.target.id==='seasYears'){seasN=+e.target.value;drawSeas();return;}if(e.target.id==='seasMetric'){seasMetric=e.target.value;seasMode='abs';[].forEach.call(document.querySelectorAll('#seasMode button'),function(b){b.classList.toggle('on',b.getAttribute('data-m')==='abs');});drawSeas();}});
   fetch('data/brief.json?t='+Date.now()).then(function(r){return r.json();}).then(function(d){
     D=d;$('gen').textContent='Updated '+d.generated+' · USDA FAS export sales vs USDA WASDE';cur=d.commodities[0].name;render();
   }).catch(function(){$('body').innerHTML='<div class="spinner">Brief not available yet.</div>';});
