@@ -182,6 +182,26 @@ def esr(codes):
     e["countryName"] = [cn.get(str(int(c)), str(n).strip().title()) for c, n in zip(pd.to_numeric(e.countryCode, errors="coerce").fillna(0), e.countryName)]
     e = e[e.countryCode.astype(str) != "0"]
     e["commit"] = e.accumulatedExports + e.outstandingSales
+    return remove_rollover(e)
+
+
+def remove_rollover(e):
+    """Week 1 of each marketing year includes old-crop sales still unshipped at the end of the previous year,
+    which USDA rolls into the new year's net (and gross) sales. Take them out, country by country, so week 1
+    shows only new business. Seasons where the roll-over was not booked into week 1 are left as reported."""
+    e = e.copy(); e["carryIn"] = 0.0
+    keys = ["commodityCode", "marketYear"]
+    first = e.groupby(keys).weekEndingDate.transform("min"); last = e.groupby(keys).weekEndingDate.transform("max")
+    end_out = e[e.weekEndingDate == last].groupby(["commodityCode", "marketYear", "countryCode"]).outstandingSales.sum()
+    m1 = e.weekEndingDate == first
+    carry = [end_out.get((cc, y - 1, ct), 0.0) for cc, y, ct in zip(e.loc[m1, "commodityCode"], e.loc[m1, "marketYear"], e.loc[m1, "countryCode"])]
+    e.loc[m1, "carryIn"] = carry
+    chk = e[m1].groupby(keys)[["currentMYNetSales", "carryIn"]].sum()
+    booked = set(i for i, r in chk.iterrows() if r.carryIn > 0 and r.currentMYNetSales - r.carryIn >= -0.05 * r.carryIn)
+    apply_ = m1 & pd.Series([(cc, y) in booked for cc, y in zip(e.commodityCode, e.marketYear)], index=e.index)
+    e.loc[apply_, "currentMYNetSales"] -= e.loc[apply_, "carryIn"]
+    e.loc[apply_, "grossNewSales"] = (e.loc[apply_, "grossNewSales"] - e.loc[apply_, "carryIn"]).clip(lower=0)
+    e.loc[~apply_, "carryIn"] = 0.0
     return e
 
 
