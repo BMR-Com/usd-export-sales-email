@@ -185,6 +185,8 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
       '</tbody></table></div><div class="note">Import forecasts in million 480-lb bales (USDA). US share = US shipments to the country ÷ its imports in past seasons. Pace-implied projects this season\'s sales at the country\'s usual seasonal pace, once it has usually booked a quarter of its purchases.</div></div></div>';
     }
     h+='<div class="card"><div class="sec">By destination — top 12 markets ('+B.unit+')</div><div class="scroll" id="ctab">'+countryTable()+'</div></div>';
+    if(B.profile){h+='<div class="card"><div class="sec"><span>Where this season stands — same week of the marketing year, last '+B.profile_years+' seasons</span><span class="ctl"><span class="seg" id="profSeg">'+
+      Object.keys(B.profile).map(function(k){return '<button data-p="'+k+'" class="'+(k===profKey?'on':'')+'">'+B.profile[k].label+'</button>';}).join('')+'</span></span></div><div class="scroll" id="profTab">'+profTable()+'</div></div>';}
     var Sp=B.supply;
     if(Sp&&Sp.exporters&&Sp.exporters.length){
       h+='<div class="two"><div class="card"><div class="sec">Main competitors (m 480-lb bales)</div><div class="scroll"><table class="t"><thead><tr><th class="l">Exporter</th><th>Beg. stocks</th><th>Crop</th><th>Exportable surplus</th><th>vs '+Sp.pmy+'</th><th>Exports</th><th>vs '+Sp.pmy+'</th></tr></thead><tbody>'+
@@ -200,8 +202,6 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
         B.seas.map(function(x){return '<tr><td class="l b">'+x.c+'</td>'+x.share.map(function(v,i){var a=Math.min(1,v/0.18);return '<td class="m'+(B.months[i]===names[mNow]?' now':'')+'" style="background:'+heat(a)+';color:'+(a>0.6?'#fff':'#222')+'" title="'+x.c+' · '+B.months[i]+': '+(v*100).toFixed(1)+'% of season">'+(v>=0.005?(v*100).toFixed(0):'')+'</td>';}).join('')+
         '<td>'+pc(x.norm_shipped)+'</td><td>'+pc(x.shipped_of_commit)+'</td><td>'+q(x.outstanding)+'</td></tr>';}).join('')+'</tbody></table></div><div class="note">Outlined column = current month. Hover a cell for the exact share.</div></div>';
     }
-    if(B.profile){h+='<div class="card"><div class="sec"><span>Where this season stands — same week of the marketing year, last '+B.profile_years+' seasons</span><span class="ctl"><span class="seg" id="profSeg">'+
-      Object.keys(B.profile).map(function(k){return '<button data-p="'+k+'" class="'+(k===profKey?'on':'')+'">'+B.profile[k].label+'</button>';}).join('')+'</span></span></div><div class="scroll" id="profTab">'+profTable()+'</div></div>';}
     $('body').innerHTML=h;
     drawSeas(); drawWeekly(); if(dd.length) drawDest(dd);
   }
