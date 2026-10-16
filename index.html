@@ -54,6 +54,17 @@ table.t td.b{font-weight:650}
 .ychip{border:1.5px solid var(--c);color:#fff;background:var(--c);border-radius:99px;padding:1px 8px;font-size:11px;cursor:pointer}
 .ychip.off{background:#fff;color:#8a93a3;border-color:#d4d8de}.ychip.cur{--c:#d62828;cursor:default;font-weight:700}
 .ylinks{font-size:11px;color:var(--muted);margin-left:6px}.ylinks a{cursor:pointer;color:var(--brand);text-decoration:underline}
+.prof td.rgc{min-width:230px;padding:14px 10px 6px}
+.rg{display:flex;align-items:center;gap:13px}.rg .mn,.rg .mx{font-size:11px;color:#5b6472;min-width:34px;font-variant-numeric:tabular-nums}.rg .mn{text-align:right}.rg .mx{text-align:left}
+.trk{position:relative;flex:1;height:10px;border-radius:5px;background:#eef0f3;box-shadow:inset 0 0 0 1px #d6dae1}
+.trk .lo{position:absolute;left:0;top:0;bottom:0;border-radius:5px 0 0 5px;background:linear-gradient(90deg,#f4a3a3,#fbe0e0)}
+.trk .hi{position:absolute;right:0;top:0;bottom:0;border-radius:0 5px 5px 0;background:linear-gradient(90deg,#d5efdf,#8fd1a8)}
+.trk .av{position:absolute;top:-4px;width:2px;height:18px;margin-left:-1px;background:#13315c}
+.trk .av em{position:absolute;bottom:17px;left:50%;transform:translateX(-50%);font-style:normal;font-size:10px;color:#13315c;font-weight:600;white-space:nowrap}
+.trk .dt{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.35);font-size:8px;line-height:10px;text-align:center;color:#fff}
+.trk .dt.up{background:#1e8a4c}.trk .dt.dn{background:#d62828}.trk .dt.out{width:16px;height:16px;margin:-8px 0 0 -8px;line-height:12px}
+.prof .rk{font-weight:700;font-size:13px}.prof .rk small{font-weight:400;color:#8a93a3;font-size:10.5px}
+.prof td.nowc{font-size:13.5px}.prof th.c{text-align:center}
 .rbar{position:relative;height:16px;min-width:240px}.rbar div{position:absolute;top:3px;height:10px;border-radius:3px}
 .rbar .b20{background:#dbe4f0}.rbar .b10{background:#a9bfdc;top:4px;height:8px}.rbar .b5{background:#4a6fa5;top:5px;height:6px}
 .rbar .avg{width:2px;top:0;height:16px;background:#13315c;border-radius:0}
@@ -124,13 +135,21 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
     return h+'</tbody></table><div class="note">'+B.unit+'. Top 12 markets by commitments; the rest are grouped as Others. Expected season = USDA\'s import forecast for the country × the US share of its imports over the last 5 seasons, on the running-bale basis. Expected to date = that volume × the share of its season the country has usually received by this week. Cells for this season are shaded green when above the same week last year and red when below — deeper colour for a bigger gap. Click a column heading to sort.</div>';
   }
   var profKey='commit';
+  function rangeCell(r,n){
+    var mn=r['min'+n],mx=r['max'+n],av=r['avg'+n],now=r.now; if(mn==null)return '<td class="mut">–</td>';
+    var span=(mx-mn)||1,pos=(now-mn)/span*100,ap=(av-mn)/span*100,out=pos<0?'below':pos>100?'above':'';
+    var cls=now>=av?'up':'dn',pc_=Math.max(0,Math.min(100,pos));
+    return '<td class="rgc"><div class="rg"><span class="mn">'+q(mn)+'</span><div class="trk" title="'+n+'-yr: min '+q(mn)+' · avg '+q(av)+' · max '+q(mx)+' · this season '+q(now)+'">'+
+      '<div class="lo" style="width:'+ap.toFixed(1)+'%"></div><div class="hi" style="left:'+ap.toFixed(1)+'%"></div>'+
+      '<div class="av" style="left:'+ap.toFixed(1)+'%"><em>'+q(av)+'</em></div>'+
+      '<div class="dt '+cls+(out?' out':'')+'" style="left:'+pc_.toFixed(1)+'%">'+(out==='above'?'▲':out==='below'?'▼':'')+'</div></div><span class="mx">'+q(mx)+'</span></div></td>';
+  }
   function profTable(){
     var P=B.profile[profKey]; if(!P)return '';
-    var h='<table class="t prof"><thead><tr><th class="l">Destination</th><th>This season</th><th class="l" style="min-width:260px">Range (20-yr / 10-yr / 5-yr) · ● this season</th><th>Rank</th><th>5-yr min</th><th>5-yr avg</th><th>5-yr max</th><th>10-yr min</th><th>10-yr avg</th><th>10-yr max</th><th>20-yr min</th><th>20-yr avg</th><th>20-yr max</th></tr></thead><tbody>';
-    P.rows.forEach(function(r){var lo=Math.min(r.min20,r.now),hi=Math.max(r.max20,r.now),span=(hi-lo)||1,X=function(v){return ((v-lo)/span*100).toFixed(1);};
-      var bar='<div class="rbar"><div class="b20" style="left:'+X(r.min20)+'%;width:'+(X(r.max20)-X(r.min20))+'%"></div><div class="b10" style="left:'+X(r.min10)+'%;width:'+(X(r.max10)-X(r.min10))+'%"></div><div class="b5" style="left:'+X(r.min5)+'%;width:'+(X(r.max5)-X(r.min5))+'%"></div><div class="avg" style="left:'+X(r.avg5)+'%" title="5-yr avg"></div><div class="dot '+(r.now>=r.avg5?'hi':'lo')+'" style="left:'+X(r.now)+'%" title="This season '+q(r.now)+'"></div></div>';
-      h+='<tr'+(r.c==='Total'?' class="tot"':'')+'><td class="l b">'+r.c+'</td><td class="b"'+shade(r.now,r.avg5)+'>'+q(r.now)+'</td><td class="l">'+bar+'</td><td>'+r.rank+' / '+r.of+'</td><td class="mut">'+q(r.min5)+'</td><td>'+q(r.avg5)+'</td><td class="mut">'+q(r.max5)+'</td><td class="mut">'+q(r.min10)+'</td><td>'+q(r.avg10)+'</td><td class="mut">'+q(r.max10)+'</td><td class="mut">'+q(r.min20)+'</td><td>'+q(r.avg20)+'</td><td class="mut">'+q(r.max20)+'</td></tr>';});
-    return h+'</tbody></table><div class="note">'+B.unit+', at the same week of each marketing year. Bar: light = 20-yr range, mid = 10-yr, dark = 5-yr; tick = 5-yr average; dot = this season (green above the 5-yr average, red below). Rank 1 = highest. "This season" is shaded vs the 5-yr average.</div>';
+    var h='<table class="t prof"><thead><tr><th class="l">Destination</th><th>This season</th><th>Rank</th><th class="c">Last 5 seasons</th><th class="c">Last 10 seasons</th><th class="c">Last 20 seasons</th></tr></thead><tbody>';
+    P.rows.forEach(function(r){
+      h+='<tr'+(r.c==='Total'?' class="tot"':'')+'><td class="l b">'+r.c+'</td><td class="b nowc"'+shade(r.now,r.avg5)+'>'+q(r.now)+'</td><td><span class="rk">'+r.rank+'<small>/'+r.of+'</small></span></td>'+rangeCell(r,5)+rangeCell(r,10)+rangeCell(r,20)+'</tr>';});
+    return h+'</tbody></table><div class="note">'+B.unit+', at the same week of each marketing year. Each bar runs from the lowest (left) to the highest (right) value in that window; the marker and number above it are the average — red side below average, green side above. The dot is this season (▲/▼ = outside the range). Rank 1 = highest of the last '+(P.rows[0].of)+' seasons. Hover a bar for exact values.</div>';
   }
   function render(){
     B=D.commodities.filter(function(c){return c.name===cur;})[0]; if(!B)return;
