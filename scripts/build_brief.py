@@ -20,7 +20,7 @@ WASDE_LOCAL = os.getenv("WASDE_LOCAL")
 
 COMMS = [
     {"key": "cotton", "to_world": 1.0, "name": "Cotton", "codes": [1404, 1301], "wasde": "Cotton.json", "start": 8, "esr_unit": "running bales",
-     "disp": 1e6, "disp_unit": "m running bales", "w_unit": "m 480-lb bales", "w_fmt": 2},
+     "disp": 1e3, "disp_unit": "'000 running bales", "w_unit": "m 480-lb bales", "w_fmt": 2},
     # Disabled for now (kept for future use): USDA WASDE and export-sales categories need reconciling first.
     {"key": "corn", "enabled": False, "to_world": 0.0254012, "name": "Corn", "codes": [401], "wasde": "Corn.json", "start": 9, "esr_unit": "MT", "disp": 1e6, "disp_unit": "MMT", "w_unit": "m bu", "w_fmt": 0},
     {"key": "soybeans", "enabled": False, "to_world": 0.0272155, "name": "Soybeans", "codes": [801], "wasde": "Oilseed,_Soybean.json", "start": 9, "esr_unit": "MT", "disp": 1e6, "disp_unit": "MMT", "w_unit": "m bu", "w_fmt": 0},
@@ -172,6 +172,13 @@ def my_label(e, start_month):
 
 
 # ─────────────────────────── analysis ───────────────────────────
+def q(v):
+    """Format a value in display units ('000 bales): no decimals above 100, one below."""
+    if v is None or (isinstance(v, float) and not np.isfinite(v)):
+        return "n/a"
+    return f"{v:,.0f}" if abs(v) >= 100 else f"{v:,.1f}"
+
+
 def build(cfg):
     e = esr(cfg["codes"])
     if e is None or e.empty:
@@ -300,9 +307,10 @@ def build(cfg):
     # narrative
     fu = lambda v: f"{v:,.{cfg['w_fmt']}f}"
     T = []
-    head = (f"Week ending {last_date:%b %d}: {cfg['name'].lower()} commitments {L.commit / D:,.2f} {cfg['disp_unit']} for {my} "
-            f"({L.accumulatedExports / D:,.2f} shipped, {L.outstandingSales / D:,.2f} outstanding) = **{pace*100:.0f}% of USDA's {fu(target)} {cfg['w_unit']}** "
-            f"export forecast, vs a 5-yr norm of {pace_n*100:.0f}% by week {wk + 1}. ")
+    head = (f"Week ending {last_date:%b %d}: {cfg['name'].lower()} commitments {q(L.commit / D)} {cfg['disp_unit']} for {my} "
+            f"({q(L.accumulatedExports / D)} shipped, {q(L.outstandingSales / D)} outstanding) = **{pace*100:.0f}% of USDA's {fu(target)} {cfg['w_unit']}** "
+            f"export forecast, vs a 5-yr norm of {pace_n*100:.0f}% by week {wk + 1}. "
+            + (f"(USDA's statistical bales are converted to the export-sales running-bale basis at {ratio / 1e6:.3f} running bales per 480-lb bale, the median ratio of final export-sales shipments to USDA's final exports over the last 5 seasons: {fu(target)}m ≈ {q(t_esr / D)} {cfg['disp_unit']}.) " if cfg["key"] == "cotton" else ""))
     if ly_commit:
         head += f"Commitments are {L.commit / ly_commit - 1:+.0%} vs a year ago. "
     if implied:
@@ -312,18 +320,18 @@ def build(cfg):
                     or (" — USDA looks too high; risk of a cut." if gap < -0.04 else " — room for USDA to raise." if gap > 0.04 else " — in line with USDA.")))
     T.append({"h": "Pace vs USDA", "t": head})
     t = (f"Shipments {ship*100:.0f}% of target (norm {ship_n*100:.0f}%). To reach USDA's number, shipments need to average "
-         f"{need_ship / D:,.3f} {cfg['disp_unit']}/week for the remaining {weeks_left} weeks vs {ship4 / D:,.3f} over the last 4 weeks; "
-         f"new sales need {max(need_sales, 0) / D:,.3f}/week vs {net4 / D:,.3f} recently (5-yr avg for these weeks {net4_5y / D:,.3f}).")
+         f"{q(need_ship / D)} {cfg['disp_unit']}/week for the remaining {weeks_left} weeks vs {q(ship4 / D)} over the last 4 weeks; "
+         f"new sales need {q(max(need_sales, 0) / D)}/week vs {q(net4 / D)} recently (5-yr avg for these weeks {q(net4_5y / D)}).")
     T.append({"h": "What USDA's number requires", "t": t})
     if prev_t is not None and abs(target - prev_t) > 1e-9:
         T.append({"h": "Latest WASDE", "t": f"USDA {'raised' if target > prev_t else 'cut'} the {my} export forecast to {fu(target)} {cfg['w_unit']} ({target - prev_t:+,.{cfg['w_fmt']}f}) in the {rd:%B} report."})
-    wkline = f"Net sales {L.currentMYNetSales / D:,.3f} {cfg['disp_unit']} (4-wk avg {net4 / D:,.3f}); shipments {L.weeklyExports / D:,.3f}."
+    wkline = f"Net sales {q(L.currentMYNetSales / D)} {cfg['disp_unit']} (4-wk avg {q(net4 / D)}); shipments {q(L.weeklyExports / D)}."
     if top_buy:
-        wkline += " Main buyers: " + ", ".join(f"{b['c']} {b['v']:,.3f}" for b in top_buy[:4]) + "."
+        wkline += " Main buyers: " + ", ".join(f"{b['c']} {q(b['v'])}" for b in top_buy[:4]) + "."
     if cancels:
-        wkline += " Net reductions: " + ", ".join(f"{b['c']} {b['v']:,.3f}" for b in cancels) + "."
+        wkline += " Net reductions: " + ", ".join(f"{b['c']} {q(b['v'])}" for b in cancels) + "."
     if L.nextMYOutstandingSales > 0 and wk > 30:
-        wkline += f" Next-season sales on the books {L.nextMYOutstandingSales / D:,.3f}."
+        wkline += f" Next-season sales on the books {q(L.nextMYOutstandingSales / D)}."
     T.append({"h": "This week", "t": wkline})
     xs = 0.0
     dd = [d for d in dest if d.get("vs_usual") is not None and d.get("imports") and np.isfinite(d["vs_usual"])]
@@ -348,7 +356,7 @@ def build(cfg):
         lag = [x for x in seas if x["shipped_of_commit"] is not None and x["outstanding"] > 0 and x["norm_shipped"] > 0.25 and x["shipped_of_commit"] < 0.5 * x["norm_shipped"]]
         t = ("Shipments usually concentrate in the next three months for " + ", ".join(f"{x['c']} ({x['next3']*100:.0f}% of its season)" for x in nxt) + ".")
         if lag:
-            t += " Slow to ship vs sales: " + ", ".join(f"{x['c']} ({x['outstanding']:,.2f} outstanding)" for x in lag[:3]) + " — watch for cancellations or roll-overs."
+            t += " Slow to ship vs sales: " + ", ".join(f"{x['c']} ({q(x['outstanding'])} outstanding)" for x in lag[:3]) + " — watch for cancellations or roll-overs."
         T.append({"h": "Shipment calendar", "t": t})
     # ── week-to-week and year-to-date scorecard ──
     FLOW = [("grossNewSales", "Gross new sales"), ("currentMYNetSales", "Net sales"), ("weeklyExports", "Shipments"), ("nextMYNetSales", "Next-season net sales")]
@@ -387,24 +395,59 @@ def build(cfg):
         gly["wk"] = (gly.weekEndingDate - pd.Timestamp(year=labels[cur_y - 1][0], month=cfg["start"], day=1)).dt.days // 7
         lastw = gly[gly.wk <= wk].weekEndingDate.max()
         lyc = gly[gly.weekEndingDate == lastw].groupby("countryName")[["commit", "accumulatedExports"]].sum().to_dict("index")
-    ctab = []
-    for nm, r in tw_.sort_values("commit", ascending=False).head(25).iterrows():
-        ctab.append({"c": nm, "net": r.currentMYNetSales / D, "net_lw": float(lw_.currentMYNetSales.get(nm, 0)) / D, "ship": r.weeklyExports / D,
-                     "ship_lw": float(lw_.weeklyExports.get(nm, 0)) / D, "accum": r.accumulatedExports / D, "outst": r.outstandingSales / D,
-                     "commit": r.commit / D, "commit_ly": (lyc.get(nm, {}).get("commit", 0)) / D, "accum_ly": (lyc.get(nm, {}).get("accumulatedExports", 0)) / D,
-                     "next": r.nextMYOutstandingSales / D})
+    COLS = ["currentMYNetSales", "weeklyExports", "accumulatedExports", "outstandingSales", "commit", "nextMYOutstandingSales"]
+    lyw = {}
+    if len(gly):
+        lyw = gly[gly.weekEndingDate == lastw].groupby("countryName")[COLS].sum()
+    dmap = {d["c"]: d for d in dest}
+    def ship_norm(nm):
+        """Share of a destination's season shipments usually made by this week (last 5 seasons)."""
+        a_, f_ = 0.0, 0.0
+        for y in yrs5:
+            g = e[(e.marketYear == y) & (e.countryName == nm)]
+            if g.empty:
+                continue
+            gw = g.groupby("weekEndingDate").accumulatedExports.sum().reset_index()
+            gw["wk"] = (gw.weekEndingDate - pd.Timestamp(year=labels[y][0], month=cfg["start"], day=1)).dt.days // 7
+            at = gw[gw.wk <= wk]
+            a_ += float(at.accumulatedExports.iloc[-1]) if len(at) else 0.0; f_ += float(gw.accumulatedExports.max())
+        return a_ / f_ if f_ > 0 else None
+    def rowfor(nm, cur_, lw0, ly0):
+        g = lambda df, k: float(df.get(k, 0)) / D if df is not None else None
+        r = {"c": nm, "net": g(cur_, "currentMYNetSales"), "net_lw": g(lw0, "currentMYNetSales"), "net_ly": g(ly0, "currentMYNetSales"),
+             "ship": g(cur_, "weeklyExports"), "ship_lw": g(lw0, "weeklyExports"), "ship_ly": g(ly0, "weeklyExports"),
+             "accum": g(cur_, "accumulatedExports"), "accum_ly": g(ly0, "accumulatedExports"),
+             "outst": g(cur_, "outstandingSales"), "outst_ly": g(ly0, "outstandingSales"),
+             "commit": g(cur_, "commit"), "commit_ly": g(ly0, "commit"), "next": g(cur_, "nextMYOutstandingSales")}
+        d = dmap.get(nm)
+        if d and d.get("imports") and d.get("us_share5"):
+            exp_season = d["imports"] * d["us_share5"] / cfg.get("to_world", 1.0) * ratio / D   # usual US volume, export-sales basis
+            sn = ship_norm(nm)
+            r.update({"imports": d["imports"], "us_share5": d["us_share5"], "exp_season": exp_season, "ship_norm": sn,
+                      "exp_mytd": exp_season * sn if sn is not None else None})
+        return r
+    TW = tw_.reindex(columns=COLS).fillna(0)
+    LW = cw[cw.weekEndingDate == (prev.weekEndingDate if prev is not None else last_date)].groupby("countryName")[COLS].sum()
+    order_ = [n for n in TW.sort_values("commit", ascending=False).index if n != "Unknown destinations"]
+    top12 = order_[:12]
+    ctab = [rowfor(nm, TW.loc[nm], LW.loc[nm] if nm in LW.index else None, lyw.loc[nm] if len(lyw) and nm in lyw.index else None) for nm in top12]
+    rest = [n for n in TW.index if n not in top12]
+    ly_rest = lyw[~lyw.index.isin(top12)].sum() if len(lyw) else None
+    oth = rowfor(f"Others ({len(rest)})", TW.loc[rest].sum(), LW[LW.index.isin(rest)].sum(), ly_rest)
+    oth["others"] = True
+    ctab.append(oth)
     sc = {x["k"]: x for x in score}
     def ch(a, b):
         return (lambda r: "0%" if abs(r) < 0.005 else f"{r:+.0%}")(a / b - 1) if a is not None and b not in (None, 0) else "n/a"
     ns, sh_ = sc["currentMYNetSales"], sc["weeklyExports"]
     T.insert(2, {"h": "Week on week", "t": (
-        f"Net sales {ns['tw']:,.3f} vs {ns['lw'] or 0:,.3f} the week before ({ch(ns['tw'], ns['lw'])}), {ch(ns['tw'], ns['ly'])} vs the same week last year and "
-        f"{ch(ns['tw'], ns['avg5'])} vs the 5-yr average. Shipments {sh_['tw']:,.3f} vs {sh_['lw'] or 0:,.3f} ({ch(sh_['tw'], sh_['lw'])}), "
+        f"Net sales {q(ns['tw'])} vs {q(ns['lw'] or 0)} the week before ({ch(ns['tw'], ns['lw'])}), {ch(ns['tw'], ns['ly'])} vs the same week last year and "
+        f"{ch(ns['tw'], ns['avg5'])} vs the 5-yr average. Shipments {q(sh_['tw'])} vs {q(sh_['lw'] or 0)} ({ch(sh_['tw'], sh_['lw'])}), "
         f"{ch(sh_['tw'], sh_['ly'])} vs last year, {ch(sh_['tw'], sh_['avg5'])} vs the 5-yr average.")})
     T.insert(3, {"h": "Season to date", "t": (
-        f"Net sales {ns['ytd']:,.2f} ({ch(ns['ytd'], ns['ytd_ly'])} y/y, {ch(ns['ytd'], ns['ytd_avg5'])} vs 5-yr avg); shipments {sc['accumulatedExports']['tw']:,.2f} "
-        f"({ch(sc['accumulatedExports']['tw'], sc['accumulatedExports']['ly'])} y/y); outstanding sales {sc['outstandingSales']['tw']:,.2f} "
-        f"({ch(sc['outstandingSales']['tw'], sc['outstandingSales']['ly'])} y/y); next-season sales on the books {sc['nextMYOutstandingSales']['tw']:,.2f}.")})
+        f"Net sales {q(ns['ytd'])} ({ch(ns['ytd'], ns['ytd_ly'])} y/y, {ch(ns['ytd'], ns['ytd_avg5'])} vs 5-yr avg); shipments {q(sc['accumulatedExports']['tw'])} "
+        f"({ch(sc['accumulatedExports']['tw'], sc['accumulatedExports']['ly'])} y/y); outstanding sales {q(sc['outstandingSales']['tw'])} "
+        f"({ch(sc['outstandingSales']['tw'], sc['outstandingSales']['ly'])} y/y); next-season sales on the books {q(sc['nextMYOutstandingSales']['tw'])}.")})
 
     # bottom line: weigh sales pace, destinations and competitor supply
     sig = []
@@ -427,7 +470,7 @@ def build(cfg):
     T.append({"h": "Bottom line", "t": bl})
     tilt = "strong" if implied and implied / target > 1.04 else "weak" if implied and implied / target < 0.96 else "on track"
     return {"name": cfg["name"], "w_fmt": cfg["w_fmt"], "my": my, "week": f"{last_date:%Y-%m-%d}", "wk": wk + 1, "unit": cfg["disp_unit"], "w_unit": cfg["w_unit"],
-            "report": f"{rd:%B %Y}", "target": target, "target_prev": prev_t, "target_esr": round(t_esr / D, 3),
+            "report": f"{rd:%B %Y}", "ratio": ratio / 1e6 if cfg["key"] == "cotton" else ratio, "target": target, "target_prev": prev_t, "target_esr": round(t_esr / D, 3),
             "commit": round(L.commit / D, 3), "shipped": round(L.accumulatedExports / D, 3), "outstanding": round(L.outstandingSales / D, 3),
             "pace": pace, "pace_norm": pace_n, "ship_pct": ship, "ship_norm": ship_n, "implied": implied, "ly_commit": round(ly_commit / D, 3) if ly_commit else None,
             "net": round(L.currentMYNetSales / D, 3), "net4": round(net4 / D, 3), "net4_5y": round(net4_5y / D, 3), "ship_wk": round(L.weeklyExports / D, 3), "ship4": round(ship4 / D, 3),
