@@ -232,7 +232,7 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
       scales:{x:{type:'linear',min:1,max:52,title:{display:true,text:'Week of marketing year (Aug 1 = week 1)'},ticks:{stepSize:4}},y:{beginAtZero:seasMode==='pct'||!FLOWS[seasMetric],title:{display:true,text:seasMode==='pct'?'% of season':METRICS[seasMetric]+', '+B.unit},ticks:{callback:function(v){return seasMode==='pct'?v+'%':v;}}}}}});
   }
   function drawWeekly(){
-    kill('weekly'); var cy=Object.keys(B.series)[0],ns=B.series[cy].currentMYNetSales,sh=B.series[cy].weeklyExports,hk=seasonList().past.filter(function(k){return !hidden[k];}),nA=hk.length,aLab=nA===1?hk[0]:'avg of '+nA+' seasons',lim=Math.max(ns.length+6,12);
+    kill('weekly'); var cy=Object.keys(B.series)[0],ns=B.series[cy].currentMYNetSales,sh=B.series[cy].weeklyExports,hk=seasonList().past.filter(function(k){return !hidden[k];}),nA=hk.length,aLab=nA===1?hk[0]:'avg of '+nA+' seasons',lim=52;
     var avg=function(m){var o={};hk.forEach(function(k){(B.series[k][m]||[]).forEach(function(p){(o[p[0]]=o[p[0]]||[]).push(p[1]);});});return Object.keys(o).map(Number).sort(function(a,b){return a-b;}).filter(function(w){return w<=lim;}).map(function(w){var a=o[w];return {x:w,y:a.reduce(function(s,v){return s+v;},0)/a.length};});};
     charts.weekly=new Chart($('weekly'),{data:{datasets:[
       {type:'bar',yAxisID:'y',label:'Net sales',data:ns.map(function(p){return {x:p[0],y:p[1]};}),backgroundColor:'#2a9d8f',borderRadius:3,barPercentage:.9,categoryPercentage:.8},
@@ -240,7 +240,7 @@ footer{font-size:11px;color:var(--muted);text-align:center;padding:1.2rem}
       {type:'line',yAxisID:'y',label:'Net sales, '+aLab,data:avg('currentMYNetSales'),borderColor:'#1d6b62',borderDash:[5,4],borderWidth:1.5,pointRadius:0,tension:.25},
       {type:'line',yAxisID:'y',label:'Shipments, '+aLab,data:avg('weeklyExports'),borderColor:'#c2410c',borderDash:[5,4],borderWidth:1.5,pointRadius:0,tension:.25}].concat(B.price&&B.price.weekly?[{type:'line',label:'ICE cotton, week avg (¢/lb, right)',yAxisID:'y2',data:B.price.weekly.filter(function(p){return p[1]!=null;}).map(function(p){return {x:p[0],y:p[1]};}),borderColor:'#8e44ad',backgroundColor:'#8e44ad',borderWidth:2,pointRadius:2.5,tension:.2}]:[])},
       options:{responsive:true,maintainAspectRatio:false,animation:{duration:250},interaction:{mode:'x',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:function(c){return 'Week '+c[0].parsed.x;},label:function(c){return ' '+c.dataset.label+': '+(c.dataset.yAxisID==='y2'?c.parsed.y.toFixed(2)+'¢':q(c.parsed.y));}}}},
-      scales:{x:{type:'linear',offset:true,min:0,max:lim+1,ticks:{stepSize:1,callback:function(v){return (v>0&&v<=lim)?v:'';}},title:{display:true,text:'Week of marketing year'}},y:{position:'left',title:{display:true,text:B.unit}},y2:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'¢/lb'}}}}});
+      scales:{x:{type:'linear',offset:true,min:0,max:lim+1,ticks:{stepSize:1,autoSkip:false,maxRotation:0,callback:function(v){return (v>0&&v<=lim&&(v===1||v%4===0))?v:'';}},title:{display:true,text:'Week of marketing year'}},y:{position:'left',title:{display:true,text:B.unit}},y2:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'¢/lb'}}}}});
   }
   function drawDest(dd){
     kill('dest'); var top=dd.slice().sort(function(a,b){return b.commit-a.commit;}).slice(0,10);
