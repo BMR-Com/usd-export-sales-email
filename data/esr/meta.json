@@ -1,36 +1,6 @@
 {
- "fetched": "2026-10-16 05:17 UTC",
+ "fetched": "2026-10-16 05:43 UTC",
  "commodities": {
-  "107": {
-   "commodityCode": 107,
-   "commodityName": "All Wheat",
-   "unitId": 1
-  },
-  "401": {
-   "commodityCode": 401,
-   "commodityName": "Corn",
-   "unitId": 1
-  },
-  "701": {
-   "commodityCode": 701,
-   "commodityName": "Sorghum",
-   "unitId": 1
-  },
-  "801": {
-   "commodityCode": 801,
-   "commodityName": "Soybeans",
-   "unitId": 1
-  },
-  "901": {
-   "commodityCode": 901,
-   "commodityName": "Soybean cake & meal",
-   "unitId": 1
-  },
-  "902": {
-   "commodityCode": 902,
-   "commodityName": "Soybean Oil",
-   "unitId": 1
-  },
   "1301": {
    "commodityCode": 1301,
    "commodityName": "Cotton- Am Pima",
@@ -40,11 +10,6 @@
    "commodityCode": 1404,
    "commodityName": "All Upland Cotton",
    "unitId": 2
-  },
-  "1505": {
-   "commodityCode": 1505,
-   "commodityName": "All Rice",
-   "unitId": 1
   }
  },
  "units": {
