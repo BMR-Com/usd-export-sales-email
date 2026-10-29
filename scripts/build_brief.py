@@ -275,6 +275,32 @@ def build(cfg):
     net4_5y = float(H5.net4.mean())
     D = cfg["disp"]
 
+    # Cotton projection: buying now comes later in the season than when China front-loaded, so scaling by the usual share
+    # sold by now runs low. Middle of four sales-flow views of what the rest of the season adds (5-season median,
+    # recency-weighted last 3, last season, and the current net-sales rate fitted on 10 seasons). Share method kept for reference.
+    proj = {"share": implied}
+    if cfg["key"] == "cotton":
+        R = []
+        for y in H.y:
+            g = tot[tot.marketYear == y].sort_values("wk"); at = g[g.wk <= wk]
+            if len(at):
+                R.append({"y": y, "commit_wk": float(at.commit.iloc[-1]), "ship_wk": float(at.accumulatedExports.iloc[-1]), "add": float(g.accumulatedExports.iloc[-1]) - float(at.commit.iloc[-1])})
+        R = pd.DataFrame(R).merge(H[["y", "net4", "my", "wfin"]], on="y")
+        if len(R):
+            v = {"add": L.commit + float(R.tail(5)["add"].median()),
+                 "add3w": L.commit + float(np.average(R.tail(3)["add"], weights=list(range(1, len(R.tail(3)) + 1)))),
+                 "ly": L.commit + float(R["add"].iloc[-1])}
+            RF = R.tail(10)
+            if len(RF) >= 6:
+                X = np.c_[np.ones(len(RF)), RF.net4, RF.commit_wk]; b_ = np.linalg.lstsq(X, RF["add"], rcond=None)[0]
+                v["flow"] = L.commit + float(b_ @ [1.0, net4, L.commit])
+            for k_, x_ in v.items():
+                proj[k_] = x_ / ratio
+            vals = [proj[k_] for k_ in v]
+            proj["central"], proj["lo"], proj["hi"] = float(np.median(vals)), min(vals), max(vals)
+            implied = proj["central"]
+            proj["prev"] = [(r.my, r.commit_wk, r.ship_wk, r.wfin) for r in R.tail(2).itertuples()][::-1]
+
     # this week's buyers
     tw = e[(e.marketYear == cur_y) & (e.weekEndingDate == last_date)]
     by = tw.groupby("countryName")[["currentMYNetSales", "weeklyExports", "nextMYNetSales"]].sum()
@@ -359,7 +385,16 @@ def build(cfg):
             + (f"(USDA's statistical bales are converted to the export-sales running-bale basis at {ratio / 1e6:.3f} running bales per 480-lb bale, the median ratio of final export-sales shipments to USDA's final exports over the last 5 seasons: {fu(target)}m ≈ {q(t_esr / D)} {cfg['disp_unit']}.) " if cfg["key"] == "cotton" else ""))
     if ly_commit:
         head += f"Commitments are {L.commit / ly_commit - 1:+.0%} vs a year ago. "
-    if implied:
+    if implied and proj.get("central"):
+        gap = implied / target - 1; pp = lambda k: fu(proj[k]) if proj.get(k) else "n/a"
+        head += (f"Projection: **{fu(implied)} {cfg['w_unit']}** ({gap:+.0%} vs USDA), the middle of four sales-flow views — what the rest of the season added in the last 5 seasons ({pp('add')}), "
+                 f"the same weighted toward the last 3 ({pp('add3w')}), last season's finish ({pp('ly')}) and what the current net-sales rate implies ({pp('flow')}); range {pp('lo')}–{pp('hi')}. "
+                 f"Scaling by the usual share sold by now gives {pp('share')}, but buyers now book later in the season than when China front-loaded purchases, so that method has run low in each of the last three seasons and is shown for reference only. ")
+        if proj.get("prev"):
+            pv = proj["prev"]; ab = all(L.commit > c_ for _, c_, _, _ in pv) and all(L.accumulatedExports > s_ for _, _, s_, _ in pv)
+            head += ("Same week of the last two seasons: " + "; ".join(f"{m_} commitments {q(c_ / D)}, shipped {q(s_ / D)}, final exports {fu(f_)} {cfg['w_unit']}" for m_, c_, s_, f_ in pv)
+                     + (". This season is ahead of both on sales and shipments, so a finish below last season is unlikely unless buying stalls." if ab else "."))
+    elif implied:
         gap = implied / target - 1
         head += (f"At the usual seasonal pace that points to about **{fu(implied)} {cfg['w_unit']}** ({gap:+.0%} vs USDA)"
                  + ((" — early-season sales are a weak guide to the final number for this crop, so treat this as a direction, not a forecast." if cfg["key"] in ("corn", "sorghum") and abs(gap) > 0.04 else "")
@@ -596,17 +631,21 @@ def build(cfg):
     if S and S.get("exporters"):
         dxc = sum(((x["exp"] or 0) if x["active"] else 0) - ((x["exp_ly"] or 0) if x["active_ly"] else 0) for x in S["exporters"])
         sig.append(("competitor exports", 1 if dxc < -0.03 * target else -1 if dxc > 0.03 * target else 0))
+    if proj.get("prev") and all(L.commit > c_ for _, c_, _, _ in proj["prev"]) and all(L.accumulatedExports > s_ for _, _, s_, _ in proj["prev"]):
+        sig.append(("sales and shipments ahead of the last two seasons", 1))
     neg = [a for a, v in sig if v < 0]; pos = [a for a, v in sig if v > 0]; net = sum(v for _, v in sig)
     bl = ("Export outlook vs USDA: **" + ("below" if net < 0 else "above" if net > 0 else "balanced around") + f" USDA's {fu(target)} {cfg['w_unit']}**. ")
     if neg:
         bl += "Pointing lower: " + ", ".join(neg) + ". "
     if pos:
         bl += "Pointing higher: " + ", ".join(pos) + ". "
+    if proj.get("central"):
+        bl += f"Projection {fu(proj['central'])} {cfg['w_unit']} ({proj['central'] / target - 1:+.0%}). "
     if neg and pos:
         bl += ("Less competition usually shows up later in the season, once rival origins run short — "
                "watch whether US sales accelerate into the new year before reading the slow start as lost demand.")
     T.append({"h": "Bottom line", "t": bl})
-    tilt = "strong" if implied and implied / target > 1.04 else "weak" if implied and implied / target < 0.96 else "on track"
+    tilt = ("strong" if net > 0 else "weak" if net < 0 else "on track") if proj.get("central") else ("strong" if implied and implied / target > 1.04 else "weak" if implied and implied / target < 0.96 else "on track")
     return {"name": cfg["name"], "w_fmt": cfg["w_fmt"], "my": my, "week": f"{last_date:%Y-%m-%d}", "wk": wk + 1, "unit": cfg["disp_unit"], "w_unit": cfg["w_unit"],
             "report": f"{rd:%B %Y}", "ratio": ratio / 1e6 if cfg["key"] == "cotton" else ratio, "target": target, "target_prev": prev_t, "target_esr": round(t_esr / D, 3),
             "commit": round(L.commit / D, 3), "shipped": round(L.accumulatedExports / D, 3), "outstanding": round(L.outstandingSales / D, 3),
