@@ -1,0 +1,36 @@
+name: catch-up
+# Catch-up for this repo's reports (same job as the softs desk's watchdog.yml; logic and release calendar live in
+# BMR-Com/Brazil--trade: pipelines/watchdog.py, pipelines/release_rules.py, data/release_calendar.json).
+# If a report this repo collects is missing after its release, or the last run of its workflow failed, the workflow is
+# rerun here (a workflow can only be rerun from its own repo without a personal token), the job waits, rechecks and ends
+# red if it is still late. E-mail at most once a day, only when the SMTP_*/EMAIL_* secrets exist.
+on:
+  schedule:
+    - cron: '37 10 * * *'
+    - cron: '23 15 * * 4,5'
+    - cron: '41 19 * * 4,5'
+  workflow_dispatch: {}
+permissions: {contents: read, actions: write}
+concurrency: {group: catch-up, cancel-in-progress: false}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: get the catch-up script and release calendar from the softs desk
+        run: |
+          mkdir -p "$RUNNER_TEMP/wd"
+          for f in pipelines/watchdog.py pipelines/release_rules.py data/release_calendar.json; do
+            curl -fsSL "https://raw.githubusercontent.com/BMR-Com/Brazil--trade/main/$f" -o "$RUNNER_TEMP/wd/$(basename $f)"
+          done
+      - name: catch up (rerun, wait, recheck)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python3 "$RUNNER_TEMP/wd/watchdog.py" --repo "${{ github.repository }}" --calendar "$RUNNER_TEMP/wd/release_calendar.json" --root . --out "$RUNNER_TEMP/wd/log.json" --wait --strict
