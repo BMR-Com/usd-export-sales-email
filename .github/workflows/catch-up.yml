@@ -6,9 +6,7 @@ name: catch-up
 # red if it is still late. E-mail at most once a day, only when the SMTP_*/EMAIL_* secrets exist.
 on:
   schedule:
-    - cron: '37 10 * * *'
-    - cron: '23 15 * * 4,5'
-    - cron: '41 19 * * 4,5'
+    - cron: '51 2 * * *'   # once a day, after the day's US releases (21:4x EST / 22:4x EDT)
   workflow_dispatch: {}
 permissions: {contents: read, actions: write}
 concurrency: {group: catch-up, cancel-in-progress: false}
